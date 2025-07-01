@@ -19,15 +19,15 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 	}
 
 
-	m_peImage = new pe_bliss::pe_base(pe_bliss::pe_factory::create_pe(pe_file));
+	m_peImage = std::make_unique<pe_bliss::pe_base>(pe_bliss::pe_factory::create_pe(pe_file));
 	if (m_peImage->get_pe_type() != pe_bliss::pe_type_32) {
 		print_error("Binary is not x86 architecture\n");
 		return;
 	}
 
 	JitRuntime jitRt;
-	m_code = new CodeHolder();
-	Error init_asmjit = m_code->init(jitRt.environment(), jitRt.cpuFeatures());
+	m_codeHolder = std::make_unique<CodeHolder>();
+	Error init_asmjit = m_codeHolder->init(jitRt.environment(), jitRt.cpuFeatures());
 
 	if (init_asmjit != kErrorOk) {
 		print_error("Failed initialization\n");
@@ -101,14 +101,7 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 		}
 	}
 
-	m_assembler = new x86::Assembler(m_code);
-}
-
-c_core::~c_core()
-{
-	delete m_peImage;
-	delete m_code;
-	delete m_assembler;
+	m_assembler = std::make_unique<x86::Assembler>(m_codeHolder.get());
 }
 
 void c_core::xor_function_range(xor_target_t xor_target)
@@ -240,7 +233,7 @@ void c_core::process()
 	new_section.get_raw_data().resize(alignedSize);
 
 	pe_bliss::section& pe_section = m_peImage->add_section(new_section);
-	m_code->_baseAddress = pe_section.get_virtual_address();
+	m_codeHolder->_baseAddress = pe_section.get_virtual_address();
 	std::uint32_t oep = obf_call_oep ? m_peImage->get_ep() + m_peImage->get_image_base_32() : m_peImage->get_ep();
 	std::uint32_t oepvl_xor_key = random_value(128, 1024);
 	Label new_label = m_assembler->newLabel();

@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 
     try
     {
-        packer = new c_core(argv[1], argv[2], mut_count);
+        auto packer = std::make_unique<c_core>(argv[1], argv[2], mut_count);
 
         print_info("mutations count: %i\n", mut_count);
         packer->process();
