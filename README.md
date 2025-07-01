@@ -45,3 +45,4 @@ I am going to periodically update the functionality, add new tricks that I find,
 ## Dependencies
 
 * [AsmJit](https://github.com/asmjit/asmjit)
+* [PeBliss](https://github.com/BackupGGCode/portable-executable-library)
