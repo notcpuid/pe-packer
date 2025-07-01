@@ -19,7 +19,18 @@ class c_core
 {
 public:
 	c_core(std::string input_file, std::string output_file, std::uint32_t mutations_counter);
-	~c_core();
+
+	asmjit::x86::Assembler* get_assembler() {
+		return m_assembler.get();
+	}
+
+	pe_bliss::pe_base* get_peImage() {
+		return m_peImage.get();
+	}
+
+	asmjit::CodeHolder* get_codeHolder() {
+		return m_codeHolder.get();
+	}
 
 	struct xor_target_t {
 		std::uintptr_t func_start;
@@ -62,10 +73,10 @@ public:
 	std::string m_input;
 	std::string m_output;
 
-	pe_bliss::pe_base* m_peImage = nullptr;
-
-	asmjit::CodeHolder* m_code = nullptr;
-	asmjit::x86::Assembler* m_assembler = nullptr;
+private:
+	std::unique_ptr<asmjit::x86::Assembler> m_assembler;
+	std::unique_ptr<pe_bliss::pe_base> m_peImage;
+	std::unique_ptr<asmjit::CodeHolder> m_codeHolder;
 
 }; extern c_core* mutator;
 
