@@ -216,6 +216,7 @@ void c_core::process()
 {
 	uint32_t ep_addr = m_assembler->offset();
 	uint32_t idx_oep = random_value(128, 1024);
+	uint32_t image_base = m_peImage->get_image_base_32();
 
 	pe_bliss::section new_section;
 	const char* section_name = ".ptext";
@@ -230,8 +231,7 @@ void c_core::process()
 		print_error("Empty code section");
 	}
 
-	size_t alignedSize = ((codeSize + 0xFFF) & ~0xFFF);
-	new_section.get_raw_data().resize(alignedSize);
+	new_section.get_raw_data().resize(codeSize);
 
 	pe_bliss::section& pe_section = m_peImage->add_section(new_section);
 	m_codeHolder->_baseAddress = pe_section.get_virtual_address();
@@ -353,8 +353,7 @@ void c_core::process()
 		xor_sections(section_to_xor[i]);
 	}
 
-	print_info("Address of entry point 0x%x\n", (unsigned int)pe_section.get_virtual_address() + ep_addr);
-	print_info("Virtual address 0x%x\n", pe_section.get_virtual_address());
+	print_info("Address of entry point 0x%x\n", (unsigned int)pe_section.get_virtual_address() + image_base + ep_addr); 
 	print_info("New section characteristics 0x%x\n", pe_section.get_characteristics());
 
 	pe_section.set_raw_data(
@@ -362,6 +361,8 @@ void c_core::process()
 	);
 
 	pe_section.get_raw_data().resize(m_assembler->bufferCapacity());
+	pe_section.set_virtual_size(m_assembler->offset());
+
 	m_peImage->set_ep(pe_section.get_virtual_address() + ep_addr);
 	pe_bliss::import_rebuilder_settings settings(true, false);
 
