@@ -17,10 +17,14 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 		print_error("Binary is not PE file\n");
 	}
 
-
 	m_peImage = std::make_unique<pe_bliss::pe_base>(pe_bliss::pe_factory::create_pe(pe_file));
 	if (m_peImage->get_pe_type() != pe_bliss::pe_type_32) {
 		print_error("Binary is not x86 architecture\n");
+	}
+
+	bool clr_dir = m_peImage->directory_exists(14);
+	if (clr_dir) {
+		print_error("CLR directory found, .NET binary is not supported yet\n");
 	}
 
 	JitRuntime jitRt;
@@ -253,7 +257,6 @@ void c_core::process()
 		for (const xor_target_t& target : obf_xor_targets) {
 			xor_function_range(target);
 			insert_runtime_xor_stub(target);
-
 		}
 	}
 
