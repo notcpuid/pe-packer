@@ -1,22 +1,12 @@
 #include "core/core.hpp"
+#include "utils/utils.hpp"
+
 c_core* packer = nullptr;
-
-void enable_virtual_terminal_processing() {
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut == INVALID_HANDLE_VALUE) return;
-
-    DWORD dwMode = 0;
-    if (!GetConsoleMode(hOut, &dwMode)) return;
-
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hOut, dwMode);
-}
 
 int main(int argc, char* argv[])
 {
     if (argc < 4) {
-        print_error("invalid arguments");
-        return EXIT_FAILURE;
+        print_error("Invalid arguments");
     }
 
     arguments::init(argc, argv);
@@ -33,12 +23,14 @@ int main(int argc, char* argv[])
     {
         auto packer = std::make_unique<c_core>(argv[1], argv[2], mut_count);
 
-        print_info("mutations count: %i\n", mut_count);
+        print_info("Mutations count: %i\n", mut_count);
         packer->process();
     }
     catch(const std::exception& ex)
     {
-		print_error("Exception: %s\n", ex.what());
+        std::stringstream ss;
+        ss << "[ " << COLOR_RED << "error" << COLOR_RESET << " ] " << ex.what();
+        std::cerr << ss.str();
 
         return EXIT_FAILURE;
     }

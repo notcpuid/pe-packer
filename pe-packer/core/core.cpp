@@ -15,14 +15,12 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 	std::ifstream pe_file(m_input, std::ios::in | std::ios::binary);
 	if (!pe_file) {
 		print_error("Binary is not PE file\n");
-		return;
 	}
 
 
 	m_peImage = std::make_unique<pe_bliss::pe_base>(pe_bliss::pe_factory::create_pe(pe_file));
 	if (m_peImage->get_pe_type() != pe_bliss::pe_type_32) {
 		print_error("Binary is not x86 architecture\n");
-		return;
 	}
 
 	JitRuntime jitRt;
@@ -31,7 +29,6 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 
 	if (init_asmjit != kErrorOk) {
 		print_error("Failed initialization\n");
-		return;
 	}
 
 	print_custom("asmjit", "Successfully asmjit initialization\n");
@@ -370,6 +367,8 @@ void c_core::process()
 	patch_file.close();
 
 	print_info("File successfully packed and saved in %s", m_output.c_str());
+
+	return;
 }
 
 void c_core::simple_jump_obfuscation()
