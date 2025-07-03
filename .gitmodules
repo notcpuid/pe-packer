@@ -1,0 +1,3 @@
+[submodule "pe-packer/asmjit"]
+	path = pe-packer/asmjit
+	url = https://github.com/asmjit/asmjit.git
