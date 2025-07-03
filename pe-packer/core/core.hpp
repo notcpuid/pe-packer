@@ -11,7 +11,7 @@
 #include <string>
 #include <ctime>
 #include "../pe_lib/pe_bliss.h"
-#include "../asmjit/asmjit.h"
+#include "../asmjit/src/asmjit/asmjit.h"
 #include "../handler/handler.hpp"
 #include "../utils/arguments.hpp"
 
