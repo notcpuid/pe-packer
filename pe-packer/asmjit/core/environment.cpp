@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -35,8 +35,9 @@ uint32_t Environment::stackAlignment() const noexcept {
       return 16u;
     }
 
-    if (isFamilyARM())
+    if (isFamilyARM()) {
       return 8;
+    }
 
     // Bail to 4-byte alignment if we don't know.
     return 4;

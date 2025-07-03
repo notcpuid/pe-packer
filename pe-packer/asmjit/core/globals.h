@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_GLOBALS_H_INCLUDED
@@ -14,28 +14,31 @@ ASMJIT_BEGIN_NAMESPACE
 //! \addtogroup asmjit_utilities
 //! \{
 namespace Support {
-  //! Cast designed to cast between function and void* pointers.
-  template<typename Dst, typename Src>
-  static inline Dst ptr_cast_impl(Src p) noexcept { return (Dst)p; }
+
+//! Cast designed to cast between function and void* pointers.
+template<typename Dst, typename Src>
+static inline Dst ptr_cast_impl(Src p) noexcept { return (Dst)p; }
+
+//! Helper to implement placement new/delete without relying on `<new>` header.
+struct PlacementNew { void* ptr; };
+
 } // {Support}
 
 #if defined(ASMJIT_NO_STDCXX)
 namespace Support {
-  ASMJIT_FORCE_INLINE void* operatorNew(size_t n) noexcept { return malloc(n); }
-  ASMJIT_FORCE_INLINE void operatorDelete(void* p) noexcept { if (p) free(p); }
+  ASMJIT_INLINE void* operatorNew(size_t n) noexcept { return malloc(n); }
+  ASMJIT_INLINE void operatorDelete(void* p) noexcept { if (p) free(p); }
 } // {Support}
 
-#define ASMJIT_BASE_CLASS(TYPE)                                                  \
-  ASMJIT_FORCE_INLINE void* operator new(size_t n) noexcept {                    \
-    return Support::operatorNew(n);                                              \
-  }                                                                              \
-                                                                                 \
-  ASMJIT_FORCE_INLINE void  operator delete(void* p) noexcept {                  \
-    Support::operatorDelete(p);                                                  \
-  }                                                                              \
-                                                                                 \
-  ASMJIT_FORCE_INLINE void* operator new(size_t, void* p) noexcept { return p; } \
-  ASMJIT_FORCE_INLINE void  operator delete(void*, void*) noexcept {}
+#define ASMJIT_BASE_CLASS(TYPE)                                                                    \
+  ASMJIT_INLINE void* operator new(size_t n) noexcept { return Support::operatorNew(n); }          \
+  ASMJIT_INLINE void operator delete(void* ptr) noexcept { Support::operatorDelete(ptr); }         \
+                                                                                                   \
+  ASMJIT_INLINE void* operator new(size_t, void* ptr) noexcept { return ptr; }                     \
+  ASMJIT_INLINE void operator delete(void*, void*) noexcept {}                                     \
+                                                                                                   \
+  ASMJIT_INLINE void* operator new(size_t, Support::PlacementNew ptr) noexcept { return ptr.ptr; } \
+  ASMJIT_INLINE void operator delete(void*, Support::PlacementNew) noexcept {}
 #else
 #define ASMJIT_BASE_CLASS(TYPE)
 #endif
@@ -66,17 +69,20 @@ enum class ResetPolicy : uint32_t {
   kHard = 1
 };
 
-//! Contains typedefs, constants, and variables used globally by AsmJit.
+//! Contains constants and variables used globally across AsmJit.
 namespace Globals {
 
 //! Host memory allocator overhead.
-static constexpr uint32_t kAllocOverhead = uint32_t(sizeof(intptr_t) * 4);
+static constexpr uint32_t kAllocOverhead = uint32_t(sizeof(intptr_t) * 4u);
 
 //! Host memory allocator alignment.
-static constexpr uint32_t kAllocAlignment = 8;
+static constexpr uint32_t kAllocAlignment = 8u;
 
 //! Aggressive growing strategy threshold.
-static constexpr uint32_t kGrowThreshold = 1024 * 1024 * 16;
+static constexpr uint32_t kGrowThreshold = 1024u * 1024u * 16u;
+
+//! Default alignment of allocation requests to use when using Zone.
+static constexpr uint32_t kZoneAlignment = 8u;
 
 //! Maximum depth of RB-Tree is:
 //!
@@ -93,10 +99,9 @@ static constexpr uint32_t kMaxTreeHeight = (ASMJIT_ARCH_BITS == 32 ? 30 : 61) + 
 static constexpr uint32_t kMaxOpCount = 6;
 
 //! Maximum arguments of a function supported by the Compiler / Function API.
-static constexpr uint32_t kMaxFuncArgs = 16;
+static constexpr uint32_t kMaxFuncArgs = 32;
 
-//! The number of values that can be assigned to a single function argument or
-//! return value.
+//! The number of values that can be assigned to a single function argument or return value.
 static constexpr uint32_t kMaxValuePack = 4;
 
 //! Maximum number of physical registers AsmJit can use per register group.
@@ -129,14 +134,18 @@ static constexpr uint32_t kNumVirtGroups = 4;
 struct Init_ {};
 struct NoInit_ {};
 
+//! A decorator used to initialize.
 static const constexpr Init_ Init {};
+//! A decorator used to not initialize.
 static const constexpr NoInit_ NoInit {};
 
 } // {Globals}
 
+//! Casts a `void*` pointer `func` to a function pointer `Func`.
 template<typename Func>
 static ASMJIT_INLINE_NODEBUG Func ptr_as_func(void* func) noexcept { return Support::ptr_cast_impl<Func, void*>(func); }
 
+//! Casts a function pointer `func` to a void pointer `void*`.
 template<typename Func>
 static ASMJIT_INLINE_NODEBUG void* func_as_ptr(Func func) noexcept { return Support::ptr_cast_impl<void*, Func>(func); }
 
@@ -146,7 +155,7 @@ static ASMJIT_INLINE_NODEBUG void* func_as_ptr(Func func) noexcept { return Supp
 //! \{
 
 //! AsmJit error type (uint32_t).
-typedef uint32_t Error;
+using Error = uint32_t;
 
 //! AsmJit error codes.
 enum ErrorCode : uint32_t {
@@ -206,8 +215,8 @@ enum ErrorCode : uint32_t {
   kErrorLabelNameTooLong,
   //! Label must always be local if it's anonymous (without a name).
   kErrorInvalidLabelName,
-  //! Parent id passed to \ref CodeHolder::newNamedLabelEntry() was either invalid or parent is not supported
-  //! by the requested `LabelType`.
+  //! Parent id passed to \ref CodeHolder::newNamedLabelId() was either invalid or parent is not supported by
+  //! the requested `LabelType`.
   kErrorInvalidParentLabel,
 
   //! Invalid section.
@@ -272,7 +281,7 @@ enum ErrorCode : uint32_t {
   kErrorInvalidAddress64BitZeroExtension,
   //! Invalid displacement (not encodable).
   kErrorInvalidDisplacement,
-  //! Invalid segment (X86).
+  //! Invalid segment (X86|X86_64).
   kErrorInvalidSegment,
 
   //! Invalid immediate (out of bounds on X86 and invalid pattern on ARM).
@@ -328,6 +337,10 @@ enum ErrorCode : uint32_t {
   //! \note This is a generic error that is used by internal filesystem API.
   kErrorFailedToOpenFile,
 
+  //! Protection failure can be returned from a virtual memory allocator or when trying to change memory access
+  //! permissions.
+  kErrorProtectionFailure,
+
   // @EnumValuesEnd@
 
   //! Count of AsmJit error codes.
@@ -347,9 +360,11 @@ static ASMJIT_INLINE_NODEBUG void unused(Args&&...) noexcept {}
 //!
 //! Provided for debugging purposes. Putting a breakpoint inside `errored` can help with tracing the origin of any
 //! error reported / returned by AsmJit.
+[[nodiscard]]
 static constexpr Error errored(Error err) noexcept { return err; }
 
 //! Returns a printable version of `asmjit::Error` code.
+[[nodiscard]]
 ASMJIT_API const char* errorAsString(Error err) noexcept;
 
 //! Called to output debugging message(s).
@@ -365,7 +380,8 @@ ASMJIT_API void debugOutput(const char* str) noexcept;
 //! (asmjit/core/globals.cpp). A call stack will be available when such assertion failure is triggered. AsmJit
 //! always returns errors on failures, assertions are a last resort and usually mean unrecoverable state due to out
 //! of range array access or totally invalid arguments like nullptr where a valid pointer should be provided, etc...
-ASMJIT_API void ASMJIT_NORETURN assertionFailed(const char* file, int line, const char* msg) noexcept;
+[[noreturn]]
+ASMJIT_API void assertionFailed(const char* file, int line, const char* msg) noexcept;
 
 } // {DebugUtils}
 
@@ -373,14 +389,32 @@ ASMJIT_API void ASMJIT_NORETURN assertionFailed(const char* file, int line, cons
 //!
 //! AsmJit's own assert macro used in AsmJit code-base.
 #if defined(ASMJIT_BUILD_DEBUG)
-#define ASMJIT_ASSERT(...)                                                     \
-  do {                                                                         \
-    if (ASMJIT_LIKELY(__VA_ARGS__))                                            \
-      break;                                                                   \
-    ::asmjit::DebugUtils::assertionFailed(__FILE__, __LINE__, #__VA_ARGS__);   \
-  } while (0)
+  #define ASMJIT_ASSERT(...)                                                     \
+    do {                                                                         \
+      if (ASMJIT_UNLIKELY(!(__VA_ARGS__))) {                                     \
+        ::asmjit::DebugUtils::assertionFailed(__FILE__, __LINE__, #__VA_ARGS__); \
+      }                                                                          \
+    } while (0)
 #else
-#define ASMJIT_ASSERT(...) ((void)0)
+  #define ASMJIT_ASSERT(...) ((void)0)
+#endif
+
+#define ASMJIT_RUNTIME_ASSERT(...)                                             \
+  do {                                                                         \
+    if (ASMJIT_UNLIKELY(!(__VA_ARGS__))) {                                     \
+      ::asmjit::DebugUtils::assertionFailed(__FILE__, __LINE__, #__VA_ARGS__); \
+    }                                                                          \
+  } while (0)
+
+//! \def ASMJIT_NOT_REACHED()
+//!
+//! Run-time assertion used in code that should never be reached.
+#if defined(ASMJIT_BUILD_DEBUG)
+  #define ASMJIT_NOT_REACHED() ::asmjit::DebugUtils::assertionFailed(__FILE__, __LINE__, "ASMJIT_NOT_REACHED()")
+#elif defined(__GNUC__)
+  #define ASMJIT_NOT_REACHED() __builtin_unreachable()
+#else
+  #define ASMJIT_NOT_REACHED() ASMJIT_ASSUME(0)
 #endif
 
 //! \def ASMJIT_PROPAGATE(...)
@@ -389,13 +423,24 @@ ASMJIT_API void ASMJIT_NORETURN assertionFailed(const char* file, int line, cons
 //! internally, but kept public for users that want to use the same technique to propagate errors to the caller.
 #define ASMJIT_PROPAGATE(...)               \
   do {                                      \
-    ::asmjit::Error _err = __VA_ARGS__;     \
-    if (ASMJIT_UNLIKELY(_err))              \
-      return _err;                          \
+    ::asmjit::Error _err_ = __VA_ARGS__;    \
+    if (ASMJIT_UNLIKELY(_err_)) {           \
+      return _err_;                         \
+    }                                       \
   } while (0)
 
 //! \}
 
 ASMJIT_END_NAMESPACE
+
+//! Implementation of a placement new so we don't have to depend on `<new>`.
+ASMJIT_INLINE_NODEBUG void* operator new(size_t, const asmjit::Support::PlacementNew& p) noexcept {
+#if defined(_MSC_VER) && !defined(__clang__)
+  __assume(p.ptr != nullptr); // Otherwise MSVC would emit a nullptr check.
+#endif
+  return p.ptr;
+}
+
+ASMJIT_INLINE_NODEBUG void operator delete(void*, const asmjit::Support::PlacementNew&) noexcept {}
 
 #endif // ASMJIT_CORE_GLOBALS_H_INCLUDED

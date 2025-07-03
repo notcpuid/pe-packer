@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Zlib
 // Official GitHub Repository: https://github.com/asmjit/asmjit
 //
-// Copyright (c) 2008-2021 The AsmJit Authors
+// Copyright (c) 2008-2024 The AsmJit Authors
 //
 // This software is provided 'as-is', without any express or implied
 // warranty. In no event will the authors be held liable for any damages
@@ -23,6 +23,8 @@
 
 #ifndef ASMJIT_ASMJIT_H_INCLUDED
 #define ASMJIT_ASMJIT_H_INCLUDED
+
+#pragma message("asmjit/asmjit.h is deprecated! Please use asmjit/[core|x86|a64|host].h instead.")
 
 #include "./core.h"
 

@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -21,12 +21,16 @@
 
 ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 
+// a64::Assembler - Utils
+// ======================
+
+static ASMJIT_INLINE_CONSTEXPR uint32_t diff(RegType a, RegType b) noexcept { return uint32_t(a) - uint32_t(b); }
+static ASMJIT_INLINE_CONSTEXPR uint32_t diff(VecElementType elementType, VecElementType baseType) noexcept { return uint32_t(elementType) - uint32_t(baseType); }
+
 // a64::Assembler - Cond
 // =====================
 
-static inline uint32_t condCodeToOpcodeCond(uint32_t cond) noexcept {
-  return (uint32_t(cond) - 2u) & 0xFu;
-}
+static inline uint32_t condCodeToOpcodeCond(uint32_t cond) noexcept { return (uint32_t(cond) - 2u) & 0xFu; }
 
 // a64::Assembler - Bits
 // =====================
@@ -49,8 +53,19 @@ static constexpr uint32_t kWX = InstDB::kWX;
 static const uint8_t armShiftOpToLdStOptMap[] = { ASMJIT_LOOKUP_TABLE_16(VALUE, 0) };
 #undef VALUE
 
-static inline constexpr uint32_t diff(RegType a, RegType b) noexcept {
-  return uint32_t(a) - uint32_t(b);
+// a64::Assembler - ExtendOpToRegType
+// ==================================
+
+static inline RegType extendOptionToRegType(uint32_t option) noexcept {
+  uint32_t pred = (uint32_t(RegType::kGp32) << (0x0 * 4)) | // 0b000 - UXTB.
+                  (uint32_t(RegType::kGp32) << (0x1 * 4)) | // 0b001 - UXTH.
+                  (uint32_t(RegType::kGp32) << (0x2 * 4)) | // 0b010 - UXTW.
+                  (uint32_t(RegType::kGp64) << (0x3 * 4)) | // 0b011 - UXTX|LSL.
+                  (uint32_t(RegType::kGp32) << (0x4 * 4)) | // 0b100 - SXTB.
+                  (uint32_t(RegType::kGp32) << (0x5 * 4)) | // 0b101 - SXTH.
+                  (uint32_t(RegType::kGp32) << (0x6 * 4)) | // 0b110 - SXTW.
+                  (uint32_t(RegType::kGp64) << (0x7 * 4)) ; // 0b111 - SXTX.
+  return RegType((pred >> (option * 4u)) & 0xFu);
 }
 
 // asmjit::a64::Assembler - SizeOp
@@ -59,38 +74,49 @@ static inline constexpr uint32_t diff(RegType a, RegType b) noexcept {
 //! Struct that contains Size (2 bits), Q flag, and S (scalar) flag. These values
 //! are used to encode Q, Size, and Scalar fields in an opcode.
 struct SizeOp {
-  enum : uint8_t {
-    k128BitShift = 0,
-    kScalarShift = 1,
-    kSizeShift = 2,
+  //! \name Constants
+  //! \{
 
-    kQ = uint8_t(1u << k128BitShift),
-    kS = uint8_t(1u << kScalarShift),
+  static inline constexpr uint8_t k128BitShift = 0;
+  static inline constexpr uint8_t kScalarShift = 1;
+  static inline constexpr uint8_t kSizeShift = 2;
 
-    k00 = uint8_t(0 << kSizeShift),
-    k01 = uint8_t(1 << kSizeShift),
-    k10 = uint8_t(2 << kSizeShift),
-    k11 = uint8_t(3 << kSizeShift),
+  static inline constexpr uint8_t kQ = uint8_t(1u << k128BitShift);
+  static inline constexpr uint8_t kS = uint8_t(1u << kScalarShift);
 
-    k00Q = k00 | kQ,
-    k01Q = k01 | kQ,
-    k10Q = k10 | kQ,
-    k11Q = k11 | kQ,
+  static inline constexpr uint8_t k00 = uint8_t(0 << kSizeShift);
+  static inline constexpr uint8_t k01 = uint8_t(1 << kSizeShift);
+  static inline constexpr uint8_t k10 = uint8_t(2 << kSizeShift);
+  static inline constexpr uint8_t k11 = uint8_t(3 << kSizeShift);
 
-    k00S = k00 | kS,
-    k01S = k01 | kS,
-    k10S = k10 | kS,
-    k11S = k11 | kS,
+  static inline constexpr uint8_t k00Q = k00 | kQ;
+  static inline constexpr uint8_t k01Q = k01 | kQ;
+  static inline constexpr uint8_t k10Q = k10 | kQ;
+  static inline constexpr uint8_t k11Q = k11 | kQ;
 
-    kInvalid = 0xFFu,
+  static inline constexpr uint8_t k00S = k00 | kS;
+  static inline constexpr uint8_t k01S = k01 | kS;
+  static inline constexpr uint8_t k10S = k10 | kS;
+  static inline constexpr uint8_t k11S = k11 | kS;
 
-    // Masks used by SizeOpMap.
-    kSzQ = (0x3u << kSizeShift) | kQ,
-    kSzS = (0x3u << kSizeShift) | kS,
-    kSzQS = (0x3u << kSizeShift) | kQ | kS
-  };
+  static inline constexpr uint8_t kInvalid = 0xFFu;
+
+  // Masks used by SizeOpMap.
+  static inline constexpr uint8_t kSzQ = (0x3u << kSizeShift) | kQ;
+  static inline constexpr uint8_t kSzS = (0x3u << kSizeShift) | kS;
+  static inline constexpr uint8_t kSzQS = (0x3u << kSizeShift) | kQ | kS;
+
+  //! \}
+
+  //! \name Members
+  //! \{
 
   uint8_t value;
+
+  //! \}
+
+  //! \name Accessors
+  //! \{
 
   inline bool isValid() const noexcept { return value != kInvalid; }
   inline void makeInvalid() noexcept { value = kInvalid; }
@@ -104,6 +130,8 @@ struct SizeOp {
     ASMJIT_ASSERT(size() > 0);
     value = uint8_t(value - (1u << kSizeShift));
   }
+
+  //! \}
 };
 
 struct SizeOpTable {
@@ -114,29 +142,29 @@ struct SizeOpTable {
   };
 
   // 40 elements for each combination.
-  SizeOp array[(uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB) + 1) * 8];
+  SizeOp array[(uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8) + 1) * 8];
 };
 
 #define VALUE_BIN(x) { \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k00  : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k00Q : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeB   )) ? SizeOp::k00  : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeB   )) ? SizeOp::k00Q : SizeOp::kInvalid \
+  x == (((uint32_t(RegType::kVec64 ) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k00  : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k00Q : \
+  x == (((uint32_t(RegType::kVec64 ) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kB   )) ? SizeOp::k00  : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kB   )) ? SizeOp::k00Q : SizeOp::kInvalid \
 }
 
 #define VALUE_ANY(x) { \
-  x == (((uint32_t(RegType::kARM_VecB) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k00S : \
-  x == (((uint32_t(RegType::kARM_VecH) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k01S : \
-  x == (((uint32_t(RegType::kARM_VecS) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k10S : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeNone)) ? SizeOp::k11S : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeB   )) ? SizeOp::k00  : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeB   )) ? SizeOp::k00Q : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeH   )) ? SizeOp::k01  : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeH   )) ? SizeOp::k01Q : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeS   )) ? SizeOp::k10  : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeS   )) ? SizeOp::k10Q : \
-  x == (((uint32_t(RegType::kARM_VecD) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeD   )) ? SizeOp::k11S : \
-  x == (((uint32_t(RegType::kARM_VecV) - uint32_t(RegType::kARM_VecB)) << 3) | (Vec::kElementTypeD   )) ? SizeOp::k11Q : SizeOp::kInvalid \
+  x == (((uint32_t(RegType::kVec8)   - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k00S : \
+  x == (((uint32_t(RegType::kVec16)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k01S : \
+  x == (((uint32_t(RegType::kVec32)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k10S : \
+  x == (((uint32_t(RegType::kVec64)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kNone)) ? SizeOp::k11S : \
+  x == (((uint32_t(RegType::kVec64)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kB   )) ? SizeOp::k00  : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kB   )) ? SizeOp::k00Q : \
+  x == (((uint32_t(RegType::kVec64)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kH   )) ? SizeOp::k01  : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kH   )) ? SizeOp::k01Q : \
+  x == (((uint32_t(RegType::kVec64)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kS   )) ? SizeOp::k10  : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kS   )) ? SizeOp::k10Q : \
+  x == (((uint32_t(RegType::kVec64)  - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kD   )) ? SizeOp::k11S : \
+  x == (((uint32_t(RegType::kVec128) - uint32_t(RegType::kVec8)) << 3) | uint32_t(VecElementType::kD   )) ? SizeOp::k11Q : SizeOp::kInvalid \
 }
 
 static const SizeOpTable sizeOpTable[SizeOpTable::kCount] = {
@@ -254,21 +282,22 @@ static const Operand_& significantSimdOp(const Operand_& o0, const Operand_& o1,
   return !(instFlags & InstDB::kInstFlagLong) ? o0 : o1;
 }
 
-static inline SizeOp armElementTypeToSizeOp(uint32_t vecOpType, RegType regType, uint32_t elementType) noexcept {
+static inline SizeOp armElementTypeToSizeOp(uint32_t vecOpType, RegType regType, VecElementType elementType) noexcept {
   // Instruction data or Assembler is wrong if this triggers an assertion failure.
   ASMJIT_ASSERT(vecOpType < InstDB::kVO_Count);
   // ElementType uses 3 bits in the operand signature, it should never overflow.
-  ASMJIT_ASSERT(elementType <= 0x7u);
+  ASMJIT_ASSERT(uint32_t(elementType) <= 0x7u);
 
   const SizeOpMap& map = sizeOpMap[vecOpType];
   const SizeOpTable& table = sizeOpTable[map.tableId];
 
-  size_t index = (Support::min<uint32_t>(diff(regType, RegType::kARM_VecB), diff(RegType::kARM_VecV, RegType::kARM_VecB) + 1) << 3) | elementType;
+  size_t index = (Support::min<uint32_t>(diff(regType, RegType::kVec8), diff(RegType::kVec128, RegType::kVec8) + 1) << 3) | uint32_t(elementType);
   SizeOp op = table.array[index];
   SizeOp modifiedOp { uint8_t(op.value & map.sizeOpMask) };
 
-  if (!Support::bitTest(map.acceptMask, op.value))
+  if (!Support::bitTest(map.acceptMask, op.value)) {
     modifiedOp.makeInvalid();
+  }
 
   return modifiedOp;
 }
@@ -348,8 +377,9 @@ static uint32_t encodeMovSequence64(uint32_t out[4], uint64_t imm, uint32_t rd, 
 
     for (uint32_t hwIndex = 0; hwIndex < 4; hwIndex++, imm >>= 16) {
       uint32_t hwImm = uint32_t(imm & 0xFFFFu);
-      if (hwImm == 0)
+      if (hwImm == 0) {
         continue;
+      }
 
       out[count++] = op | (hwIndex << 21) | (hwImm << 5) | rd;
       op = kMovK;
@@ -367,8 +397,9 @@ static uint32_t encodeMovSequence64(uint32_t out[4], uint64_t imm, uint32_t rd, 
 
     for (uint32_t hwIndex = 0; hwIndex < 4; hwIndex++, imm >>= 16) {
       uint32_t hwImm = uint32_t(imm & 0xFFFFu);
-      if (hwImm == 0xFFFFu)
+      if (hwImm == 0xFFFFu) {
         continue;
+      }
 
       out[count++] = op | (hwIndex << 21) | ((hwImm ^ negMask) << 5) | rd;
       op = kMovK;
@@ -467,7 +498,7 @@ static inline bool matchSignature(const Operand_& o0, const Operand_& o1, const 
 }
 
 static inline bool matchSignature(const Operand_& o0, const Operand_& o1, const Operand_& o2, const Operand_& o3, uint32_t instFlags) noexcept {
-  return matchSignature(o0, o1, instFlags) && o1.signature() == o2.signature() && o2.signature() == o3.signature();;
+  return matchSignature(o0, o1, instFlags) && o1.signature() == o2.signature() && o2.signature() == o3.signature();
 }
 
 // Memory must be either:
@@ -475,31 +506,30 @@ static inline bool matchSignature(const Operand_& o0, const Operand_& o1, const 
 // 2. Relative displacement (Label).
 // 3. Base register + either offset or index.
 static inline bool armCheckMemBaseIndexRel(const Mem& mem) noexcept {
-  // Allowed base types (Nothing, Label, and GpX).
-  constexpr uint32_t kBaseMask  = B(0) |
-                                  B(RegType::kLabelTag) |
-                                  B(RegType::kARM_GpX);
-
-  // Allowed index types (Nothing, GpW, and GpX).
-  constexpr uint32_t kIndexMask = B(0) |
-                                  B(RegType::kARM_GpW) |
-                                  B(RegType::kARM_GpX) ;
+  // Allowed base types (Nothing, Label, and Gp64).
+  constexpr uint32_t kBaseMask  = B(0) | B(RegType::kLabelTag) | B(RegType::kGp64);
+  // Allowed index types (Nothing, Gp32, and Gp64).
+  constexpr uint32_t kIndexMask = B(0) | B(RegType::kGp32) | B(RegType::kGp64) ;
 
   RegType baseType = mem.baseType();
   RegType indexType = mem.indexType();
 
-  if (!Support::bitTest(kBaseMask, baseType))
+  if (!Support::bitTest(kBaseMask, baseType)) {
     return false;
+  }
 
   if (baseType > RegType::kLabelTag) {
-    // Index allows either GpW or GpX.
-    if (!Support::bitTest(kIndexMask, indexType))
+    // Index allows either Gp32 or Gp64.
+    if (!Support::bitTest(kIndexMask, indexType)) {
       return false;
+    }
 
-    if (indexType == RegType::kNone)
+    if (indexType == RegType::kNone) {
       return true;
-    else
+    }
+    else {
       return !mem.hasOffset();
+    }
   }
   else {
     // No index register allowed if this is a PC relative address (literal).
@@ -526,9 +556,10 @@ static inline bool pickFpOpcode(const Vec& reg, uint32_t sOp, uint32_t sHf, uint
 
   if (!reg.hasElementType()) {
     // Scalar operation [HSD].
-    uint32_t sz = diff(reg.type(), RegType::kARM_VecH);
-    if (sz > 2u || !Support::bitTest(szBits[sHf].sizeMask, sz))
+    uint32_t sz = diff(reg.regType(), RegType::kVec16);
+    if (sz > 2u || !Support::bitTest(szBits[sHf].sizeMask, sz)) {
       return false;
+    }
 
     opcode->reset(szBits[sHf].mask[sz] ^ sOp);
     *szOut = sz;
@@ -536,11 +567,12 @@ static inline bool pickFpOpcode(const Vec& reg, uint32_t sOp, uint32_t sHf, uint
   }
   else {
     // Vector operation [HSD].
-    uint32_t q = diff(reg.type(), RegType::kARM_VecD);
-    uint32_t sz = reg.elementType() - Vec::kElementTypeH;
+    uint32_t q = diff(reg.regType(), RegType::kVec64);
+    uint32_t sz = diff(reg.elementType(), VecElementType::kH);
 
-    if (q > 1u || sz > 2u || !Support::bitTest(szBits[vHf].sizeMask, sz))
+    if (q > 1u || sz > 2u || !Support::bitTest(szBits[vHf].sizeMask, sz)) {
       return false;
+    }
 
     opcode->reset(szBits[vHf].mask[sz] ^ (vOp | (q << kQBitIndex)));
     *szOut = sz;
@@ -574,22 +606,21 @@ static inline bool checkSignature(const Operand_& o0, const Operand_& o1, const 
 
 // Checks whether the register is GP register of the allowed types.
 //
-// Allowed is a 2-bit mask, where the first bits allows GpW and the second bit
-// allows GpX. These bits are usually stored within the instruction, but could
-// be also hardcoded in the assembler for instructions where GP types are not
-// selectable.
+// Allowed is a 2-bit mask, where the first bits allows Gp32 and the second bit allows Gp64. These bits are usually
+// stored within the instruction, but could be also hardcoded in the assembler for instructions where GP types are
+// not selectable.
 static inline bool checkGpType(const Operand_& op, uint32_t allowed) noexcept {
-  RegType type = op.as<Reg>().type();
-  return Support::bitTest(allowed << uint32_t(RegType::kARM_GpW), type);
+  RegType type = op.as<Reg>().regType();
+  return Support::bitTest(allowed << uint32_t(RegType::kGp32), type);
 }
 
 static inline bool checkGpType(const Operand_& op, uint32_t allowed, uint32_t* x) noexcept {
-  // NOTE: We set 'x' to one only when GpW is allowed, otherwise the X is part
+  // NOTE: We set 'x' to one only when Gp32 is allowed, otherwise the X is part
   // of the opcode and we cannot set it. This is why this works without requiring
   // additional logic.
-  RegType type = op.as<Reg>().type();
-  *x = diff(type, RegType::kARM_GpW) & allowed;
-  return Support::bitTest(allowed << uint32_t(RegType::kARM_GpW), type);
+  RegType type = op.as<Reg>().regType();
+  *x = diff(type, RegType::kGp32) & allowed;
+  return Support::bitTest(allowed << uint32_t(RegType::kGp32), type);
 }
 
 static inline bool checkGpType(const Operand_& o0, const Operand_& o1, uint32_t allowed, uint32_t* x) noexcept {
@@ -652,7 +683,7 @@ static inline bool checkVecId(const Operand_& o0, const Operand_& o1, const Oper
 */
 
 static inline bool checkMemBase(const Mem& mem) noexcept {
-  return mem.baseType() == RegType::kARM_GpX && mem.baseId() <= 31;
+  return mem.baseType() == RegType::kGp64 && mem.baseId() <= 31;
 }
 
 static inline bool checkEven(const Operand_& o0, const Operand_& o1) noexcept {
@@ -677,38 +708,38 @@ static inline bool checkConsecutive(const Operand_& o0, const Operand_& o1, cons
 // a64::Assembler - CheckReg
 // =========================
 
-#define V(index) (index == uint32_t(RegType::kARM_GpW)  ? Gp::kIdZr :  \
-                  index == uint32_t(RegType::kARM_GpX)  ? Gp::kIdZr :  \
-                  index == uint32_t(RegType::kARM_VecB) ? 31u       :  \
-                  index == uint32_t(RegType::kARM_VecH) ? 31u       :  \
-                  index == uint32_t(RegType::kARM_VecS) ? 31u       :  \
-                  index == uint32_t(RegType::kARM_VecD) ? 31u       :  \
-                  index == uint32_t(RegType::kARM_VecV) ? 31u       : 0)
+#define V(index) (index == uint32_t(RegType::kGp32)   ? Gp::kIdZr :  \
+                  index == uint32_t(RegType::kGp64)   ? Gp::kIdZr :  \
+                  index == uint32_t(RegType::kVec8)   ? 31u       :  \
+                  index == uint32_t(RegType::kVec16)  ? 31u       :  \
+                  index == uint32_t(RegType::kVec32)  ? 31u       :  \
+                  index == uint32_t(RegType::kVec64)  ? 31u       :  \
+                  index == uint32_t(RegType::kVec128) ? 31u       : 0)
 static const Support::Array<uint8_t, 32> commonHiRegIdOfType = {{
   ASMJIT_LOOKUP_TABLE_32(V, 0)
 }};
 #undef V
 
 static inline bool checkValidRegs(const Operand_& o0) noexcept {
-  return bool(unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().type()]));
+  return bool(unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().regType()]));
 }
 
 static inline bool checkValidRegs(const Operand_& o0, const Operand_& o1) noexcept {
-  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().type()])) &
-              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().type()])));
+  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().regType()])) &
+              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().regType()])));
 }
 
 static inline bool checkValidRegs(const Operand_& o0, const Operand_& o1, const Operand_& o2) noexcept {
-  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().type()])) &
-              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().type()])) &
-              (unsigned(o2.id() < 31) | unsigned(o2.id() == commonHiRegIdOfType[o2.as<Reg>().type()])));
+  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().regType()])) &
+              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().regType()])) &
+              (unsigned(o2.id() < 31) | unsigned(o2.id() == commonHiRegIdOfType[o2.as<Reg>().regType()])));
 }
 
 static inline bool checkValidRegs(const Operand_& o0, const Operand_& o1, const Operand_& o2, const Operand_& o3) noexcept {
-  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().type()])) &
-              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().type()])) &
-              (unsigned(o2.id() < 31) | unsigned(o2.id() == commonHiRegIdOfType[o2.as<Reg>().type()])) &
-              (unsigned(o3.id() < 31) | unsigned(o3.id() == commonHiRegIdOfType[o3.as<Reg>().type()])));
+  return bool((unsigned(o0.id() < 31) | unsigned(o0.id() == commonHiRegIdOfType[o0.as<Reg>().regType()])) &
+              (unsigned(o1.id() < 31) | unsigned(o1.id() == commonHiRegIdOfType[o1.as<Reg>().regType()])) &
+              (unsigned(o2.id() < 31) | unsigned(o2.id() == commonHiRegIdOfType[o2.as<Reg>().regType()])) &
+              (unsigned(o3.id() < 31) | unsigned(o3.id() == commonHiRegIdOfType[o3.as<Reg>().regType()])));
 }
 
 // a64::Assembler - Construction & Destruction
@@ -716,10 +747,11 @@ static inline bool checkValidRegs(const Operand_& o0, const Operand_& o1, const 
 
 Assembler::Assembler(CodeHolder* code) noexcept : BaseAssembler() {
   _archMask = uint64_t(1) << uint32_t(Arch::kAArch64);
-  assignEmitterFuncs(this);
+  initEmitterFuncs(this);
 
-  if (code)
+  if (code) {
     code->attach(this);
+  }
 }
 
 Assembler::~Assembler() noexcept {}
@@ -760,8 +792,9 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
   CondCode instCC = BaseInst::extractARMCondCode(instId);
   instId = instId & uint32_t(InstIdParts::kRealId);
 
-  if (instId >= Inst::_kIdCount)
+  if (instId >= Inst::_kIdCount) {
     instId = 0;
+  }
 
   const InstDB::InstInfo* instInfo = &InstDB::_instInfoTable[instId];
   uint32_t encodingIndex = instInfo->_encodingDataIndex;
@@ -781,21 +814,25 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
   uint64_t offsetValue;          // Offset value (if known).
 
   if (ASMJIT_UNLIKELY(Support::test(options, kRequiresSpecialHandling))) {
-    if (ASMJIT_UNLIKELY(!_code))
+    if (ASMJIT_UNLIKELY(!_code)) {
       return reportError(DebugUtils::errored(kErrorNotInitialized));
+    }
 
     // Unknown instruction.
-    if (ASMJIT_UNLIKELY(instId == 0))
+    if (ASMJIT_UNLIKELY(instId == 0)) {
       goto InvalidInstruction;
+    }
 
     // Condition code can only be used with 'B' instruction.
-    if (ASMJIT_UNLIKELY(instCC != CondCode::kAL && instId != Inst::kIdB))
+    if (ASMJIT_UNLIKELY(instCC != CondCode::kAL && instId != Inst::kIdB)) {
       goto InvalidInstruction;
+    }
 
     // Grow request, happens rarely.
     err = writer.ensureSpace(this, 4);
-    if (ASMJIT_UNLIKELY(err))
+    if (ASMJIT_UNLIKELY(err)) {
       goto Failed;
+    }
 
 #ifndef ASMJIT_NO_VALIDATION
     // Strict validation.
@@ -803,9 +840,10 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       Operand_ opArray[Globals::kMaxOpCount];
       EmitterUtils::opArrayFromEmitArgs(opArray, o0, o1, o2, opExt);
 
-      err = _funcs.validate(arch(), BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
-      if (ASMJIT_UNLIKELY(err))
+      err = _funcs.validate(BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
+      if (ASMJIT_UNLIKELY(err)) {
         goto Failed;
+      }
     }
 #endif
   }
@@ -826,6 +864,17 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       const InstDB::EncodingData::BaseOp& opData = InstDB::EncodingData::baseOp[encodingIndex];
 
       if (isign4 == 0) {
+        opcode.reset(opData.opcode);
+        goto EmitOp;
+      }
+
+      break;
+    }
+
+    case InstDB::kEncodingBaseOpX16: {
+      const InstDB::EncodingData::BaseOpX16& opData = InstDB::EncodingData::baseOpX16[encodingIndex];
+
+      if (isign4 == ENC_OPS1(Reg) && o0.as<Reg>().isGp64(16)) {
         opcode.reset(opData.opcode);
         goto EmitOp;
       }
@@ -1024,7 +1073,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
     case InstDB::kEncodingBaseMov: {
       // MOV is a pseudo instruction that uses various instructions depending on its signature.
-      uint32_t x = diff(o0.as<Reg>().type(), RegType::kARM_GpW);
+      uint32_t x = diff(o0.as<Reg>().regType(), RegType::kGp32);
       if (x > 1)
         goto InvalidInstruction;
 
@@ -1103,7 +1152,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
     case InstDB::kEncodingBaseMovKNZ: {
       const InstDB::EncodingData::BaseMovKNZ& opData = InstDB::EncodingData::baseMovKNZ[encodingIndex];
 
-      uint32_t x = diff(o0.as<Reg>().type(), RegType::kARM_GpW);
+      uint32_t x = diff(o0.as<Reg>().regType(), RegType::kGp32);
       if (x > 1)
         goto InvalidInstruction;
 
@@ -1157,7 +1206,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       const InstDB::EncodingData::BaseAdr& opData = InstDB::EncodingData::baseAdr[encodingIndex];
 
       if (isign4 == ENC_OPS2(Reg, Label) || isign4 == ENC_OPS2(Reg, Imm)) {
-        if (!o0.as<Reg>().isGpX())
+        if (!o0.as<Reg>().isGp64())
           goto InvalidInstruction;
 
         if (!checkGpId(o0, kZR))
@@ -1230,9 +1279,6 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       }
 
       if (isign4 == ENC_OPS3(Reg, Reg, Reg) || isign4 == ENC_OPS4(Reg, Reg, Reg, Imm)) {
-        if (!checkSignature(o1, o2))
-          goto InvalidInstruction;
-
         uint32_t opSize = x ? 64 : 32;
         uint64_t shift = 0;
         uint32_t sType = uint32_t(ShiftOp::kLSL);
@@ -1249,11 +1295,17 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         if (sType <= uint32_t(ShiftOp::kASR)) {
           bool hasSP = o0.as<Gp>().isSP() || o1.as<Gp>().isSP();
           if (!hasSP) {
-            if (!checkGpId(o0, o1, kZR))
-              goto InvalidPhysId;
+            if (!checkSignature(o1, o2)) {
+              goto InvalidInstruction;
+            }
 
-            if (shift >= opSize)
+            if (!checkGpId(o0, o1, kZR)) {
+              goto InvalidPhysId;
+            }
+
+            if (shift >= opSize) {
               goto InvalidImmediate;
+            }
 
             opcode.reset(uint32_t(opData.shiftedOp) << 21);
             opcode.addImm(x, 31);
@@ -1266,8 +1318,10 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
           }
 
           // SP register can only be used with LSL or Extend.
-          if (sType != uint32_t(ShiftOp::kLSL))
+          if (sType != uint32_t(ShiftOp::kLSL)) {
             goto InvalidImmediate;
+          }
+
           sType = x ? uint32_t(ShiftOp::kUXTX) : uint32_t(ShiftOp::kUXTW);
         }
 
@@ -1275,8 +1329,9 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         opcode.reset(uint32_t(opData.extendedOp) << 21);
         sType -= uint32_t(ShiftOp::kUXTB);
 
-        if (sType > 7 || shift > 4)
+        if (sType > 7 || shift > 4) {
           goto InvalidImmediate;
+        }
 
         if (!(opcode.get() & B(29))) {
           // ADD|SUB (extend) - ZR is not allowed.
@@ -1287,6 +1342,11 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
           // ADDS|SUBS (extend) - ZR allowed in Rd, SP allowed in Rn.
           if (!checkGpId(o0, kZR) || !checkGpId(o1, kSP))
             goto InvalidPhysId;
+        }
+
+        // Validate whether the register operands match extend option.
+        if (o2.as<Reg>().regType() != extendOptionToRegType(sType) || o1.as<Reg>().regType() < o2.as<Reg>().regType()) {
+          goto InvalidInstruction;
         }
 
         opcode.addImm(x, 31);
@@ -1414,9 +1474,6 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       }
 
       if (isign4 == ENC_OPS2(Reg, Reg) || isign4 == ENC_OPS3(Reg, Reg, Imm)) {
-        if (!checkSignature(o0, o1))
-          goto InvalidInstruction;
-
         uint32_t opSize = x ? 64 : 32;
         uint32_t sType = 0;
         uint64_t shift = 0;
@@ -1431,8 +1488,13 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         // Shift operation - LSL, LSR, ASR.
         if (sType <= uint32_t(ShiftOp::kASR)) {
           if (!hasSP) {
-            if (shift >= opSize)
+            if (!checkSignature(o0, o1)) {
+              goto InvalidInstruction;
+            }
+
+            if (shift >= opSize) {
               goto InvalidImmediate;
+            }
 
             opcode.reset(uint32_t(opData.shiftedOp) << 21);
             opcode.addImm(x, 31);
@@ -1453,8 +1515,14 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
         // Extend operation - UXTB, UXTH, UXTW, UXTX, SXTB, SXTH, SXTW, SXTX.
         sType -= uint32_t(ShiftOp::kUXTB);
-        if (sType > 7 || shift > 4)
+        if (sType > 7 || shift > 4) {
           goto InvalidImmediate;
+        }
+
+        // Validate whether the register operands match extend option.
+        if (o1.as<Reg>().regType() != extendOptionToRegType(sType) || o0.as<Reg>().regType() < o1.as<Reg>().regType()) {
+          goto InvalidInstruction;
+        }
 
         opcode.reset(uint32_t(opData.extendedOp) << 21);
         opcode.addImm(x, 31);
@@ -1724,7 +1792,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         if (!checkGpType(o0, opData.rType, &x))
           goto InvalidInstruction;
 
-        if (!o1.as<Reg>().isGpW())
+        if (!o1.as<Reg>().isGp32())
           goto InvalidInstruction;
 
         if (!checkGpId(o0, o1))
@@ -1999,6 +2067,63 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
     }
 
     // ------------------------------------------------------------------------
+    // [Base - Min/Max]
+    // ------------------------------------------------------------------------
+
+    case InstDB::kEncodingBaseMinMax: {
+      const InstDB::EncodingData::BaseMinMax& opData = InstDB::EncodingData::baseMinMax[encodingIndex];
+
+      if (isign4 == ENC_OPS3(Reg, Reg, Reg)) {
+        uint32_t x;
+        if (!checkGpType(o0, InstDB::kWX, &x))
+          goto InvalidInstruction;
+
+        if (!checkSignature(o0, o1, o2))
+          goto InvalidInstruction;
+
+        opcode.reset(opData.regOp);
+        opcode.addImm(x, 31);
+        opcode.addReg(o2, 16);
+        opcode.addReg(o1, 5);
+        opcode.addReg(o0, 0);
+        goto EmitOp;
+      }
+
+      if (isign4 == ENC_OPS3(Reg, Reg, Imm)) {
+        uint32_t x;
+        if (!checkGpType(o0, InstDB::kWX, &x))
+          goto InvalidInstruction;
+
+        if (!checkSignature(o0, o1))
+          goto InvalidInstruction;
+
+        uint64_t imm = o2.as<Imm>().valueAs<uint64_t>();
+
+        if (opData.immOp & (1u << 18)) {
+          // Zero extend imm.
+          if (!Support::isUInt8(imm)) {
+            goto InvalidImmediate;
+          }
+        }
+        else {
+          // Sign extend imm.
+          if (!Support::isInt8(int64_t(imm))) {
+            goto InvalidImmediate;
+          }
+        }
+
+        opcode.reset(opData.immOp);
+        opcode.addImm(x, 31);
+        opcode.addImm(uint32_t(imm & 0xFFu), 10);
+        opcode.addReg(o1, 5);
+        opcode.addReg(o0, 0);
+        goto EmitOp;
+      }
+
+      break;
+    }
+
+    // ------------------------------------------------------------------------
     // [Base - Special]
     // ------------------------------------------------------------------------
 
@@ -2018,7 +2143,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
         uint32_t rt = 31;
         if (o1.isReg()) {
-          if (!o1.as<Reg>().isGpX())
+          if (!o1.as<Reg>().isGp64())
             goto InvalidInstruction;
 
           if (!checkGpId(o1, kZR))
@@ -2037,7 +2162,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
     case InstDB::kEncodingBaseMrs: {
       if (isign4 == ENC_OPS2(Reg, Imm)) {
-        if (!o0.as<Reg>().isGpX())
+        if (!o0.as<Reg>().isGp64())
           goto InvalidInstruction;
 
         if (!checkGpId(o0, kZR))
@@ -2061,7 +2186,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
     case InstDB::kEncodingBaseMsr: {
       if (isign4 == ENC_OPS2(Imm, Reg)) {
-        if (!o1.as<Reg>().isGpX())
+        if (!o1.as<Reg>().isGp64())
           goto InvalidInstruction;
 
         if (o0.as<Imm>().valueAs<uint64_t>() > 0xFFFFu)
@@ -2119,7 +2244,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
 
         const Operand_& o4 = opExt[EmitterUtils::kOp4];
         if (o4.isReg()) {
-          if (!o4.as<Reg>().isGpX())
+          if (!o4.as<Reg>().isGp64())
             goto InvalidInstruction;
 
           if (!checkGpId(o4, kZR))
@@ -2151,7 +2276,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
       const InstDB::EncodingData::BaseBranchReg& opData = InstDB::EncodingData::baseBranchReg[encodingIndex];
 
       if (isign4 == ENC_OPS1(Reg)) {
-        if (!o0.as<Reg>().isGpX())
+        if (!o0.as<Reg>().isGp64())
           goto InvalidInstruction;
 
         if (!checkGpId(o0, kZR))
@@ -2172,7 +2297,13 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         opcode.reset(opData.opcode);
         rmRel = &o0;
 
-        if (instCC != CondCode::kAL) {
+        // A variation that uses Cond code (or where Cond code is forced like BC.<cond>).
+        if (instCC != CondCode::kAL || Support::bitTest(opcode.v, 30)) {
+          if (opcode.hasX()) {
+            // Condition code cannot be applied when the instruction has X bit set (this would be BL instruction).
+            goto InvalidInstruction;
+          }
+
           opcode |= B(30);
           opcode.addImm(condCodeToOpcodeCond(uint32_t(instCC)), 0);
           offsetFormat.resetToImmValue(OffsetType::kSignedOffset, 4, 5, 19, 2);
@@ -2242,6 +2373,86 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
     }
 
     // ------------------------------------------------------------------------
+    // [Base - Prefetch]
+    // ------------------------------------------------------------------------
+
+    case InstDB::kEncodingBasePrfm: {
+      const InstDB::EncodingData::BasePrfm& opData = InstDB::EncodingData::basePrfm[encodingIndex];
+
+      if (isign4 == ENC_OPS2(Imm, Mem)) {
+        const Mem& m = o1.as<Mem>();
+        rmRel = &m;
+
+        uint32_t immShift = 3u;
+
+        if (o0.as<Imm>().valueAs<uint64_t>() > 0x1Fu)
+          goto InvalidImmediate;
+
+        if (!armCheckMemBaseIndexRel(m))
+          goto InvalidAddress;
+
+        int64_t offset = m.offset();
+        uint32_t prfop = o0.as<Imm>().valueAs<uint32_t>();
+
+        if (m.hasBaseReg()) {
+          // [Base {Offset | Index}]
+          if (m.hasIndex()) {
+            uint32_t opt = armShiftOpToLdStOptMap[size_t(m.shiftOp())];
+            if (opt == 0xFF)
+              goto InvalidAddress;
+
+            uint32_t shift = m.shift();
+            uint32_t s = shift != 0;
+
+            if (s && shift != immShift)
+              goto InvalidAddressScale;
+
+            opcode.reset(uint32_t(opData.registerOp) << 21);
+            opcode.addImm(opt, 13);
+            opcode.addImm(s, 12);
+            opcode |= B(11);
+            opcode.addImm(prfop, 0);
+            goto EmitOp_MemBaseIndex_Rn5_Rm16;
+          }
+
+          if (!Support::isInt32(offset))
+            goto InvalidDisplacement;
+
+          int32_t offset32 = int32_t(offset);
+
+          if (m.isPreOrPost())
+            goto InvalidAddress;
+
+          uint32_t imm12 = uint32_t(offset32) >> immShift;
+
+          if (Support::isUInt12(imm12) && (imm12 << immShift) == uint32_t(offset32)) {
+            opcode.reset(uint32_t(opData.sOffsetOp) << 22);
+            opcode.addImm(imm12, 10);
+            opcode.addImm(prfop, 0);
+            goto EmitOp_MemBase_Rn5;
+          }
+
+          if (Support::isInt9(offset32)) {
+            opcode.reset(uint32_t(opData.uOffsetOp) << 21);
+            opcode.addImm(uint32_t(offset32) & 0x1FFu, 12);
+            opcode.addImm(prfop, 0);
+            goto EmitOp_MemBase_Rn5;
+          }
+
+          goto InvalidAddress;
+        }
+        else {
+          opcode.reset(uint32_t(opData.literalOp) << 24);
+          opcode.addImm(prfop, 0);
+          offsetFormat.resetToImmValue(OffsetType::kSignedOffset, 4, 5, 19, 2);
+          goto EmitOp_Rel;
+        }
+      }
+
+      break;
+    }
+
+    // ------------------------------------------------------------------------
     // [Base - Load / Store]
     // ------------------------------------------------------------------------
 
@@ -2272,7 +2483,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         if (m.hasBaseReg()) {
           // [Base {Offset | Index}]
           if (m.hasIndex()) {
-            uint32_t opt = armShiftOpToLdStOptMap[m.predicate()];
+            uint32_t opt = armShiftOpToLdStOptMap[size_t(m.shiftOp())];
             if (opt == 0xFF)
               goto InvalidAddress;
 
@@ -2357,7 +2568,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         if (!checkGpId(o0, o1, kZR))
           goto InvalidPhysId;
 
-        if (m.baseType() != RegType::kARM_GpX || m.hasIndex())
+        if (m.baseType() != RegType::kGp64 || m.hasIndex())
           goto InvalidAddress;
 
         if (m.isOffset64Bit())
@@ -2402,7 +2613,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         const Mem& m = o2.as<Mem>();
         uint32_t x;
 
-        if (!o0.as<Reg>().isGpW() || !checkGpType(o1, opData.rType, &x))
+        if (!o0.as<Reg>().isGp32() || !checkGpType(o1, opData.rType, &x))
           goto InvalidInstruction;
 
         if (!checkGpId(o0, o1, kZR))
@@ -2452,7 +2663,7 @@ Error Assembler::_emit(InstId instId, const Operand_& o0, const Operand_& o1, co
         const Mem& m = o3.as<Mem>();
         uint32_t x;
 
-        if (!o0.as<Reg>().isGpW() || !checkGpType(o1, opData.rType, &x) || !checkSignature(o1, o2))
+        if (!o0.as<Reg>().isGp32() || !checkGpType(o1, opData.rType, &x) || !checkSignature(o1, o2))
           goto InvalidInstruction;
 
         if (!checkGpId(o0, o1, o2, kZR))
@@ -2679,7 +2890,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::FSimdSV& opData = InstDB::EncodingData::fSimdSV[encodingIndex];
 
       if (isign4 == ENC_OPS2(Reg, Reg)) {
-        uint32_t q = diff(o1.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o1.as<Reg>().regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
@@ -2689,8 +2900,8 @@ Case_BaseLdurStur:
         // This operation is only defined for:
         //   hD, vS.{4|8}h (16-bit)
         //   sD, vS.4s     (32-bit)
-        uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
-        uint32_t elementSz = o1.as<Vec>().elementType() - Vec::kElementTypeH;
+        uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
+        uint32_t elementSz = diff(o1.as<Vec>().elementType(), VecElementType::kH);
 
         // Size greater than 1 means 64-bit elements, not supported.
         if ((sz | elementSz) > 1 || sz != elementSz)
@@ -2761,7 +2972,7 @@ Case_BaseLdurStur:
           if (!matchSignature(o0, o1, instFlags))
             goto InvalidInstruction;
 
-          uint32_t q = o1.as<Reg>().isVecQ();
+          uint32_t q = o1.as<Reg>().isVec128();
           uint32_t sz;
 
           if (!pickFpOpcode(o0.as<Vec>(), opData.elementScalarOp(), InstDB::kHF_D, opData.elementVectorOp(), InstDB::kHF_D, &opcode, &sz))
@@ -2808,11 +3019,11 @@ Case_BaseLdurStur:
         if (!checkSignature(o0, o1, o2) || o0.as<Vec>().hasElementIndex())
           goto InvalidInstruction;
 
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
-        uint32_t sz = o0.as<Vec>().elementType() - Vec::kElementTypeB;
+        uint32_t sz = diff(o0.as<Vec>().elementType(), VecElementType::kB);
         if (sz == 0 || sz > 3)
           goto InvalidInstruction;
 
@@ -2838,7 +3049,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdFccmpFccmpe& opData = InstDB::EncodingData::simdFccmpFccmpe[encodingIndex];
 
       if (isign4 == ENC_OPS4(Reg, Reg, Imm, Imm)) {
-        uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+        uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
         if (sz > 2)
           goto InvalidInstruction;
 
@@ -2900,11 +3111,11 @@ Case_BaseLdurStur:
         if (!checkSignature(o0, o1))
           goto InvalidInstruction;
 
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
-        uint32_t sz = o0.as<Vec>().elementType() - Vec::kElementTypeB;
+        uint32_t sz = diff(o0.as<Vec>().elementType(), VecElementType::kB);
         if (sz == 0 || sz > 3)
           goto InvalidInstruction;
 
@@ -2965,7 +3176,7 @@ Case_BaseLdurStur:
     case InstDB::kEncodingSimdFcmpFcmpe: {
       const InstDB::EncodingData::SimdFcmpFcmpe& opData = InstDB::EncodingData::simdFcmpFcmpe[encodingIndex];
 
-      uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+      uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
       uint32_t type = (sz - 1) & 0x3u;
 
       if (sz > 2)
@@ -3000,7 +3211,7 @@ Case_BaseLdurStur:
         if (!checkSignature(o0, o1, o2))
           goto InvalidInstruction;
 
-        uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+        uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
         uint32_t type = (sz - 1) & 0x3u;
 
         if (sz > 2 || o0.as<Vec>().hasElementType())
@@ -3021,8 +3232,8 @@ Case_BaseLdurStur:
 
     case InstDB::kEncodingSimdFcvt: {
       if (isign4 == ENC_OPS2(Reg, Reg)) {
-        uint32_t dstSz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
-        uint32_t srcSz = diff(o1.as<Reg>().type(), RegType::kARM_VecH);
+        uint32_t dstSz = diff(o0.as<Reg>().regType(), RegType::kVec16);
+        uint32_t srcSz = diff(o1.as<Reg>().regType(), RegType::kVec16);
 
         if ((dstSz | srcSz) > 3)
           goto InvalidInstruction;
@@ -3065,7 +3276,7 @@ Case_BaseLdurStur:
 
       if (isign4 == ENC_OPS2(Reg, Reg)) {
         // Scalar form - only FCVTXN.
-        if (o0.as<Vec>().isVecS() && o1.as<Vec>().isVecD()) {
+        if (o0.as<Vec>().isVec32() && o1.as<Vec>().isVec64()) {
           if (!opData.hasScalar())
             goto InvalidInstruction;
 
@@ -3082,15 +3293,15 @@ Case_BaseLdurStur:
         const Vec& rL = (instFlags & InstDB::kInstFlagLong) ? o0.as<Vec>() : o1.as<Vec>();
         const Vec& rN = (instFlags & InstDB::kInstFlagLong) ? o1.as<Vec>() : o0.as<Vec>();
 
-        uint32_t q = diff(rN.type(), RegType::kARM_VecD);
+        uint32_t q = diff(rN.regType(), RegType::kVec64);
         if (uint32_t(opcode.hasQ()) != q)
           goto InvalidInstruction;
 
-        if (rL.isVecS4() && rN.elementType() == Vec::kElementTypeH && !opData.isCvtxn()) {
+        if (rL.isVecS4() && rN.elementType() == VecElementType::kH && !opData.isCvtxn()) {
           goto EmitOp_Rd0_Rn5;
         }
 
-        if (rL.isVecD2() && rN.elementType() == Vec::kElementTypeS) {
+        if (rL.isVecD2() && rN.elementType() == VecElementType::kS) {
           opcode |= B(22);
           goto EmitOp_Rd0_Rn5;
         }
@@ -3108,8 +3319,8 @@ Case_BaseLdurStur:
 
       if (isign4 == ENC_OPS2(Reg, Reg)) {
         if (oGp.as<Reg>().isGp() && oVec.as<Reg>().isVec()) {
-          uint32_t x = oGp.as<Reg>().isGpX();
-          uint32_t type = diff(oVec.as<Reg>().type(), RegType::kARM_VecH);
+          uint32_t x = oGp.as<Reg>().isGp64();
+          uint32_t type = diff(oVec.as<Reg>().regType(), RegType::kVec16);
 
           if (type > 2u)
             goto InvalidInstruction;
@@ -3141,8 +3352,8 @@ Case_BaseLdurStur:
           goto InvalidInstruction;
 
         if (oGp.as<Reg>().isGp() && oVec.as<Reg>().isVec()) {
-          uint32_t x = oGp.as<Reg>().isGpX();
-          uint32_t type = diff(oVec.as<Reg>().type(), RegType::kARM_VecH);
+          uint32_t x = oGp.as<Reg>().isGp64();
+          uint32_t type = diff(oVec.as<Reg>().regType(), RegType::kVec16);
 
           uint32_t scaleLimit = 32u << x;
           if (scale > scaleLimit)
@@ -3181,7 +3392,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdFmlal& opData = InstDB::EncodingData::simdFmlal[encodingIndex];
 
       if (isign4 == ENC_OPS3(Reg, Reg, Reg)) {
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         uint32_t qIsOptional = opData.optionalQ();
 
         if (qIsOptional) {
@@ -3200,9 +3411,9 @@ Case_BaseLdurStur:
           q = 0;
         }
 
-        if (uint32_t(o0.as<Reg>().type()) != uint32_t(o1.as<Reg>().type()) + qIsOptional ||
-            o0.as<Vec>().elementType() != opData.tA ||
-            o1.as<Vec>().elementType() != opData.tB)
+        if (uint32_t(o0.as<Reg>().regType()) != uint32_t(o1.as<Reg>().regType()) + qIsOptional ||
+            uint32_t(o0.as<Vec>().elementType()) != opData.tA ||
+            uint32_t(o1.as<Vec>().elementType()) != opData.tB)
           goto InvalidInstruction;
 
         if (!o2.as<Vec>().hasElementIndex()) {
@@ -3214,7 +3425,7 @@ Case_BaseLdurStur:
           goto EmitOp_Rd0_Rn5_Rm16;
         }
         else {
-          if (o2.as<Vec>().elementType() != opData.tElement)
+          if (uint32_t(o2.as<Vec>().elementType()) != opData.tElement)
             goto InvalidInstruction;
 
           if (o2.as<Reg>().id() > 15)
@@ -3246,8 +3457,8 @@ Case_BaseLdurStur:
           // FMOV Wd, Sn      (sf=0 type=00 rmode=00 op=110)
           // FMOV Xd, Dn      (sf=1 type=11 rmode=00 op=110)
           // FMOV Xd, Vn.d[1] (sf=1 type=10 rmode=01 op=110)
-          uint32_t x = o0.as<Reg>().isGpX();
-          uint32_t sz = diff(o1.as<Reg>().type(), RegType::kARM_VecH);
+          uint32_t x = o0.as<Reg>().isGp64();
+          uint32_t sz = diff(o1.as<Reg>().regType(), RegType::kVec16);
 
           uint32_t type = (sz - 1) & 0x3u;
           uint32_t rModeOp = 0b00110;
@@ -3267,10 +3478,10 @@ Case_BaseLdurStur:
             if (o1.as<Vec>().hasElementType())
               goto InvalidInstruction;
 
-            if (o1.as<Vec>().isVecS() && x)
+            if (o1.as<Vec>().isVec32() && x)
               goto InvalidInstruction;
 
-            if (o1.as<Vec>().isVecD() && !x)
+            if (o1.as<Vec>().isVec64() && !x)
               goto InvalidInstruction;
           }
 
@@ -3286,8 +3497,8 @@ Case_BaseLdurStur:
           // FMOV Sd, Wn      (sf=0 type=00 rmode=00 op=111)
           // FMOV Dd, Xn      (sf=1 type=11 rmode=00 op=111)
           // FMOV Vd.d[1], Xn (sf=1 type=10 rmode=01 op=111)
-          uint32_t x = o1.as<Reg>().isGpX();
-          uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+          uint32_t x = o1.as<Reg>().isGp64();
+          uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
 
           uint32_t type = (sz - 1) & 0x3u;
           uint32_t rModeOp = 0b00111;
@@ -3307,10 +3518,10 @@ Case_BaseLdurStur:
             if (o0.as<Vec>().hasElementType())
               goto InvalidInstruction;
 
-            if (o0.as<Vec>().isVecS() && x)
+            if (o0.as<Vec>().isVec32() && x)
               goto InvalidInstruction;
 
-            if (o0.as<Vec>().isVecD() && !x)
+            if (o0.as<Vec>().isVec64() && !x)
               goto InvalidInstruction;
           }
 
@@ -3321,7 +3532,7 @@ Case_BaseLdurStur:
         }
 
         if (checkSignature(o0, o1)) {
-          uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+          uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
           if (sz > 2)
             goto InvalidInstruction;
 
@@ -3351,7 +3562,7 @@ Case_BaseLdurStur:
           uint32_t imm8 = Utils::encodeFP64ToImm8(fpValue);
           if (!o0.as<Vec>().hasElementType()) {
             // FMOV (scalar, immediate).
-            uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+            uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
             uint32_t type = (sz - 1u) & 0x3u;
 
             if (sz > 2)
@@ -3363,8 +3574,8 @@ Case_BaseLdurStur:
             goto EmitOp_Rd0;
           }
           else {
-            uint32_t q = diff(o0.as<Vec>().type(), RegType::kARM_VecD);
-            uint32_t sz = o0.as<Vec>().elementType() - Vec::kElementTypeH;
+            uint32_t q = diff(o0.as<Vec>().regType(), RegType::kVec64);
+            uint32_t sz = diff(o0.as<Vec>().elementType(), VecElementType::kH);
 
             if (q > 1 || sz > 2)
               goto InvalidInstruction;
@@ -3391,14 +3602,14 @@ Case_BaseLdurStur:
         //   hD, vS.2h (16-bit)
         //   sD, vS.2s (32-bit)
         //   dD, vS.2d (64-bit)
-        uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecH);
+        uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec16);
         if (sz > 2)
           goto InvalidInstruction;
 
         static const uint32_t szSignatures[3] = {
-          VecS::kSignature | (Vec::kSignatureElementH),
-          VecD::kSignature | (Vec::kSignatureElementS),
-          VecV::kSignature | (Vec::kSignatureElementD)
+          RegTraits<RegType::kVec32>::kSignature | (Vec::kSignatureElementH),
+          RegTraits<RegType::kVec64>::kSignature | (Vec::kSignatureElementS),
+          RegTraits<RegType::kVec128>::kSignature | (Vec::kSignatureElementD)
         };
 
         if (o1.signature() != szSignatures[sz])
@@ -3414,11 +3625,11 @@ Case_BaseLdurStur:
         if (!checkSignature(o0, o1, o2))
           goto InvalidInstruction;
 
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
-        uint32_t sz = o0.as<Vec>().elementType() - Vec::kElementTypeH;
+        uint32_t sz = diff(o0.as<Vec>().elementType(), VecElementType::kH);
         if (sz > 2)
           goto InvalidInstruction;
 
@@ -3442,10 +3653,10 @@ Case_BaseLdurStur:
       if (isign4 == ENC_OPS2(Reg, Reg)) {
         // The first destination operand is scalar, which matches element-type of source vectors.
         uint32_t L = (instFlags & InstDB::kInstFlagLong) != 0;
-        if (diff(o0.as<Vec>().type(), RegType::kARM_VecB) != o1.as<Vec>().elementType() - Vec::kElementTypeB + L)
+        if (diff(o0.as<Vec>().regType(), RegType::kVec8) != diff(o1.as<Vec>().elementType(), VecElementType::kB) + L)
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().type(), o1.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().regType(), o1.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3466,7 +3677,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3503,7 +3714,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3538,11 +3749,11 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::ISimdWWV& opData = InstDB::EncodingData::iSimdWWV[encodingIndex];
 
       if (isign4 == ENC_OPS3(Reg, Reg, Reg)) {
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o2.as<Reg>().type(), o2.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o2.as<Reg>().regType(), o2.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
-        if (!checkSignature(o0, o1) || !o0.as<Reg>().isVecV() || o0.as<Vec>().elementType() != o2.as<Vec>().elementType() + 1)
+        if (!checkSignature(o0, o1) || !o0.as<Reg>().isVec128() || uint32_t(o0.as<Vec>().elementType()) != uint32_t(o2.as<Vec>().elementType()) + 1u)
           goto InvalidInstruction;
 
         opcode.reset(opData.opcode());
@@ -3564,7 +3775,7 @@ Case_BaseLdurStur:
           goto InvalidInstruction;
 
         if (!o2.as<Vec>().hasElementIndex()) {
-          SizeOp sizeOp = armElementTypeToSizeOp(opData.regularVecType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+          SizeOp sizeOp = armElementTypeToSizeOp(opData.regularVecType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
           if (!sizeOp.isValid())
             goto InvalidInstruction;
 
@@ -3578,7 +3789,7 @@ Case_BaseLdurStur:
           goto EmitOp_Rd0_Rn5_Rm16;
         }
         else {
-          SizeOp sizeOp = armElementTypeToSizeOp(opData.elementVecType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+          SizeOp sizeOp = armElementTypeToSizeOp(opData.elementVecType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
           if (!sizeOp.isValid())
             goto InvalidInstruction;
 
@@ -3611,7 +3822,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3644,7 +3855,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, o3, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3691,7 +3902,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.opType3, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.opType3, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3712,7 +3923,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_B, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_B, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3722,7 +3933,7 @@ Case_BaseLdurStur:
       }
 
       if (isign4 == ENC_OPS2(Reg, Imm) || isign4 == ENC_OPS3(Reg, Imm, Imm)) {
-        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_HS, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_HS, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3778,7 +3989,7 @@ Case_BaseLdurStur:
         if (!matchSignature(o0, o1, o2, instFlags))
           goto InvalidInstruction;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3796,7 +4007,7 @@ Case_BaseLdurStur:
         if (o2.as<Imm>().value() != 0)
           goto InvalidImmediate;
 
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -3814,7 +4025,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdDot& opData = InstDB::EncodingData::simdDot[encodingIndex];
 
       if (isign4 == ENC_OPS3(Reg, Reg, Reg)) {
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         uint32_t size = 2;
 
         if (q > 1u)
@@ -3824,12 +4035,12 @@ Case_BaseLdurStur:
           if (!opData.vectorOp)
             goto InvalidInstruction;
 
-          if (o0.as<Reg>().type() != o1.as<Reg>().type() || o1.as<Reg>().type() != o2.as<Reg>().type())
+          if (o0.as<Reg>().regType() != o1.as<Reg>().regType() || o1.as<Reg>().regType() != o2.as<Reg>().regType())
             goto InvalidInstruction;
 
-          if (o0.as<Vec>().elementType() != opData.tA ||
-              o1.as<Vec>().elementType() != opData.tB ||
-              o2.as<Vec>().elementType() != opData.tB)
+          if (uint32_t(o0.as<Vec>().elementType()) != opData.tA ||
+              uint32_t(o1.as<Vec>().elementType()) != opData.tB ||
+              uint32_t(o2.as<Vec>().elementType()) != opData.tB)
             goto InvalidInstruction;
 
           opcode.reset(uint32_t(opData.vectorOp) << 10);
@@ -3840,12 +4051,12 @@ Case_BaseLdurStur:
           if (!opData.elementOp)
             goto InvalidInstruction;
 
-          if (o0.as<Reg>().type() != o1.as<Reg>().type() || !o2.as<Reg>().isVecV())
+          if (o0.as<Reg>().regType() != o1.as<Reg>().regType() || !o2.as<Reg>().isVec128())
             goto InvalidInstruction;
 
-          if (o0.as<Vec>().elementType() != opData.tA ||
-              o1.as<Vec>().elementType() != opData.tB ||
-              o2.as<Vec>().elementType() != opData.tElement)
+          if (uint32_t(o0.as<Vec>().elementType()) != opData.tA ||
+              uint32_t(o1.as<Vec>().elementType()) != opData.tB ||
+              uint32_t(o2.as<Vec>().elementType()) != opData.tElement)
             goto InvalidInstruction;
 
           uint32_t elementIndex = o2.as<Vec>().elementIndex();
@@ -3871,22 +4082,22 @@ Case_BaseLdurStur:
     case InstDB::kEncodingSimdDup: SimdDup: {
       if (isign4 == ENC_OPS2(Reg, Reg)) {
         // Truth table of valid encodings of `Q:1|ElementType:3`
-        uint32_t kValidEncodings = B(Vec::kElementTypeB + 0) |
-                                   B(Vec::kElementTypeH + 0) |
-                                   B(Vec::kElementTypeS + 0) |
-                                   B(Vec::kElementTypeB + 8) |
-                                   B(Vec::kElementTypeH + 8) |
-                                   B(Vec::kElementTypeS + 8) |
-                                   B(Vec::kElementTypeD + 8) ;
+        uint32_t kValidEncodings = B(uint32_t(VecElementType::kB) + 0) |
+                                   B(uint32_t(VecElementType::kH) + 0) |
+                                   B(uint32_t(VecElementType::kS) + 0) |
+                                   B(uint32_t(VecElementType::kB) + 8) |
+                                   B(uint32_t(VecElementType::kH) + 8) |
+                                   B(uint32_t(VecElementType::kS) + 8) |
+                                   B(uint32_t(VecElementType::kD) + 8) ;
 
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
 
         if (o1.as<Reg>().isGp()) {
           // DUP - Vec (scalar|vector) <- GP register.
           //
           // NOTE: This is only scalar for `dup d, x` case, otherwise the value
           // would be duplicated across all vector elements (1, 2, 4, 8, or 16).
-          uint32_t elementType = o0.as<Vec>().elementType();
+          uint32_t elementType = uint32_t(o0.as<Vec>().elementType());
           if (q > 1 || !Support::bitTest(kValidEncodings, (q << 3) | elementType))
             goto InvalidInstruction;
 
@@ -3905,9 +4116,9 @@ Case_BaseLdurStur:
         uint32_t dstIndex = o1.as<Vec>().elementIndex();
         if (!o0.as<Vec>().hasElementType()) {
           // DUP - Vec (scalar) <- Vec[N].
-          uint32_t lsbIndex = diff(o0.as<Reg>().type(), RegType::kARM_VecB);
+          uint32_t lsbIndex = diff(o0.as<Reg>().regType(), RegType::kVec8);
 
-          if (lsbIndex != o1.as<Vec>().elementType() - Vec::kElementTypeB || lsbIndex > 3)
+          if (lsbIndex != diff(o1.as<Vec>().elementType(), VecElementType::kB) || lsbIndex > 3)
             goto InvalidInstruction;
 
           uint32_t imm5 = ((dstIndex << 1) | 1u) << lsbIndex;
@@ -3920,7 +4131,7 @@ Case_BaseLdurStur:
         }
         else {
           // DUP - Vec (all) <- Vec[N].
-          uint32_t elementType = o0.as<Vec>().elementType();
+          uint32_t elementType = uint32_t(o0.as<Vec>().elementType());
           if (q > 1 || !Support::bitTest(kValidEncodings, (q << 3) | elementType))
             goto InvalidInstruction;
 
@@ -3941,11 +4152,11 @@ Case_BaseLdurStur:
     }
 
     case InstDB::kEncodingSimdIns: SimdIns: {
-      if (isign4 == ENC_OPS2(Reg, Reg) && o0.as<Reg>().isVecV()) {
+      if (isign4 == ENC_OPS2(Reg, Reg) && o0.as<Reg>().isVec128()) {
         if (!o0.as<Vec>().hasElementIndex())
           goto InvalidInstruction;
 
-        uint32_t elementType = o0.as<Vec>().elementType();
+        uint32_t elementType = uint32_t(o0.as<Vec>().elementType());
         uint32_t dstIndex = o0.as<Vec>().elementIndex();
         uint32_t lsbIndex = elementType - 1u;
 
@@ -3959,13 +4170,13 @@ Case_BaseLdurStur:
           opcode.addImm(imm5, 16);
           goto EmitOp_Rd0_Rn5;
         }
-        else if (o1.as<Reg>().isVecV() && o1.as<Vec>().hasElementIndex()) {
+        else if (o1.as<Reg>().isVec128() && o1.as<Vec>().hasElementIndex()) {
           // INS - Vec[N] <- Vec[M].
           if (o0.as<Vec>().elementType() != o1.as<Vec>().elementType())
             goto InvalidInstruction;
 
           uint32_t srcIndex = o1.as<Vec>().elementIndex();
-          if (o0.as<Reg>().type() != o1.as<Reg>().type())
+          if (o0.as<Reg>().regType() != o1.as<Reg>().regType())
             goto InvalidInstruction;
 
           uint32_t imm4 = srcIndex << lsbIndex;
@@ -3997,7 +4208,7 @@ Case_BaseLdurStur:
             goto InvalidInstruction;
 
           // ORR Vd, Vn, Vm
-          uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+          uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
           if (q > 1)
             goto InvalidInstruction;
 
@@ -4029,7 +4240,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdMoviMvni& opData = InstDB::EncodingData::simdMoviMvni[encodingIndex];
 
       if (isign4 == ENC_OPS2(Reg, Imm) || isign4 == ENC_OPS3(Reg, Imm, Imm)) {
-        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_Any, o0.as<Reg>().type(), o0.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(InstDB::kVO_V_Any, o0.as<Reg>().regType(), o0.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -4114,7 +4325,6 @@ Case_BaseLdurStur:
 
             if (inverted) {
               imm8 = ~imm8 & 0xFFu;
-              inverted = 0;
             }
 
             cmode = B(3) | B(2) | B(1);
@@ -4147,7 +4357,6 @@ Case_BaseLdurStur:
           case 3:
             if (inverted) {
               imm8 = ~imm8 & 0xFFu;
-              inverted = 0;
             }
 
             op = 1;
@@ -4175,7 +4384,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdShift& opData = InstDB::EncodingData::simdShift[encodingIndex];
 
       const Operand_& sop = significantSimdOp(o0, o1, instFlags);
-      SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().type(), sop.as<Vec>().elementType());
+      SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, sop.as<Reg>().regType(), sop.as<Vec>().elementType());
 
       if (!sizeOp.isValid())
         goto InvalidInstruction;
@@ -4227,7 +4436,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdShiftES& opData = InstDB::EncodingData::simdShiftES[encodingIndex];
 
       if (isign4 == ENC_OPS3(Reg, Reg, Imm)) {
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().type(), o1.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().regType(), o1.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -4273,14 +4482,14 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdSmovUmov& opData = InstDB::EncodingData::simdSmovUmov[encodingIndex];
 
       if (isign4 == ENC_OPS2(Reg, Reg) && o0.as<Reg>().isGp() && o1.as<Reg>().isVec()) {
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().type(), o1.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().regType(), o1.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
         if (!o1.as<Vec>().hasElementIndex())
           goto InvalidInstruction;
 
-        uint32_t x = o0.as<Gp>().isGpX();
+        uint32_t x = o0.as<Gp>().isGp64();
         uint32_t gpMustBeX = uint32_t(sizeOp.size() >= 3u - opData.isSigned);
 
         if (opData.isSigned) {
@@ -4313,7 +4522,7 @@ Case_BaseLdurStur:
       const InstDB::EncodingData::SimdSxtlUxtl& opData = InstDB::EncodingData::simdSxtlUxtl[encodingIndex];
 
       if (isign4 == ENC_OPS2(Reg, Reg)) {
-        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().type(), o1.as<Vec>().elementType());
+        SizeOp sizeOp = armElementTypeToSizeOp(opData.vecOpType, o1.as<Reg>().regType(), o1.as<Vec>().elementType());
         if (!sizeOp.isValid())
           goto InvalidInstruction;
 
@@ -4342,7 +4551,7 @@ Case_BaseLdurStur:
         const Operand_& o4 = opExt[EmitterUtils::kOp4];
         const Operand_& o5 = opExt[EmitterUtils::kOp5];
 
-        uint32_t q = diff(o0.as<Reg>().type(), RegType::kARM_VecD);
+        uint32_t q = diff(o0.as<Reg>().regType(), RegType::kVec64);
         if (q > 1 || o0.as<Vec>().hasElementIndex())
           goto InvalidInstruction;
 
@@ -4421,7 +4630,7 @@ Case_BaseLdurStur:
         // 32-bit | size==10 | opc == 01 | 010
         // 64-bit | size==11 | opc == 01 | 011
         // 128-bit| size==00 | opc == 11 | 100
-        uint32_t xsz = diff(o0.as<Reg>().type(), RegType::kARM_VecB);
+        uint32_t xsz = diff(o0.as<Reg>().regType(), RegType::kVec8);
         if (xsz > 4u || o0.as<Vec>().hasElementIndex())
           goto InvalidRegType;
 
@@ -4435,7 +4644,7 @@ Case_BaseLdurStur:
         if (m.hasBaseReg()) {
           // [Base {Offset | Index}]
           if (m.hasIndex()) {
-            uint32_t opt = armShiftOpToLdStOptMap[m.predicate()];
+            uint32_t opt = armShiftOpToLdStOptMap[size_t(m.shiftOp())];
             if (opt == 0xFFu)
               goto InvalidAddress;
 
@@ -4518,7 +4727,7 @@ Case_BaseLdurStur:
         const Mem& m = o2.as<Mem>();
         rmRel = &m;
 
-        uint32_t opc = diff(o0.as<Reg>().type(), RegType::kARM_VecS);
+        uint32_t opc = diff(o0.as<Reg>().regType(), RegType::kVec32);
         if (opc > 2u || o0.as<Vec>().hasElementTypeOrIndex())
           goto InvalidInstruction;
 
@@ -4528,7 +4737,7 @@ Case_BaseLdurStur:
         if (!checkVecId(o0, o1))
           goto InvalidPhysId;
 
-        if (m.baseType() != RegType::kARM_GpX || m.hasIndex())
+        if (m.baseType() != RegType::kGp64 || m.hasIndex())
           goto InvalidAddress;
 
         if (m.isOffset64Bit())
@@ -4574,7 +4783,7 @@ Case_SimdLdurStur:
         const Mem& m = o1.as<Mem>();
         rmRel = &m;
 
-        uint32_t sz = diff(o0.as<Reg>().type(), RegType::kARM_VecB);
+        uint32_t sz = diff(o0.as<Reg>().regType(), RegType::kVec8);
         if (sz > 4 || o0.as<Vec>().hasElementTypeOrIndex())
           goto InvalidInstruction;
 
@@ -4659,14 +4868,14 @@ Case_SimdLdurStur:
       uint32_t q = 0;
       uint32_t rm = 0;
       uint32_t rn = m.baseId();
-      uint32_t sz = v.elementType() - Vec::kElementTypeB;
+      uint32_t sz = diff(v.elementType(), VecElementType::kB);
       uint32_t opcSsize = sz;
       uint32_t offsetPossibility = 0;
 
       if (sz > 3)
         goto InvalidInstruction;
 
-      if (m.baseType() != RegType::kARM_GpX)
+      if (m.baseType() != RegType::kGp64)
         goto InvalidAddress;
 
       // Rn cannot be ZR, but can be SP.
@@ -4683,7 +4892,7 @@ Case_SimdLdurStur:
         if (v.hasElementIndex())
           goto InvalidInstruction;
 
-        q = diff(v.type(), RegType::kARM_VecD);
+        q = diff(v.regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
@@ -4715,7 +4924,7 @@ Case_SimdLdurStur:
         // LDx/STx (multiple structures).
         static const uint8_t opcSsizeByN[] = { 0u, 0x7u << 2, 0xAu << 2, 0x6u << 2, 0x2u << 2 };
 
-        q = diff(v.type(), RegType::kARM_VecD);
+        q = diff(v.regType(), RegType::kVec64);
         if (q > 1)
           goto InvalidInstruction;
 
@@ -4822,11 +5031,13 @@ EmitOp_Multiple:
   {
     ASMJIT_ASSERT(multipleOpCount > 0);
     err = writer.ensureSpace(this, multipleOpCount * 4u);
-    if (ASMJIT_UNLIKELY(err))
+    if (ASMJIT_UNLIKELY(err)) {
       goto Failed;
+    }
 
-    for (uint32_t i = 0; i < multipleOpCount; i++)
+    for (uint32_t i = 0; i < multipleOpCount; i++) {
       writer.emit32uLE(multipleOpData[i]);
+    }
 
     goto EmitDone;
   }
@@ -4836,28 +5047,33 @@ EmitOp_Multiple:
   // --------------------------------------------------------------------------
 
 EmitOp_MemBase_Rn5:
-  if (!checkMemBase(rmRel->as<Mem>()))
+  if (!checkMemBase(rmRel->as<Mem>())) {
     goto InvalidAddress;
+  }
 
   opcode.addReg(rmRel->as<Mem>().baseId(), 5);
   goto EmitOp;
 
 EmitOp_MemBaseNoImm_Rn5:
-  if (!checkMemBase(rmRel->as<Mem>()) || rmRel->as<Mem>().hasIndex())
+  if (!checkMemBase(rmRel->as<Mem>()) || rmRel->as<Mem>().hasIndex()) {
     goto InvalidAddress;
+  }
 
-  if (rmRel->as<Mem>().hasOffset())
+  if (rmRel->as<Mem>().hasOffset()) {
     goto InvalidDisplacement;
+  }
 
   opcode.addReg(rmRel->as<Mem>().baseId(), 5);
   goto EmitOp;
 
 EmitOp_MemBaseIndex_Rn5_Rm16:
-  if (!rmRel->as<Mem>().hasBaseReg())
+  if (!rmRel->as<Mem>().hasBaseReg()) {
     goto InvalidAddress;
+  }
 
-  if (rmRel->as<Mem>().indexId() > 30 && rmRel->as<Mem>().indexId() != Gp::kIdZr)
+  if (rmRel->as<Mem>().indexId() > 30 && rmRel->as<Mem>().indexId() != Gp::kIdZr) {
     goto InvalidPhysId;
+  }
 
   opcode.addReg(rmRel->as<Mem>().indexId(), 16);
   opcode.addReg(rmRel->as<Mem>().baseId(), 5);
@@ -4881,26 +5097,29 @@ EmitOp_Rel:
         labelOffset = rmRel->as<Mem>().offset();
       }
 
-      LabelEntry* label = _code->labelEntry(labelId);
-      if (ASMJIT_UNLIKELY(!label))
+      if (ASMJIT_UNLIKELY(!_code->isLabelValid(labelId))) {
         goto InvalidLabel;
+      }
+
+      LabelEntry& le = _code->labelEntry(labelId);
 
       if (offsetFormat.type() == OffsetType::kAArch64_ADRP) {
         // TODO: [ARM] Always create relocation entry.
       }
 
-      if (label->isBoundTo(_section)) {
+      if (le.isBoundTo(_section)) {
         // Label bound to the current section.
-        offsetValue = label->offset() - uint64_t(offset()) + uint64_t(labelOffset);
+        offsetValue = le.offset() - uint64_t(offset()) + uint64_t(labelOffset);
         goto EmitOp_DispImm;
       }
       else {
-        // Record non-bound label.
+        // Create a fixup referencing an non-bound label.
         size_t codeOffset = writer.offsetFrom(_bufferData);
-        LabelLink* link = _code->newLabelLink(label, _section->id(), codeOffset, intptr_t(labelOffset), offsetFormat);
+        Fixup* fixup = _code->newFixup(le, _section->sectionId(), codeOffset, intptr_t(labelOffset), offsetFormat);
 
-        if (ASMJIT_UNLIKELY(!link))
+        if (ASMJIT_UNLIKELY(!fixup)) {
           goto OutOfMemory;
+        }
 
         goto EmitOp;
       }
@@ -4913,14 +5132,15 @@ EmitOp_Rel:
 
     size_t codeOffset = writer.offsetFrom(_bufferData);
 
-    if (baseAddress == Globals::kNoBaseAddress || _section->id() != 0) {
+    if (baseAddress == Globals::kNoBaseAddress || _section->sectionId() != 0) {
       // Create a new RelocEntry as we cannot calculate the offset right now.
       RelocEntry* re;
       err = _code->newRelocEntry(&re, RelocType::kAbsToRel);
-      if (err)
+      if (err) {
         goto Failed;
+      }
 
-      re->_sourceSectionId = _section->id();
+      re->_sourceSectionId = _section->sectionId();
       re->_sourceOffset = codeOffset;
       re->_format = offsetFormat;
       re->_payload = rmRel->as<Imm>().valueAs<uint64_t>() + 4u;
@@ -4929,8 +5149,9 @@ EmitOp_Rel:
     else {
       uint64_t pc = baseAddress + codeOffset;
 
-      if (offsetFormat.type() == OffsetType::kAArch64_ADRP)
+      if (offsetFormat.type() == OffsetType::kAArch64_ADRP) {
         pc &= ~uint64_t(4096 - 1);
+      }
 
       offsetValue = targetOffset - pc;
       goto EmitOp_DispImm;
@@ -4941,12 +5162,14 @@ EmitOp_Rel:
 
 EmitOp_DispImm:
   {
-    if ((offsetValue & Support::lsbMask<uint32_t>(offsetFormat.immDiscardLsb())) != 0)
+    if ((offsetValue & Support::lsbMask<uint32_t>(offsetFormat.immDiscardLsb())) != 0) {
       goto InvalidDisplacement;
+    }
 
     int64_t dispImm64 = int64_t(offsetValue) >> offsetFormat.immDiscardLsb();
-    if (!Support::isEncodableOffset64(dispImm64, offsetFormat.immBitCount()))
+    if (!Support::isEncodableOffset64(dispImm64, offsetFormat.immBitCount())) {
       goto InvalidDisplacement;
+    }
 
     uint32_t dispImm32 = uint32_t(dispImm64 & Support::lsbMask<uint32_t>(offsetFormat.immBitCount()));
     switch (offsetFormat.type()) {
@@ -4984,8 +5207,9 @@ EmitOp:
 EmitDone:
   if (Support::test(options, InstOptions::kReserved)) {
 #ifndef ASMJIT_NO_LOGGING
-    if (_logger)
+    if (_logger) {
       EmitterUtils::logInstructionEmitted(this, BaseInst::composeARMInstId(instId, instCC), options, o0, o1, o2, opExt, 0, 0, writer.cursor());
+    }
 #endif
   }
 
@@ -5031,21 +5255,26 @@ Failed:
 Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
   constexpr uint32_t kNopA64 = 0xD503201Fu; // [11010101|00000011|00100000|00011111].
 
-  if (ASMJIT_UNLIKELY(!_code))
+  if (ASMJIT_UNLIKELY(!_code)) {
     return reportError(DebugUtils::errored(kErrorNotInitialized));
+  }
 
-  if (ASMJIT_UNLIKELY(uint32_t(alignMode) > uint32_t(AlignMode::kMaxValue)))
+  if (ASMJIT_UNLIKELY(uint32_t(alignMode) > uint32_t(AlignMode::kMaxValue))) {
     return reportError(DebugUtils::errored(kErrorInvalidArgument));
+  }
 
-  if (alignment <= 1)
+  if (alignment <= 1) {
     return kErrorOk;
+  }
 
-  if (ASMJIT_UNLIKELY(alignment > Globals::kMaxAlignment || !Support::isPowerOf2(alignment)))
+  if (ASMJIT_UNLIKELY(!Support::isPowerOf2UpTo(alignment, Globals::kMaxAlignment))) {
     return reportError(DebugUtils::errored(kErrorInvalidArgument));
+  }
 
   uint32_t i = uint32_t(Support::alignUpDiff<size_t>(offset(), alignment));
-  if (i == 0)
+  if (i == 0) {
     return kErrorOk;
+  }
 
   CodeWriter writer(this);
   ASMJIT_PROPAGATE(writer.ensureSpace(this, i));
@@ -5054,8 +5283,9 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
     case AlignMode::kCode: {
       uint32_t pattern = kNopA64;
 
-      if (ASMJIT_UNLIKELY(offset() & 0x3u))
+      if (ASMJIT_UNLIKELY(offset() & 0x3u)) {
         return DebugUtils::errored(kErrorInvalidState);
+      }
 
       while (i >= 4) {
         writer.emit32uLE(pattern);
@@ -5089,12 +5319,16 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
 // a64::Assembler - Events
 // =======================
 
-Error Assembler::onAttach(CodeHolder* code) noexcept {
+Error Assembler::onAttach(CodeHolder& code) noexcept {
   ASMJIT_PROPAGATE(Base::onAttach(code));
+
+  _instructionAlignment = uint8_t(4);
+  updateEmitterFuncs(this);
+
   return kErrorOk;
 }
 
-Error Assembler::onDetach(CodeHolder* code) noexcept {
+Error Assembler::onDetach(CodeHolder& code) noexcept {
   return Base::onDetach(code);
 }
 

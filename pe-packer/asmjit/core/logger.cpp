@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -52,11 +52,13 @@ FileLogger::FileLogger(FILE* file) noexcept
 FileLogger::~FileLogger() noexcept {}
 
 Error FileLogger::_log(const char* data, size_t size) noexcept {
-  if (!_file)
+  if (!_file) {
     return kErrorOk;
+  }
 
-  if (size == SIZE_MAX)
+  if (size == SIZE_MAX) {
     size = strlen(data);
+  }
 
   fwrite(data, 1, size, _file);
   return kErrorOk;

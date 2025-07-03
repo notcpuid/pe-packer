@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_H_INCLUDED
@@ -18,14 +18,16 @@
 //!
 //! ### Emitters
 //!
-//!   - AArch64
+//!   - AArch32
 //!     - \ref a32::Assembler - AArch32 assembler (must read, provides examples).
-//!     - \ref a64::Assembler - AArch64 assembler (must read, provides examples).
 //!     - \ref a32::Builder - AArch32 builder.
-//!     - \ref a64::Builder - AArch64 builder.
 //!     - \ref a32::Compiler - AArch32 compiler.
-//!     - \ref a64::Compiler - AArch64 compiler.
 //!     - \ref a32::Emitter - AArch32 emitter (abstract).
+//!
+//!   - AArch64
+//!     - \ref a64::Assembler - AArch64 assembler (must read, provides examples).
+//!     - \ref a64::Builder - AArch64 builder.
+//!     - \ref a64::Compiler - AArch64 compiler.
 //!     - \ref a64::Emitter - AArch64 emitter (abstract).
 //!
 //! ### Supported Instructions
@@ -46,16 +48,13 @@
 //!
 //! ### Register Operands
 //!
-//!   - \ref arm::Reg - Base class for any AArch32/AArch64 register.
-//!     - \ref arm::Gp - General purpose register:
-//!       - \ref arm::GpW - 32-bit register.
-//!       - \ref arm::GpX - 64-bit register (AArch64 only).
-//!     - \ref arm::Vec - Vector (SIMD) register:
-//!       - \ref arm::VecB - 8-bit SIMD register (AArch64 only).
-//!       - \ref arm::VecH - 16-bit SIMD register (AArch64 only).
-//!       - \ref arm::VecS - 32-bit SIMD register.
-//!       - \ref arm::VecD - 64-bit SIMD register.
-//!       - \ref arm::VecV - 128-bit SIMD register.
+//!   - AArch32:
+//!     - \ref a32::Gp - 32-bit general purpose register used by AArch32:
+//!     - \ref a32::Vec - Vector (SIMD) register.
+//!
+//!   - AArch64:
+//!     - \ref a64::Gp - 32-bit or 64-bit general purpose register used by AArch64:
+//!     - \ref a64::Vec - Vector (SIMD) register.
 //!
 //! ### Memory Operands
 //!
@@ -68,9 +67,11 @@
 //!   - \ref arm::DataType - Data type that is part of an instruction in AArch32 mode.
 //!   - \ref arm::Utils - Utilities that can help during code generation for AArch32 and AArch64.
 
-#include "./core.h"
-#include "./arm/armglobals.h"
-#include "./arm/armoperand.h"
-#include "./arm/armutils.h"
+#include "core.h"
+
+#include "asmjit-scope-begin.h"
+#include "arm/armglobals.h"
+#include "arm/armutils.h"
+#include "asmjit-scope-end.h"
 
 #endif // ASMJIT_ARM_H_INCLUDED

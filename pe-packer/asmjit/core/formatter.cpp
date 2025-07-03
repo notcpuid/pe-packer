@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -32,6 +32,26 @@ class VirtReg;
 
 namespace Formatter {
 
+Error formatVirtRegName(String& sb, const VirtReg* vReg) noexcept {
+  if (vReg->nameSize()) {
+    return sb.append(vReg->name(), vReg->nameSize());
+  }
+  else {
+    return sb.appendFormat("%%%u", unsigned(Operand::virtIdToIndex(vReg->id())));
+  }
+}
+
+Error formatVirtRegNameWithPrefix(String& sb, const char* prefix, size_t prefixSize, const VirtReg* vReg) noexcept {
+  ASMJIT_PROPAGATE(sb.append(prefix, prefixSize));
+
+  if (vReg->nameSize()) {
+    return sb.append(vReg->name(), vReg->nameSize());
+  }
+  else {
+    return sb.appendFormat("%%%u", unsigned(Operand::virtIdToIndex(vReg->id())));
+  }
+}
+
 static const char wordNameTable[][8] = {
   "db",
   "dw",
@@ -51,13 +71,15 @@ static const char wordNameTable[][8] = {
 
 
 Error formatTypeId(String& sb, TypeId typeId) noexcept {
-  if (typeId == TypeId::kVoid)
+  if (typeId == TypeId::kVoid) {
     return sb.append("void");
+  }
 
-  if (!TypeUtils::isValid(typeId))
+  if (!TypeUtils::isValid(typeId)) {
     return sb.append("unknown");
+  }
 
-  const char* typeName = "unknown";
+  const char* typeName = nullptr;
   uint32_t typeSize = TypeUtils::sizeOf(typeId);
   TypeId scalarType = TypeUtils::scalarOf(typeId);
 
@@ -103,13 +125,15 @@ Error formatFeature(
   uint32_t featureId) noexcept {
 
 #if !defined(ASMJIT_NO_X86)
-  if (Environment::isFamilyX86(arch))
+  if (Environment::isFamilyX86(arch)) {
     return x86::FormatterInternal::formatFeature(sb, featureId);
+  }
 #endif
 
 #if !defined(ASMJIT_NO_AARCH64)
-  if (Environment::isFamilyARM(arch))
+  if (Environment::isFamilyARM(arch)) {
     return arm::FormatterInternal::formatFeature(sb, featureId);
+  }
 #endif
 
   return kErrorInvalidArch;
@@ -124,28 +148,31 @@ Error formatLabel(
   DebugUtils::unused(formatFlags);
 
   if (emitter && emitter->code()) {
-    const LabelEntry* le = emitter->code()->labelEntry(labelId);
-    if (ASMJIT_UNLIKELY(!le))
+    CodeHolder* code = emitter->code();
+    if (ASMJIT_UNLIKELY(!code->isLabelValid(labelId))) {
       return sb.appendFormat("<InvalidLabel:%u>", labelId);
+    }
 
-    if (le->hasName()) {
-      if (le->hasParent()) {
-        uint32_t parentId = le->parentId();
-        const LabelEntry* pe = emitter->code()->labelEntry(parentId);
+    const LabelEntry& le = code->labelEntry(labelId);
+    if (le.hasName()) {
+      if (le.hasParent()) {
+        uint32_t parentId = le.parentId();
+        const LabelEntry& pe = code->labelEntry(parentId);
 
-        if (ASMJIT_UNLIKELY(!pe))
-          ASMJIT_PROPAGATE(sb.appendFormat("<InvalidLabel:%u>", labelId));
-        else if (ASMJIT_UNLIKELY(!pe->hasName()))
+        if (pe.hasName()) {
+          ASMJIT_PROPAGATE(sb.append(pe.name()));
+        }
+        else {
           ASMJIT_PROPAGATE(sb.appendFormat("L%u", parentId));
-        else
-          ASMJIT_PROPAGATE(sb.append(pe->name()));
+        }
 
         ASMJIT_PROPAGATE(sb.append('.'));
       }
 
-      if (le->type() == LabelType::kAnonymous)
+      if (le.labelType() == LabelType::kAnonymous) {
         ASMJIT_PROPAGATE(sb.appendFormat("L%u@", labelId));
-      return sb.append(le->name());
+      }
+      return sb.append(le.name());
     }
   }
 
@@ -161,13 +188,15 @@ Error formatRegister(
   uint32_t regId) noexcept {
 
 #if !defined(ASMJIT_NO_X86)
-  if (Environment::isFamilyX86(arch))
+  if (Environment::isFamilyX86(arch)) {
     return x86::FormatterInternal::formatRegister(sb, formatFlags, emitter, arch, regType, regId);
+  }
 #endif
 
 #if !defined(ASMJIT_NO_AARCH64)
-  if (Environment::isFamilyAArch64(arch))
-    return a64::FormatterInternal::formatRegister(sb, formatFlags, emitter, arch, regType, regId);
+  if (Environment::isFamilyARM(arch)) {
+    return arm::FormatterInternal::formatRegister(sb, formatFlags, emitter, arch, regType, regId);
+  }
 #endif
 
   return kErrorInvalidArch;
@@ -181,13 +210,15 @@ Error formatOperand(
   const Operand_& op) noexcept {
 
 #if !defined(ASMJIT_NO_X86)
-  if (Environment::isFamilyX86(arch))
+  if (Environment::isFamilyX86(arch)) {
     return x86::FormatterInternal::formatOperand(sb, formatFlags, emitter, arch, op);
+  }
 #endif
 
 #if !defined(ASMJIT_NO_AARCH64)
-  if (Environment::isFamilyAArch64(arch))
-    return a64::FormatterInternal::formatOperand(sb, formatFlags, emitter, arch, op);
+  if (Environment::isFamilyARM(arch)) {
+    return arm::FormatterInternal::formatOperand(sb, formatFlags, emitter, arch, op);
+  }
 #endif
 
   return kErrorInvalidArch;
@@ -201,12 +232,14 @@ ASMJIT_API Error formatDataType(
 {
   DebugUtils::unused(formatFlags);
 
-  if (ASMJIT_UNLIKELY(uint32_t(arch) > uint32_t(Arch::kMaxValue)))
+  if (ASMJIT_UNLIKELY(uint32_t(arch) > uint32_t(Arch::kMaxValue))) {
     return DebugUtils::errored(kErrorInvalidArch);
+  }
 
   uint32_t typeSize = TypeUtils::sizeOf(typeId);
-  if (typeSize == 0 || typeSize > 8)
+  if (typeSize == 0 || typeSize > 8) {
     return DebugUtils::errored(kErrorInvalidState);
+  }
 
   uint32_t typeSizeLog2 = Support::ctz(typeSize);
   return sb.append(wordNameTable[size_t(ArchTraits::byArch(arch).typeNameIdByIndex(typeSizeLog2))]);
@@ -220,14 +253,15 @@ static Error formatDataHelper(String& sb, const char* typeName, uint32_t typeSiz
   for (size_t i = 0; i < itemCount; i++) {
     uint64_t v = 0;
 
-    if (i != 0)
+    if (i != 0) {
       ASMJIT_PROPAGATE(sb.append(", ", 2));
+    }
 
     switch (typeSize) {
       case 1: v = data[0]; break;
-      case 2: v = Support::readU16u(data); break;
-      case 4: v = Support::readU32u(data); break;
-      case 8: v = Support::readU64u(data); break;
+      case 2: v = Support::loadu_u16(data); break;
+      case 4: v = Support::loadu_u32(data); break;
+      case 8: v = Support::loadu_u64(data); break;
     }
 
     ASMJIT_PROPAGATE(sb.appendUInt(v, 16, typeSize * 2, StringFormatFlags::kAlternate));
@@ -241,16 +275,18 @@ Error formatData(
   String& sb,
   FormatFlags formatFlags,
   Arch arch,
-  TypeId typeId, const void* data, size_t itemCount, size_t repeatCount) noexcept
-{
+  TypeId typeId, const void* data, size_t itemCount, size_t repeatCount
+) noexcept {
   DebugUtils::unused(formatFlags);
 
-  if (ASMJIT_UNLIKELY(!Environment::isDefinedArch(arch)))
+  if (ASMJIT_UNLIKELY(!Environment::isDefinedArch(arch))) {
     return DebugUtils::errored(kErrorInvalidArch);
+  }
 
   uint32_t typeSize = TypeUtils::sizeOf(typeId);
-  if (typeSize == 0)
+  if (typeSize == 0) {
     return DebugUtils::errored(kErrorInvalidState);
+  }
 
   if (!Support::isPowerOf2(typeSize)) {
     itemCount *= typeSize;
@@ -265,8 +301,9 @@ Error formatData(
   uint32_t typeSizeLog2 = Support::ctz(typeSize);
   const char* wordName = wordNameTable[size_t(ArchTraits::byArch(arch).typeNameIdByIndex(typeSizeLog2))];
 
-  if (repeatCount > 1)
+  if (repeatCount > 1) {
     ASMJIT_PROPAGATE(sb.appendFormat(".repeat %zu ", repeatCount));
+  }
 
   return formatDataHelper(sb, wordName, typeSize, static_cast<const uint8_t*>(data), itemCount);
 }
@@ -279,13 +316,15 @@ Error formatInstruction(
   const BaseInst& inst, const Operand_* operands, size_t opCount) noexcept {
 
 #if !defined(ASMJIT_NO_X86)
-  if (Environment::isFamilyX86(arch))
+  if (Environment::isFamilyX86(arch)) {
     return x86::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands, opCount);
+  }
 #endif
 
 #if !defined(ASMJIT_NO_AARCH64)
-  if (Environment::isFamilyARM(arch))
+  if (Environment::isFamilyAArch64(arch)) {
     return a64::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands, opCount);
+  }
 #endif
 
   return kErrorInvalidArch;
@@ -301,8 +340,9 @@ static Error formatFuncValue(String& sb, FormatFlags formatFlags, const BaseEmit
   if (value.isAssigned()) {
     ASMJIT_PROPAGATE(sb.append('@'));
 
-    if (value.isIndirect())
+    if (value.isIndirect()) {
       ASMJIT_PROPAGATE(sb.append('['));
+    }
 
     // NOTE: It should be either reg or stack, but never both. We
     // use two IFs on purpose so if the FuncValue is both it would
@@ -315,8 +355,9 @@ static Error formatFuncValue(String& sb, FormatFlags formatFlags, const BaseEmit
       ASMJIT_PROPAGATE(sb.appendFormat("[%d]", int(value.stackOffset())));
     }
 
-    if (value.isIndirect())
+    if (value.isIndirect()) {
       ASMJIT_PROPAGATE(sb.append(']'));
+    }
   }
 
   return kErrorOk;
@@ -330,19 +371,23 @@ static Error formatFuncValuePack(
   const RegOnly* vRegs) noexcept {
 
   size_t count = pack.count();
-  if (!count)
+  if (!count) {
     return sb.append("void");
+  }
 
-  if (count > 1)
-    sb.append('[');
+  if (count > 1) {
+    ASMJIT_PROPAGATE(sb.append('['));
+  }
 
   for (uint32_t valueIndex = 0; valueIndex < count; valueIndex++) {
     const FuncValue& value = pack[valueIndex];
-    if (!value)
+    if (!value) {
       break;
+    }
 
-    if (valueIndex)
+    if (valueIndex) {
       ASMJIT_PROPAGATE(sb.append(", "));
+    }
 
     ASMJIT_PROPAGATE(formatFuncValue(sb, formatFlags, cc, value));
 
@@ -350,15 +395,24 @@ static Error formatFuncValuePack(
       const VirtReg* virtReg = nullptr;
       static const char nullReg[] = "<none>";
 
-      if (vRegs[valueIndex].isReg() && cc->isVirtIdValid(vRegs[valueIndex].id()))
+      if (vRegs[valueIndex].isReg() && cc->isVirtIdValid(vRegs[valueIndex].id())) {
         virtReg = cc->virtRegById(vRegs[valueIndex].id());
+      }
 
-      ASMJIT_PROPAGATE(sb.appendFormat(" %s", virtReg ? virtReg->name() : nullReg));
+      ASMJIT_PROPAGATE(sb.append(' '));
+
+      if (virtReg) {
+        ASMJIT_PROPAGATE(Formatter::formatVirtRegName(sb, virtReg));
+      }
+      else {
+        ASMJIT_PROPAGATE(sb.append(nullReg, sizeof(nullReg) - 1));
+      }
     }
   }
 
-  if (count > 1)
-    sb.append(']');
+  if (count > 1) {
+    ASMJIT_PROPAGATE(sb.append(']'));
+  }
 
   return kErrorOk;
 }
@@ -380,13 +434,14 @@ static Error formatFuncArgs(
   const FuncNode::ArgPack* argPacks) noexcept {
 
   uint32_t argCount = fd.argCount();
-  if (!argCount)
+  if (!argCount) {
     return sb.append("void");
+  }
 
   for (uint32_t argIndex = 0; argIndex < argCount; argIndex++) {
-    if (argIndex)
+    if (argIndex) {
       ASMJIT_PROPAGATE(sb.append(", "));
-
+    }
     ASMJIT_PROPAGATE(formatFuncValuePack(sb, formatFlags, cc, fd.argPack(argIndex), argPacks[argIndex]._data));
   }
 
@@ -400,8 +455,9 @@ Error formatNode(
   const BaseBuilder* builder,
   const BaseNode* node) noexcept {
 
-  if (node->hasPosition() && formatOptions.hasFlag(FormatFlags::kPositions))
+  if (node->hasPosition() && formatOptions.hasFlag(FormatFlags::kPositions)) {
     ASMJIT_PROPAGATE(sb.appendFormat("<%05u> ", node->position()));
+  }
 
   size_t startLineIndex = sb.size();
 
@@ -417,8 +473,8 @@ Error formatNode(
 
     case NodeType::kSection: {
       const SectionNode* sectionNode = node->as<SectionNode>();
-      if (builder->_code->isSectionValid(sectionNode->id())) {
-        const Section* section = builder->_code->sectionById(sectionNode->id());
+      if (builder->_code->isSectionValid(sectionNode->sectionId())) {
+        const Section* section = builder->_code->sectionById(sectionNode->sectionId());
         ASMJIT_PROPAGATE(sb.appendFormat(".section %s", section->name()));
       }
       break;
@@ -514,7 +570,7 @@ Error formatNode(
       ASMJIT_PROPAGATE(sb.append("[FuncRet]"));
 
       for (uint32_t i = 0; i < 2; i++) {
-        const Operand_& op = retNode->_opArray[i];
+        const Operand_& op = retNode->op(i);
         if (!op.isNone()) {
           ASMJIT_PROPAGATE(sb.append(i == 0 ? " " : ", "));
           ASMJIT_PROPAGATE(formatOperand(sb, formatOptions.flags(), builder, builder->arch(), op));
@@ -542,8 +598,9 @@ Error formatNode(
     size_t requiredPadding = paddingFromOptions(formatOptions, FormatPaddingGroup::kRegularLine);
     size_t currentPadding = sb.size() - startLineIndex;
 
-    if (currentPadding < requiredPadding)
+    if (currentPadding < requiredPadding) {
       ASMJIT_PROPAGATE(sb.appendChars(' ', requiredPadding - currentPadding));
+    }
 
     ASMJIT_PROPAGATE(sb.append("; "));
     ASMJIT_PROPAGATE(sb.append(node->inlineComment()));

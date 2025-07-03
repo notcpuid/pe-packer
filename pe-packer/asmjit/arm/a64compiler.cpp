@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -18,17 +18,18 @@ ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 
 Compiler::Compiler(CodeHolder* code) noexcept : BaseCompiler() {
   _archMask = uint64_t(1) << uint32_t(Arch::kAArch64);
-  assignEmitterFuncs(this);
+  initEmitterFuncs(this);
 
-  if (code)
+  if (code) {
     code->attach(this);
+  }
 }
 Compiler::~Compiler() noexcept {}
 
 // a64::Compiler - Events
 // ======================
 
-Error Compiler::onAttach(CodeHolder* code) noexcept {
+Error Compiler::onAttach(CodeHolder& code) noexcept {
   ASMJIT_PROPAGATE(Base::onAttach(code));
   Error err = addPassT<ARMRAPass>();
 
@@ -37,11 +38,22 @@ Error Compiler::onAttach(CodeHolder* code) noexcept {
     return err;
   }
 
+  _instructionAlignment = uint8_t(4);
+  updateEmitterFuncs(this);
+
   return kErrorOk;
 }
 
-Error Compiler::onDetach(CodeHolder* code) noexcept {
+Error Compiler::onDetach(CodeHolder& code) noexcept {
   return Base::onDetach(code);
+}
+
+Error Compiler::onReinit(CodeHolder& code) noexcept {
+  Error err = Base::onReinit(code);
+  if (err == kErrorOk) {
+    err = addPassT<ARMRAPass>();
+  }
+  return err;
 }
 
 // a64::Compiler - Finalize

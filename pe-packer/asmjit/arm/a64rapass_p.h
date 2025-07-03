@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_A64RAPASS_P_H_INCLUDED
@@ -29,9 +29,14 @@ ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 class ARMRAPass : public BaseRAPass {
 public:
   ASMJIT_NONCOPYABLE(ARMRAPass)
-  typedef BaseRAPass Base;
+  using Base = BaseRAPass;
+
+  //! \name Members
+  //! \{
 
   EmitHelper _emitHelper;
+
+  //! \}
 
   //! \name Construction & Destruction
   //! \{
@@ -45,9 +50,11 @@ public:
   //! \{
 
   //! Returns the compiler casted to `arm::Compiler`.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Compiler* cc() const noexcept { return static_cast<Compiler*>(_cb); }
 
   //! Returns emit helper.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG EmitHelper* emitHelper() noexcept { return &_emitHelper; }
 
   //! \}

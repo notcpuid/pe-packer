@@ -1,11 +1,12 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_X86_X86INSTDB_P_H_INCLUDED
 #define ASMJIT_X86_X86INSTDB_P_H_INCLUDED
 
+#include "../core/instdb_p.h"
 #include "../x86/x86instdb.h"
 
 ASMJIT_BEGIN_SUB_NAMESPACE(x86)
@@ -16,7 +17,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 
 namespace InstDB {
 
-//! Instruction encoding (X86).
+//! Instruction encoding (X86|X86_64).
 //!
 //! This is a specific identifier that is used by AsmJit to describe the way each instruction is encoded. Some
 //! encodings are special only for a single instruction as X86 instruction set contains a lot of legacy encodings,
@@ -38,11 +39,11 @@ enum EncodingId : uint32_t {
   kEncodingX86M_GPB,                     //!< X86 [M] (handles single-byte size).
   kEncodingX86M_GPB_MulDiv,              //!< X86 [M] (like GPB, handles implicit|explicit MUL|DIV|IDIV).
   kEncodingX86M_Only,                    //!< X86 [M] (restricted to memory operand of any size).
-  kEncodingX86M_Only_EDX_EAX,            //!< X86 [M] (memory operand only, followed by implicit <edx> and <eax>).
+  kEncodingX86M_Only_EDX_EAX,            //!< X86 [M] (memory operand only, followed by implicit `EDX` and `EAX`).
   kEncodingX86M_Nop,                     //!< X86 [M] (special case of NOP instruction).
   kEncodingX86R_Native,                  //!< X86 [R] (register must be either 32-bit or 64-bit depending on arch).
   kEncodingX86R_FromM,                   //!< X86 [R] - which specifies memory address.
-  kEncodingX86R32_EDX_EAX,               //!< X86 [R32] followed by implicit EDX and EAX.
+  kEncodingX86R32_EDX_EAX,               //!< X86 [R32] followed by implicit `EDX` and `EAX`.
   kEncodingX86Rm,                        //!< X86 [RM] (doesn't handle single-byte size).
   kEncodingX86Rm_Raw66H,                 //!< X86 [RM] (used by LZCNT, POPCNT, and TZCNT).
   kEncodingX86Rm_NoSize,                 //!< X86 [RM] (doesn't add REX.W prefix if 64-bit reg is used).
@@ -75,6 +76,7 @@ enum EncodingId : uint32_t {
   kEncodingX86Out,                       //!< X86 out.
   kEncodingX86Outs,                      //!< X86 out[b|w|d].
   kEncodingX86Push,                      //!< X86 push.
+  kEncodingX86Pushw,                     //!< X86 pushw.
   kEncodingX86Pop,                       //!< X86 pop.
   kEncodingX86Ret,                       //!< X86 ret.
   kEncodingX86Rot,                       //!< X86 rcl, rcr, rol, ror, sal, sar, shl, shr.
@@ -120,7 +122,6 @@ enum EncodingId : uint32_t {
   kEncodingVexKmov,                      //!< VEX [RM|MR] (used by kmov[b|w|d|q]).
   kEncodingVexR_Wx,                      //!< VEX|EVEX [R] (propagatex VEX.W if GPQ used).
   kEncodingVexM,                         //!< VEX|EVEX [M].
-  kEncodingVexM_VM,                      //!< VEX|EVEX [M] (propagates VEX|EVEX.L, VSIB support).
   kEncodingVexMr_Lx,                     //!< VEX|EVEX [MR] (propagates VEX|EVEX.L if YMM used).
   kEncodingVexMr_VM,                     //!< VEX|EVEX [MR] (VSIB support).
   kEncodingVexMri,                       //!< VEX|EVEX [MRI].
@@ -134,7 +135,6 @@ enum EncodingId : uint32_t {
   kEncodingVexRm_Lx_Narrow,              //!< VEX|EVEX [RM] (the destination vector size is narrowed).
   kEncodingVexRm_Lx_Bcst,                //!< VEX|EVEX [RM] (can handle broadcast r32/r64).
   kEncodingVexRm_VM,                     //!< VEX|EVEX [RM] (propagates VEX|EVEX.L, VSIB support).
-  kEncodingVexRm_T1_4X,                  //!<     EVEX [RM] (used by NN instructions that use RM-T1_4X encoding).
   kEncodingVexRmi,                       //!< VEX|EVEX [RMI].
   kEncodingVexRmi_Wx,                    //!< VEX|EVEX [RMI] (propagates VEX|EVEX.W if GPQ used).
   kEncodingVexRmi_Lx,                    //!< VEX|EVEX [RMI] (propagates VEX|EVEX.L if YMM used).
@@ -199,17 +199,6 @@ struct AdditionalInfo {
 
   inline const uint8_t* featuresBegin() const noexcept { return _features; }
   inline const uint8_t* featuresEnd() const noexcept { return _features + ASMJIT_ARRAY_SIZE(_features); }
-};
-
-// ${NameLimits:Begin}
-// ------------------- Automatically generated, do not edit -------------------
-enum : uint32_t { kMaxNameSize = 17 };
-// ----------------------------------------------------------------------------
-// ${NameLimits:End}
-
-struct InstNameIndex {
-  uint16_t start;
-  uint16_t end;
 };
 
 struct RWInfo {
@@ -297,9 +286,21 @@ extern const uint32_t _mainOpcodeTable[];
 extern const uint32_t _altOpcodeTable[];
 
 #ifndef ASMJIT_NO_TEXT
-extern const uint32_t _instNameIndexTable[];
+
+extern const InstNameIndex instNameIndex;
 extern const char _instNameStringTable[];
-extern const InstNameIndex instNameIndex[26];
+extern const uint32_t _instNameIndexTable[];
+
+extern const char _aliasNameStringTable[];
+extern const uint32_t _aliasNameIndexTable[];
+extern const uint32_t _aliasIndexToInstId[];
+
+// ${NameDataInfo:Begin}
+// ------------------- Automatically generated, do not edit -------------------
+static constexpr uint32_t kAliasTableSize = 44;
+// ----------------------------------------------------------------------------
+// ${NameDataInfo:End}
+
 #endif // !ASMJIT_NO_TEXT
 
 extern const AdditionalInfo _additionalInfoTable[];

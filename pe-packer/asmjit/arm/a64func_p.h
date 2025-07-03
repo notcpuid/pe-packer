@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_A64FUNC_P_H_INCLUDED
@@ -21,7 +21,7 @@ namespace FuncInternal {
 Error initCallConv(CallConv& cc, CallConvId ccId, const Environment& environment) noexcept;
 
 //! Initialize `FuncDetail` (AArch64 specific).
-Error initFuncDetail(FuncDetail& func, const FuncSignature& signature, uint32_t registerSize) noexcept;
+Error initFuncDetail(FuncDetail& func, const FuncSignature& signature) noexcept;
 
 } // {FuncInternal}
 

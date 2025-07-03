@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_ZONESTRING_H_INCLUDED
@@ -63,10 +63,8 @@ public:
   //! \name Constants
   //! \{
 
-  enum : uint32_t {
-    kWholeSize = (N > sizeof(ZoneStringBase)) ? uint32_t(N) : uint32_t(sizeof(ZoneStringBase)),
-    kMaxEmbeddedSize = kWholeSize - 5
-  };
+  static inline constexpr uint32_t kWholeSize = (N > sizeof(ZoneStringBase)) ? uint32_t(N) : uint32_t(sizeof(ZoneStringBase));
+  static inline constexpr uint32_t kMaxEmbeddedSize = kWholeSize - 5;
 
   //! \}
 
@@ -92,14 +90,19 @@ public:
   //! \{
 
   //! Tests whether the string is empty.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return _base._size == 0; }
 
   //! Returns the string data.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const char* data() const noexcept { return _base._size <= kMaxEmbeddedSize ? _base._embedded : _base._external; }
+
   //! Returns the string size.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t size() const noexcept { return _base._size; }
 
   //! Tests whether the string is embedded (e.g. no dynamically allocated).
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isEmbedded() const noexcept { return _base._size <= kMaxEmbeddedSize; }
 
   //! Copies a new `data` of the given `size` to the string.

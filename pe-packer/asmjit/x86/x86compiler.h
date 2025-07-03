@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_X86_X86COMPILER_H_INCLUDED
@@ -31,36 +31,35 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! // Signature of the generated function.
-//! typedef int (*Func)(void);
-//!
 //! int main() {
-//!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
-//!   CodeHolder code;                  // Holds code and relocation information.
+//!   using Func = int (*)(void);              // Signature of the generated function.
 //!
-//!   code.init(rt.environment(),       // Initialize code to match the JIT environment.
+//!   JitRuntime rt;                           // Runtime specialized for JIT code execution.
+//!   CodeHolder code;                         // Holds code and relocation information.
+//!
+//!   code.init(rt.environment(),              // Initialize code to match the JIT environment.
 //!             rt.cpuFeatures());
-//!   x86::Compiler cc(&code);          // Create and attach x86::Compiler to code.
+//!   x86::Compiler cc(&code);                 // Create and attach x86::Compiler to code.
 //!
-//!   cc.addFunc(FuncSignatureT<int>());// Begin a function of `int fn(void)` signature.
+//!   cc.addFunc(FuncSignature::build<int>()); // Begin a function of `int fn(void)` signature.
 //!
-//!   x86::Gp vReg = cc.newGpd();       // Create a 32-bit general purpose register.
-//!   cc.mov(vReg, 1);                  // Move one to our virtual register `vReg`.
-//!   cc.ret(vReg);                     // Return `vReg` from the function.
+//!   x86::Gp vReg = cc.newGp32();             // Create a 32-bit general purpose register.
+//!   cc.mov(vReg, 1);                         // Move one to our virtual register `vReg`.
+//!   cc.ret(vReg);                            // Return `vReg` from the function.
 //!
-//!   cc.endFunc();                     // End of the function body.
-//!   cc.finalize();                    // Translate and assemble the whole 'cc' content.
+//!   cc.endFunc();                            // End of the function body.
+//!   cc.finalize();                           // Translate and assemble the whole 'cc' content.
 //!   // ----> x86::Compiler is no longer needed from here and can be destroyed <----
 //!
 //!   Func fn;
-//!   Error err = rt.add(&fn, &code);   // Add the generated code to the runtime.
-//!   if (err) return 1;                // Handle a possible error returned by AsmJit.
+//!   Error err = rt.add(&fn, &code);          // Add the generated code to the runtime.
+//!   if (err) return 1;                       // Handle a possible error returned by AsmJit.
 //!   // ----> CodeHolder is no longer needed from here and can be destroyed <----
 //!
-//!   int result = fn();                // Execute the generated code.
-//!   printf("%d\n", result);           // Print the resulting "1".
+//!   int result = fn();                       // Execute the generated code.
+//!   printf("%d\n", result);                  // Print the resulting "1".
 //!
-//!   rt.release(fn);                   // Explicitly remove the function from the runtime.
+//!   rt.release(fn);                          // Explicitly remove the function from the runtime.
 //!   return 0;
 //! }
 //! ```
@@ -76,53 +75,54 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! // Signature of the generated function.
-//! typedef void (*MemCpy32)(uint32_t* dst, const uint32_t* src, size_t count);
-//!
 //! int main() {
-//!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
-//!   CodeHolder code;                  // Holds code and relocation information.
+//!   // Signature of the generated function.
+//!   using MemCpy32 = void (*)(uint32_t* dst, const uint32_t* src, size_t count);
 //!
-//!   code.init(rt.environment(),       // Initialize code to match the JIT environment.
+//!   JitRuntime rt;                           // Runtime specialized for JIT code execution.
+//!   CodeHolder code;                         // Holds code and relocation information.
+//!
+//!   code.init(rt.environment(),              // Initialize code to match the JIT environment.
 //!             rt.cpuFeatures());
-//!   x86::Compiler cc(&code);          // Create and attach x86::Compiler to code.
+//!   x86::Compiler cc(&code);                 // Create and attach x86::Compiler to code.
 //!
-//!   FuncNode* funcNode = cc.addFunc(  // Begin the function of the following signature:
-//!     FuncSignatureT<void,            //   Return value - void      (no return value).
-//!       uint32_t*,                    //   1st argument - uint32_t* (machine reg-size).
-//!       const uint32_t*,              //   2nd argument - uint32_t* (machine reg-size).
-//!       size_t>());                   //   3rd argument - size_t    (machine reg-size).
+//!   FuncNode* funcNode = cc.addFunc     (    // Begin the function of the following signature:
+//!     FuncSignature::build<void,             //   Return value - void      (no return value).
+//!       uint32_t*,                           //   1st argument - uint32_t* (machine reg-size).
+//!       const uint32_t*,                     //   2nd argument - uint32_t* (machine reg-size).
+//!       size_t>());                          //   3rd argument - size_t    (machine reg-size).
 //!
-//!   Label L_Loop = cc.newLabel();     // Start of the loop.
-//!   Label L_Exit = cc.newLabel();     // Used to exit early.
+//!   Label L_Loop = cc.newLabel();            // Start of the loop.
+//!   Label L_Exit = cc.newLabel();            // Used to exit early.
 //!
-//!   x86::Gp dst = cc.newIntPtr("dst");// Create `dst` register (destination pointer).
-//!   x86::Gp src = cc.newIntPtr("src");// Create `src` register (source pointer).
-//!   x86::Gp i = cc.newUIntPtr("i");   // Create `i` register (loop counter).
+//!   x86::Gp dst = cc.newIntPtr("dst");       // Create `dst` register (destination pointer).
+//!   x86::Gp src = cc.newIntPtr("src");       // Create `src` register (source pointer).
+//!   x86::Gp i = cc.newUIntPtr("i");          // Create `i` register (loop counter).
 //!
-//!   funcNode->setArg(0, dst);         // Assign `dst` argument.
-//!   funcNode->setArg(1, src);         // Assign `src` argument.
-//!   funcNode->setArg(2, i);           // Assign `i` argument.
+//!   funcNode->setArg(0, dst);                // Assign `dst` argument.
+//!   funcNode->setArg(1, src);                // Assign `src` argument.
+//!   funcNode->setArg(2, i);                  // Assign `i` argument.
 //!
-//!   cc.test(i, i);                    // Early exit if length is zero.
+//!   cc.test(i, i);                           // Early exit if length is zero.
 //!   cc.jz(L_Exit);
 //!
-//!   cc.bind(L_Loop);                  // Bind the beginning of the loop here.
+//!   cc.bind(L_Loop);                         // Bind the beginning of the loop here.
 //!
-//!   x86::Gp tmp = cc.newInt32("tmp"); // Copy a single dword (4 bytes).
-//!   cc.mov(tmp, x86::dword_ptr(src)); // Load DWORD from [src] address.
-//!   cc.mov(x86::dword_ptr(dst), tmp); // Store DWORD to [dst] address.
+//!   x86::Gp tmp = cc.newInt32("tmp");        // Copy a single dword (4 bytes).
+//!   cc.mov(tmp, x86::dword_ptr(src));        // Load DWORD from [src] address.
+//!   cc.mov(x86::dword_ptr(dst), tmp);        // Store DWORD to [dst] address.
 //!
-//!   cc.add(src, 4);                   // Increment `src`.
-//!   cc.add(dst, 4);                   // Increment `dst`.
+//!   cc.add(src, 4);                          // Increment `src`.
+//!   cc.add(dst, 4);                          // Increment `dst`.
 //!
-//!   cc.dec(i);                        // Loop until `i` is non-zero.
+//!   cc.dec(i);                               // Loop until `i` is non-zero.
 //!   cc.jnz(L_Loop);
 //!
-//!   cc.bind(L_Exit);                  // Label used by early exit.
-//!   cc.endFunc();                     // End of the function body.
+//!   cc.bind(L_Exit);                         // Label used by early exit.
+//!   cc.endFunc();                            // End of the function body.
 //!
-//!   cc.finalize();                    // Translate and assemble the whole 'cc' content.
+//!   cc.finalize();                           // Translate and assemble the whole 'cc' content.
+//!
 //!   // ----> x86::Compiler is no longer needed from here and can be destroyed <----
 //!
 //!   // Add the generated code to the runtime.
@@ -130,8 +130,10 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   Error err = rt.add(&memcpy32, &code);
 //!
 //!   // Handle a possible error returned by AsmJit.
-//!   if (err)
+//!   if (err) {
 //!     return 1;
+//!   }
+//!
 //!   // ----> CodeHolder is no longer needed from here and can be destroyed <----
 //!
 //!   // Test the generated code.
@@ -139,8 +141,9 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   uint32_t output[6];
 //!   memcpy32(output, input, 6);
 //!
-//!   for (uint32_t i = 0; i < 6; i++)
+//!   for (uint32_t i = 0; i < 6; i++) {
 //!     printf("%d\n", output[i]);
+//!   }
 //!
 //!   rt.release(memcpy32);
 //!   return 0;
@@ -159,18 +162,17 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! // Signature of the generated function.
-//! typedef void (*Func)(void*);
-//!
 //! int main() {
-//!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
-//!   CodeHolder code;                  // Holds code and relocation information.
+//!   using Func = void (*)(void*);            // Signature of the generated function.
 //!
-//!   code.init(rt.environment(),       // Initialize code to match the JIT environment.
+//!   JitRuntime rt;                           // Runtime specialized for JIT code execution.
+//!   CodeHolder code;                         // Holds code and relocation information.
+//!
+//!   code.init(rt.environment(),              // Initialize code to match the JIT environment.
 //!             rt.cpuFeatures());
-//!   x86::Compiler cc(&code);          // Create and attach x86::Compiler to code.
+//!   x86::Compiler cc(&code);                 // Create and attach x86::Compiler to code.
 //!
-//!   FuncNode* funcNode = cc.addFunc(FuncSignatureT<void, void*>());
+//!   FuncNode* funcNode = cc.addFunc(FuncSignature::build<void, void*>());
 //!
 //!   // Use the following to enable AVX and/or AVX-512.
 //!   funcNode->frame().setAvxEnabled();
@@ -178,7 +180,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //!   // Do something with the input pointer.
 //!   x86::Gp addr = cc.newIntPtr("addr");
-//!   x86::Zmm vreg = cc.newZmm("vreg");
+//!   x86::Vec vreg = cc.newZmm("vreg");
 //!
 //!   funcNode->setArg(0, addr);
 //!
@@ -186,13 +188,13 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   cc.vpaddq(vreg, vreg, vreg);
 //!   cc.vmovdqu32(x86::ptr(addr), vreg);
 //!
-//!   cc.endFunc();                     // End of the function body.
-//!   cc.finalize();                    // Translate and assemble the whole 'cc' content.
+//!   cc.endFunc();                            // End of the function body.
+//!   cc.finalize();                           // Translate and assemble the whole 'cc' content.
 //!   // ----> x86::Compiler is no longer needed from here and can be destroyed <----
 //!
 //!   Func fn;
-//!   Error err = rt.add(&fn, &code);   // Add the generated code to the runtime.
-//!   if (err) return 1;                // Handle a possible error returned by AsmJit.
+//!   Error err = rt.add(&fn, &code);          // Add the generated code to the runtime.
+//!   if (err) return 1;                       // Handle a possible error returned by AsmJit.
 //!   // ----> CodeHolder is no longer needed from here and can be destroyed <----
 //!
 //!   // Execute the generated code and print some output.
@@ -200,7 +202,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   fn(data);
 //!   printf("%llu\n", (unsigned long long)data[0]);
 //!
-//!   rt.release(fn);                   // Explicitly remove the function from the runtime.
+//!   rt.release(fn);                          // Explicitly remove the function from the runtime.
 //!   return 0;
 //! }
 //! ```
@@ -218,52 +220,51 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! // Signature of the generated function.
-//! typedef uint32_t (*Fibonacci)(uint32_t x);
-//!
 //! int main() {
-//!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
-//!   CodeHolder code;                  // Holds code and relocation information.
+//!   using FibFn = uint32_t (*)(uint32_t x);  // Signature of the generated function.
 //!
-//!   code.init(rt.environment(),       // Initialize code to match the JIT environment.
+//!   JitRuntime rt;                           // Runtime specialized for JIT code execution.
+//!   CodeHolder code;                         // Holds code and relocation information.
+//!
+//!   code.init(rt.environment(),              // Initialize code to match the JIT environment.
 //!             rt.cpuFeatures());
-//!   x86::Compiler cc(&code);          // Create and attach x86::Compiler to code.
+//!   x86::Compiler cc(&code);                 // Create and attach x86::Compiler to code.
 //!
-//!   FuncNode* funcNode = cc.addFunc(  // Begin of the Fibonacci function, addFunc()
-//!     FuncSignatureT<int, int>());    // Returns a pointer to the FuncNode node.
+//!   FuncNode* funcNode = cc.addFunc(         // Begin of the Fibonacci function, addFunc()
+//!     FuncSignature::build<int, int>());     // Returns a pointer to the FuncNode node.
 //!
-//!   Label L_Exit = cc.newLabel()      // Exit label.
-//!   x86::Gp x = cc.newUInt32();       // Function x argument.
-//!   x86::Gp y = cc.newUInt32();       // Temporary.
+//!   Label L_Exit = cc.newLabel();            // Exit label.
+//!   x86::Gp x = cc.newUInt32();              // Function x argument.
+//!   x86::Gp y = cc.newUInt32();              // Temporary.
 //!
 //!   funcNode->setArg(0, x);
 //!
-//!   cc.cmp(x, 3);                     // Return x if less than 3.
+//!   cc.cmp(x, 3);                            // Return x if less than 3.
 //!   cc.jb(L_Exit);
 //!
-//!   cc.mov(y, x);                     // Make copy of the original x.
-//!   cc.dec(x);                        // Decrease x.
+//!   cc.mov(y, x);                            // Make copy of the original x.
+//!   cc.dec(x);                               // Decrease x.
 //!
-//!   InvokeNode* invokeNode;           // Function invocation:
-//!   cc.invoke(&invokeNode,            //   - InvokeNode (output).
-//!     funcNode->label(),              //   - Function address or Label.
-//!     FuncSignatureT<int, int>());    //   - Function signature.
+//!   InvokeNode* invokeNode;                  // Function invocation:
+//!   cc.invoke(&invokeNode,                   //   - InvokeNode (output).
+//!     funcNode->label(),                     //   - Function address or Label.
+//!     FuncSignature::build<int, int>());     //   - Function signature.
 //!
-//!   invokeNode->setArg(0, x);         // Assign x as the first argument.
-//!   invokeNode->setRet(0, x);         // Assign x as a return value as well.
+//!   invokeNode->setArg(0, x);                // Assign x as the first argument.
+//!   invokeNode->setRet(0, x);                // Assign x as a return value as well.
 //!
-//!   cc.add(x, y);                     // Combine the return value with y.
+//!   cc.add(x, y);                            // Combine the return value with y.
 //!
 //!   cc.bind(L_Exit);
-//!   cc.ret(x);                        // Return x.
-//!   cc.endFunc();                     // End of the function body.
+//!   cc.ret(x);                               // Return x.
+//!   cc.endFunc();                            // End of the function body.
 //!
-//!   cc.finalize();                    // Translate and assemble the whole 'cc' content.
+//!   cc.finalize();                           // Translate and assemble the whole 'cc' content.
 //!   // ----> x86::Compiler is no longer needed from here and can be destroyed <----
 //!
-//!   Fibonacci fib;
-//!   Error err = rt.add(&fib, &code);  // Add the generated code to the runtime.
-//!   if (err) return 1;                // Handle a possible error returned by AsmJit.
+//!   FibFn fib;
+//!   Error err = rt.add(&fib, &code);         // Add the generated code to the runtime.
+//!   if (err) return 1;                       // Handle a possible error returned by AsmJit.
 //!   // ----> CodeHolder is no longer needed from here and can be destroyed <----
 //!
 //!   // Test the generated code.
@@ -287,18 +288,17 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! // Signature of the generated function.
-//! typedef int (*Func)(void);
-//!
 //! int main() {
-//!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
-//!   CodeHolder code;                  // Holds code and relocation information.
+//!   using Func = int (*)(void);              // Signature of the generated function.
 //!
-//!   code.init(rt.environment(),       // Initialize code to match the JIT environment.
+//!   JitRuntime rt;                           // Runtime specialized for JIT code execution.
+//!   CodeHolder code;                         // Holds code and relocation information.
+//!
+//!   code.init(rt.environment(),              // Initialize code to match the JIT environment.
 //!             rt.cpuFeatures());
-//!   x86::Compiler cc(&code);          // Create and attach x86::Compiler to code.
+//!   x86::Compiler cc(&code);                 // Create and attach x86::Compiler to code.
 //!
-//!   cc.addFunc(FuncSignatureT<int>());// Create a function that returns int.
+//!   cc.addFunc(FuncSignature::build<int>()); // Create a function that returns int.
 //!
 //!   x86::Gp p = cc.newIntPtr("p");
 //!   x86::Gp i = cc.newIntPtr("i");
@@ -306,9 +306,9 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   // Allocate 256 bytes on the stack aligned to 4 bytes.
 //!   x86::Mem stack = cc.newStack(256, 4);
 //!
-//!   x86::Mem stackIdx(stack);         // Copy of stack with i added.
-//!   stackIdx.setIndex(i);             // stackIdx <- stack[i].
-//!   stackIdx.setSize(1);              // stackIdx <- byte ptr stack[i].
+//!   x86::Mem stackIdx(stack);                // Copy of stack with i added.
+//!   stackIdx.setIndex(i);                    // stackIdx <- stack[i].
+//!   stackIdx.setSize(1);                     // stackIdx <- byte ptr stack[i].
 //!
 //!   // Load a stack address to `p`. This step is purely optional and shows
 //!   // that `lea` is useful to load a memory operands address (even absolute)
@@ -321,12 +321,12 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   Label L1 = cc.newLabel();
 //!   Label L2 = cc.newLabel();
 //!
-//!   cc.bind(L1);                      // First loop, fill the stack.
-//!   cc.mov(stackIdx, i.r8());         // stack[i] = uint8_t(i).
+//!   cc.bind(L1);                             // First loop, fill the stack.
+//!   cc.mov(stackIdx, i.r8());                // stack[i] = uint8_t(i).
 //!
-//!   cc.inc(i);                        // i++;
-//!   cc.cmp(i, 256);                   // if (i < 256)
-//!   cc.jb(L1);                        //   goto L1;
+//!   cc.inc(i);                               // i++;
+//!   cc.cmp(i, 256);                          // if (i < 256)
+//!   cc.jb(L1);                               //   goto L1;
 //!
 //!   // Second loop, sum all bytes stored in `stack`.
 //!   x86::Gp sum = cc.newInt32("sum");
@@ -337,25 +337,25 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //!   cc.bind(L2);
 //!
-//!   cc.movzx(val, stackIdx);          // val = uint32_t(stack[i]);
-//!   cc.add(sum, val);                 // sum += val;
+//!   cc.movzx(val, stackIdx);                 // val = uint32_t(stack[i]);
+//!   cc.add(sum, val);                        // sum += val;
 //!
-//!   cc.inc(i);                        // i++;
-//!   cc.cmp(i, 256);                   // if (i < 256)
-//!   cc.jb(L2);                        //   goto L2;
+//!   cc.inc(i);                               // i++;
+//!   cc.cmp(i, 256);                          // if (i < 256)
+//!   cc.jb(L2);                               //   goto L2;
 //!
-//!   cc.ret(sum);                      // Return the `sum` of all values.
-//!   cc.endFunc();                     // End of the function body.
+//!   cc.ret(sum);                             // Return the `sum` of all values.
+//!   cc.endFunc();                            // End of the function body.
 //!
-//!   cc.finalize();                    // Translate and assemble the whole 'cc' content.
+//!   cc.finalize();                           // Translate and assemble the whole 'cc' content.
 //!   // ----> x86::Compiler is no longer needed from here and can be destroyed <----
 //!
 //!   Func func;
-//!   Error err = rt.add(&func, &code); // Add the generated code to the runtime.
-//!   if (err) return 1;                // Handle a possible error returned by AsmJit.
+//!   Error err = rt.add(&func, &code);        // Add the generated code to the runtime.
+//!   if (err) return 1;                       // Handle a possible error returned by AsmJit.
 //!   // ----> CodeHolder is no longer needed from here and can be destroyed <----
 //!
-//!   printf("Func() -> %d\n", func()); // Test the generated code.
+//!   printf("Func() -> %d\n", func());        // Test the generated code.
 //!
 //!   rt.release(func);
 //!   return 0;
@@ -380,10 +380,10 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //! using namespace asmjit;
 //!
 //! static void exampleUseOfConstPool(x86::Compiler& cc) {
-//!   cc.addFunc(FuncSignatureT<int>());
+//!   cc.addFunc(FuncSignature::build<int>());
 //!
-//!   x86::Gp v0 = cc.newGpd("v0");
-//!   x86::Gp v1 = cc.newGpd("v1");
+//!   x86::Gp v0 = cc.newGp32("v0");
+//!   x86::Gp v1 = cc.newGp32("v1");
 //!
 //!   x86::Mem c0 = cc.newInt32Const(ConstPoolScope::kLocal, 200);
 //!   x86::Mem c1 = cc.newInt32Const(ConstPoolScope::kLocal, 33);
@@ -414,11 +414,11 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //! using namespace asmjit;
 //!
 //! static void exampleUseOfIndirectJump(x86::Compiler& cc) {
-//!   FuncNode* funcNode = cc.addFunc(FuncSignatureT<float, float, float, uint32_t>(CallConvId::kHost));
+//!   FuncNode* funcNode = cc.addFunc(FuncSignature::build<float, float, float, uint32_t>());
 //!
 //!   // Function arguments
-//!   x86::Xmm a = cc.newXmmSs("a");
-//!   x86::Xmm b = cc.newXmmSs("b");
+//!   x86::Vec a = cc.newXmmSs("a");
+//!   x86::Vec b = cc.newXmmSs("b");
 //!   x86::Gp op = cc.newUInt32("op");
 //!
 //!   x86::Gp target = cc.newIntPtr("target");
@@ -488,7 +488,7 @@ class ASMJIT_VIRTAPI Compiler
     public EmitterExplicitT<Compiler> {
 public:
   ASMJIT_NONCOPYABLE(Compiler)
-  typedef BaseCompiler Base;
+  using Base = BaseCompiler;
 
   //! \name Construction & Destruction
   //! \{
@@ -542,7 +542,7 @@ public:
   template<typename RegT>
   ASMJIT_INLINE_NODEBUG RegT newSimilarReg(const RegT& ref) {
     RegT reg(Globals::NoInit);
-    _newReg(reg, ref);
+    _newReg(&reg, ref);
     return reg;
   }
 
@@ -569,22 +569,27 @@ public:
   ASMJIT_NEW_REG_TYPED(newIntPtr , Gp  , TypeId::kIntPtr)
   ASMJIT_NEW_REG_TYPED(newUIntPtr, Gp  , TypeId::kUIntPtr)
 
+  ASMJIT_NEW_REG_TYPED(newGp8    , Gp  , TypeId::kUInt8)
+  ASMJIT_NEW_REG_TYPED(newGp16   , Gp  , TypeId::kUInt16)
+  ASMJIT_NEW_REG_TYPED(newGp32   , Gp  , TypeId::kUInt32)
+  ASMJIT_NEW_REG_TYPED(newGp64   , Gp  , TypeId::kUInt64)
+
   ASMJIT_NEW_REG_TYPED(newGpb    , Gp  , TypeId::kUInt8)
   ASMJIT_NEW_REG_TYPED(newGpw    , Gp  , TypeId::kUInt16)
   ASMJIT_NEW_REG_TYPED(newGpd    , Gp  , TypeId::kUInt32)
   ASMJIT_NEW_REG_TYPED(newGpq    , Gp  , TypeId::kUInt64)
   ASMJIT_NEW_REG_TYPED(newGpz    , Gp  , TypeId::kUIntPtr)
-  ASMJIT_NEW_REG_TYPED(newXmm    , Xmm , TypeId::kInt32x4)
-  ASMJIT_NEW_REG_TYPED(newXmmSs  , Xmm , TypeId::kFloat32x1)
-  ASMJIT_NEW_REG_TYPED(newXmmSd  , Xmm , TypeId::kFloat64x1)
-  ASMJIT_NEW_REG_TYPED(newXmmPs  , Xmm , TypeId::kFloat32x4)
-  ASMJIT_NEW_REG_TYPED(newXmmPd  , Xmm , TypeId::kFloat64x2)
-  ASMJIT_NEW_REG_TYPED(newYmm    , Ymm , TypeId::kInt32x8)
-  ASMJIT_NEW_REG_TYPED(newYmmPs  , Ymm , TypeId::kFloat32x8)
-  ASMJIT_NEW_REG_TYPED(newYmmPd  , Ymm , TypeId::kFloat64x4)
-  ASMJIT_NEW_REG_TYPED(newZmm    , Zmm , TypeId::kInt32x16)
-  ASMJIT_NEW_REG_TYPED(newZmmPs  , Zmm , TypeId::kFloat32x16)
-  ASMJIT_NEW_REG_TYPED(newZmmPd  , Zmm , TypeId::kFloat64x8)
+  ASMJIT_NEW_REG_TYPED(newXmm    , Vec , TypeId::kInt32x4)
+  ASMJIT_NEW_REG_TYPED(newXmmSs  , Vec , TypeId::kFloat32x1)
+  ASMJIT_NEW_REG_TYPED(newXmmSd  , Vec , TypeId::kFloat64x1)
+  ASMJIT_NEW_REG_TYPED(newXmmPs  , Vec , TypeId::kFloat32x4)
+  ASMJIT_NEW_REG_TYPED(newXmmPd  , Vec , TypeId::kFloat64x2)
+  ASMJIT_NEW_REG_TYPED(newYmm    , Vec , TypeId::kInt32x8)
+  ASMJIT_NEW_REG_TYPED(newYmmPs  , Vec , TypeId::kFloat32x8)
+  ASMJIT_NEW_REG_TYPED(newYmmPd  , Vec , TypeId::kFloat64x4)
+  ASMJIT_NEW_REG_TYPED(newZmm    , Vec , TypeId::kInt32x16)
+  ASMJIT_NEW_REG_TYPED(newZmmPs  , Vec , TypeId::kFloat32x16)
+  ASMJIT_NEW_REG_TYPED(newZmmPd  , Vec , TypeId::kFloat64x8)
   ASMJIT_NEW_REG_TYPED(newMm     , Mm  , TypeId::kMmx64)
   ASMJIT_NEW_REG_TYPED(newKb     , KReg, TypeId::kMask8)
   ASMJIT_NEW_REG_TYPED(newKw     , KReg, TypeId::kMask16)
@@ -684,9 +689,9 @@ public:
   //! Return from function.
   ASMJIT_INLINE_NODEBUG Error ret() { return addRet(Operand(), Operand()); }
   //! \overload
-  ASMJIT_INLINE_NODEBUG Error ret(const BaseReg& o0) { return addRet(o0, Operand()); }
+  ASMJIT_INLINE_NODEBUG Error ret(const Reg& o0) { return addRet(o0, Operand()); }
   //! \overload
-  ASMJIT_INLINE_NODEBUG Error ret(const BaseReg& o0, const BaseReg& o1) { return addRet(o0, o1); }
+  ASMJIT_INLINE_NODEBUG Error ret(const Reg& o0, const Reg& o1) { return addRet(o0, o1); }
 
   //! \}
 
@@ -696,7 +701,7 @@ public:
   using EmitterExplicitT<Compiler>::jmp;
 
   //! Adds a jump to the given `target` with the provided jump `annotation`.
-  ASMJIT_INLINE_NODEBUG Error jmp(const BaseReg& target, JumpAnnotation* annotation) { return emitAnnotatedJump(Inst::kIdJmp, target, annotation); }
+  ASMJIT_INLINE_NODEBUG Error jmp(const Reg& target, JumpAnnotation* annotation) { return emitAnnotatedJump(Inst::kIdJmp, target, annotation); }
   //! \overload
   ASMJIT_INLINE_NODEBUG Error jmp(const BaseMem& target, JumpAnnotation* annotation) { return emitAnnotatedJump(Inst::kIdJmp, target, annotation); }
 
@@ -705,8 +710,9 @@ public:
   //! \name Events
   //! \{
 
-  ASMJIT_API Error onAttach(CodeHolder* code) noexcept override;
-  ASMJIT_API Error onDetach(CodeHolder* code) noexcept override;
+  ASMJIT_API Error onAttach(CodeHolder& code) noexcept override;
+  ASMJIT_API Error onDetach(CodeHolder& code) noexcept override;
+  ASMJIT_API Error onReinit(CodeHolder& code) noexcept override;
 
   //! \}
 

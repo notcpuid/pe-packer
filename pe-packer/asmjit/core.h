@@ -1,7 +1,26 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
+// Official GitHub Repository: https://github.com/asmjit/asmjit
+//
+// Copyright (c) 2008-2025 The AsmJit Authors
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+
 
 #ifndef ASMJIT_CORE_H_INCLUDED
 #define ASMJIT_CORE_H_INCLUDED
@@ -17,7 +36,7 @@ namespace asmjit {
 //! functionality is within \ref asmjit namespace and architecture specific functionality is always in its own
 //! namespace. For example \ref asmjit::x86 provides both 32-bit and 64-bit X86 code generation.
 //!
-//! \section main_groups Documentation Groups
+//! \section doc_groups Documentation Groups
 //!
 //! AsmJit documentation is structured into groups. Groups can be followed in order to learn AsmJit, but knowledge
 //! from multiple groups is required to use AsmJit properly:
@@ -78,7 +97,7 @@ namespace asmjit {
 //! output from \ref Logger is always necessary when filling bug reports. In other words, using logging and proper error
 //! handling can save a lot of time during the development and can also save users from submitting issues.
 //!
-//! \section main_other Other Pages
+//! \section other_pages Other Pages
 //!
 //!   - <a href="annotated.html">Class List</a> - List of classes sorted alphabetically
 //!   - <a href="namespaceasmjit.html">AsmJit Namespace</a> - List of symbols provided by `asmjit` namespace
@@ -96,35 +115,37 @@ namespace asmjit {
 //! your project and to define \ref ASMJIT_STATIC. AsmJit can be just updated from time to time without any changes to
 //! this integration process. Do not embed AsmJit's `test` files in such case as these are used exclusively for testing.
 //!
+//! \section supported_environment Supported Operating Systems, Compilers, and Build Tools
+//!
 //! ### Supported C++ Compilers
 //!
 //!   - Requirements:
 //!
-//!     - AsmJit won't build without C++11 enabled. If you use older GCC or Clang you would have to enable at least
-//!       C++11 standard through compiler flags.
+//!     - AsmJit won't build without C++17 enabled. If you use older GCC or Clang you would have to enable at least
+//!       C++17 standard through compiler flags.
 //!
 //!   - Tested:
 //!
-//!     - **Clang** - Tested by GitHub Actions - Clang 10+ is officially supported and tested by CI, older Clang versions
-//!       having C++11 should work, but are not tested anymore due to upgraded CI images.
+//!     - **Clang** - Tested by GitHub Actions - Clang 14+ is officially supported and tested by CI, older Clang versions
+//!       having C++17 should work, but these versions are not tested anymore due to upgraded CI images.
 //!
-//!     - **GNU** - Tested by GitHub Actions - GCC 7+ is officially supported, older GCC versions from 4.8+ having C++11
-//!       enabled should also work, but are not tested anymore due to upgraded CI images.
+//!     - **GNU** - Tested by GitHub Actions - GCC 9+ is officially supported and tested by CI, older GCC versions such
+//!       as GCC 7 should work, but these versions are not tested anymore due to upgraded CI images.
 //!
-//!     - **MINGW** - Reported to work, but not tested in our CI environment (help welcome).
+//!     - **MINGW** - Reported to work, but not tested in our CI environment (help welcome!).
 //!
-//!     - **MSVC** - Tested by GitHub Actions - VS2019+ is officially supported, VS2015 and VS2017 is reported to work,
-//!       but not tested by CI anymore.
+//!     - **MSVC** - Tested by GitHub Actions - VS2022 and onwards are officially supported and tested by CI, VS2015,
+//!       VS2017, and VS2019 are not tested anymore due to upgraded CI images. VS2019 should work well.
 //!
 //! ### Supported Operating Systems and Platforms
 //!
 //!   - Tested:
 //!
 //!     - **BSD** - FreeBSD, NetBSD, and OpenBSD tested by GitHub Actions (only recent images are tested by CI). BSD
-//!       runners only test BSD images with clang compiler.
+//!       runners only test BSD images with Clang compiler. Both X86_64 and AArch64 host builds are tested.
 //!
 //!     - **Linux** - Tested by GitHub Actions (only recent Ubuntu images are tested by CI, in general any distribution
-//!       should be supported as AsmJit has no dependencies).
+//!       should be supported as AsmJit has no dependencies). Linux tests X86, X86_64, and AArch64 host builds.
 //!
 //!     - **Mac OS** - Tested by GitHub Actions.
 //!
@@ -145,10 +166,9 @@ namespace asmjit {
 //! ### Supported Backends / Architectures
 //!
 //!   - **X86** and **X86_64** - Both 32-bit and 64-bit backends tested on CI.
-//!   - **AArch64** - AArch64 backend is currently only partially tested (there is no native AArch64 runner to test
-//!     AsmJit Builder/Compiler).
+//!   - **AArch64** - Tested on CI (Native Apple runners and Linux emulated via QEMU).
 //!
-//! ### Static Builds and Embedding
+//! \section build_mode Static Builds and Embedding
 //!
 //! These definitions can be used to enable static library build. Embed is used when AsmJit's source code is embedded
 //! directly in another project, implies static build as well.
@@ -160,7 +180,31 @@ namespace asmjit {
 //! otherwise AsmJit would use dynamic library imports in \ref ASMJIT_API decorator. The recommendation is to define
 //! this macro across the whole project that uses AsmJit this way.
 //!
-//! ### Build Configuration
+//! \section cmake_integration CMake Integration
+//!
+//! AsmJit has a first-class CMake support. When consuming AsmJit as a cmake dependency, just use `asmjit::asmjit`
+//! as a link dependency, which would instrument cmake to setup everything else, including include paths, and build
+//! flags (either defining `ASMJIT_STATIC` or not, and possibly defining other AsmJit feature macros). For example
+//! considering that AsmJit was fetched to `3rdparty/asmjit` directory in your project as an external dependency,
+//! you can just use the following CMake snippet that integrates AsmJit with your own CMake project:
+//!
+//! ```cmake
+//! cmake_minimum_required(VERSION 3.30)
+//!
+//! project(asmjit_consumer C CXX)    # Both C and CXX are required.
+//! set(CMAKE_CXX_STANDARD 17)        # C++17 and never is supported.
+//!
+//! set(ASMJIT_DIR "3rdparty/asmjit") # Location of AsmJit.
+//! set(ASMJIT_STATIC TRUE)           # Force static build.
+//!
+//! add_subdirectory("${ASMJIT_DIR}") # This adds AsmJit as a part of your project.
+//!
+//! add_executable(asmjit_consumer asmjit_consumer.cpp)
+//! target_link_libraries(
+//!   asmjit_consumer asmjit::asmjit) # This adds AsmJit as a dependency to your target.
+//! ```
+//!
+//! \section build_type Build Type Configuration
 //!
 //! These definitions control whether asserts are active or not. By default AsmJit would autodetect build configuration
 //! from existing pre-processor definitions, but this behavior can be overridden, for example to enable debug asserts
@@ -174,42 +218,51 @@ namespace asmjit {
 //! were not used. We only recommend using build configuration overrides in special situations, like using AsmJit in
 //! release configuration with asserts enabled for whatever reason.
 //!
-//! ### AsmJit Backends
+//! \section build_backends AsmJit Backends
 //!
-//! AsmJit currently supports only X86/X64 backend, but the plan is to add more backends in the future. By default
-//! AsmJit builds only the host backend, which is auto-detected at compile-time, but this can be overridden.
+//! All backends AsmJit supports are included by default. To exclude a backend use the following build-type macros:
 //!
-//!   - \ref ASMJIT_NO_X86 - Disable X86/X64 backends.
-//!   - \ref ASMJIT_NO_FOREIGN - Disables the support for foreign architectures.
+//!   - \ref ASMJIT_NO_X86 - Disables both X86 and X86_64 backends.
+//!   - \ref ASMJIT_NO_AARCH64 - Disables AArch64 backend.
+//!   - \ref ASMJIT_NO_FOREIGN - Disables the support for foreign architecture backends, only keeps a native backend.
+//!     For example if your target is X86, `ASMJIT_NO_FOREIGN` would disable every backend but X86.
 //!
-//! ### Features Selection
-//!
-//! AsmJit builds by defaults all supported features, which includes all emitters, logging, instruction validation and
-//! introspection, and JIT memory allocation. Features can be disabled at compile time by using `ASMJIT_NO_...`
-//! definitions.
+//! \section build_options Build Options
 //!
 //!   - \ref ASMJIT_NO_DEPRECATED - Disables deprecated API at compile time so it won't be available and the
 //!     compilation will fail if there is attempt to use such API. This includes deprecated classes, namespaces,
 //!     enumerations, and functions.
 //!
-//!   - \ref ASMJIT_NO_BUILDER - Disables \ref asmjit_builder functionality completely. This implies \ref
-//!     ASMJIT_NO_COMPILER as \ref asmjit_compiler cannot be used without \ref asmjit_builder.
+//!   - \ref ASMJIT_NO_SHM_OPEN - Disables functionality that uses `shm_open()`.
 //!
-//!   - \ref ASMJIT_NO_COMPILER - Disables \ref asmjit_compiler functionality completely.
+//!   - \ref ASMJIT_NO_ABI_NAMESPACE - Disables inline ABI namespace within `asmjit` namespace. This is only provided
+//!     for users that control all the dependencies (even transitive ones) and that make sure that no two AsmJit
+//!     versions are used at the same time. This option can be debugging a little simpler as there would not be ABI
+//!     tag after `asmjit::` namespace. Otherwise asmjit would look like `asmjit::_abi_1_13::`, for example.
 //!
+//! \section build_features Build Features
+//!
+//! AsmJit builds by default all supported features, which includes all emitters, logging, instruction validation and
+//! introspection, and JIT memory allocation. Features can be disabled at compile time by using `ASMJIT_NO_...`
+//! definitions.
 //!   - \ref ASMJIT_NO_JIT - Disables JIT memory management and \ref JitRuntime.
-//!
-//!   - \ref ASMJIT_NO_LOGGING - Disables \ref Logger and \ref Formatter.
 //!
 //!   - \ref ASMJIT_NO_TEXT - Disables everything that contains string representation of AsmJit constants, should
 //!     be used together with \ref ASMJIT_NO_LOGGING as logging doesn't make sense without the ability to query
 //!     instruction names, register names, etc...
+//!
+//!   - \ref ASMJIT_NO_LOGGING - Disables \ref Logger and \ref Formatter.
 //!
 //!   - \ref ASMJIT_NO_VALIDATION - Disables validation API.
 //!
 //!   - \ref ASMJIT_NO_INTROSPECTION - Disables instruction introspection API, must be used together with \ref
 //!     ASMJIT_NO_COMPILER as \ref asmjit_compiler requires introspection for its liveness analysis and register
 //!     allocation.
+//!
+//!   - \ref ASMJIT_NO_BUILDER - Disables \ref asmjit_builder functionality completely. This implies \ref
+//!     ASMJIT_NO_COMPILER as \ref asmjit_compiler cannot be used without \ref asmjit_builder.
+//!
+//!   - \ref ASMJIT_NO_COMPILER - Disables \ref asmjit_compiler functionality completely.
 //!
 //! \note It's not recommended to disable features if you plan to build AsmJit as a shared library that will be
 //! used by multiple projects that you don't control how AsmJit was built (for example AsmJit in a Linux distribution).
@@ -227,17 +280,164 @@ namespace asmjit {
 //! removed APIs and should serve as a how-to guide for people that want to port existing code to work with the
 //! newest AsmJit.
 //!
-//! ### Tips
+//! \section tips Tips
 //!
 //! Useful tips before you start:
 //!
-//!   - Visit our [Public Gitter Channel](https://gitter.im/asmjit/asmjit) if you need a quick help.
+//!   - Visit our [Public Chat](https://app.gitter.im/#/room/#asmjit:gitter.im) if you need a quick help.
 //!
 //!   - Build AsmJit with `ASMJIT_NO_DEPRECATED` macro defined to make sure that you are not using deprecated
-//!     functionality at all. Deprecated functions are decorated with `ASMJIT_DEPRECATED()` macro, but sometimes
+//!     functionality at all. Deprecated functions are decorated with `[[deprecated]]` attribute, but sometimes
 //!     it's not possible to decorate everything like classes, which are used by deprecated functions as well,
 //!     because some compilers would warn about that. If your project compiles fine with `ASMJIT_NO_DEPRECATED`
-//!     it's not using anything, which was deprecated.
+//!     it's not using anything, which will be definitely removed in the future.
+//!
+//! \section api_changes API Changes
+//!
+//! ### Changes committed at 2025-06-15
+//!
+//! Core changes:
+//!
+//!   - No more architecture specific \ref RegTraits - removed `BaseRegTraits` and kept just \ref RegTraits:
+//!
+//!     - `BaseRegTraits` -> `RegTraits`
+//!     - `arm::RegTraits` -> `RegTraits`
+//!     - `x86::RegTraits` -> `RegTraits`
+//!
+//!   - Removed register signature and helper functions from ArchTraits. This functionality is now available
+//!     via asmjit::RegTraits and asmjit::RegUtils and doesn't require a valid architecture traits instance.
+//!
+//!   - No more architecture specific Gp/Vec/Mask register types in \ref RegType and \ref RegGroup:
+//!
+//!     - `RegGroup::kX86_Rip`  -> `RegGroup::kPC`
+//!     - `RegGroup::kX86_KReg` -> `RegGroup::kMask`
+//!     - `RegType::kX86_GpbLo` -> `RegType::kGp8Lo`
+//!     - `RegType::kX86_GpbLo` -> `RegType::kGp8Lo`
+//!     - `RegType::kX86_GpbHi` -> `RegType::kGp8Hi`
+//!     - `RegType::kX86_Gpw`   -> `RegType::kGp16`
+//!     - `RegType::kX86_Gpd`   -> `RegType::kGp32`
+//!     - `RegType::kX86_Gpq`   -> `RegType::kGp64`
+//!     - `RegType::kX86_Xmm`   -> `RegType::kVec128`
+//!     - `RegType::kX86_Ymm`   -> `RegType::kVec256`
+//!     - `RegType::kX86_Zmm`   -> `RegType::kVec512`
+//!     - `RegType::kX86_KReg`  -> `RegType::kMask`
+//!     - `RegType::kARM_PC`    -> `RegType::kPC`
+//!     - `RegType::kARM_GpW`   -> `RegType::kGp32`
+//!     - `RegType::kARM_GpX`   -> `RegType::kGp64`
+//!     - `RegType::kARM_VecB`  -> `RegType::kVec8`
+//!     - `RegType::kARM_VecH`  -> `RegType::kVec16`
+//!     - `RegType::kARM_VecS`  -> `RegType::kVec32`
+//!     - `RegType::kARM_VecD`  -> `RegType::kVec64`
+//!     - `RegType::kARM_VecQ`  -> `RegType::kVec128`
+//!     - `RegType::kARM_VecV`  -> `RegType::kVec128`
+//!
+//!   - Renamed `asmjit::BaseReg` to asmjit::Reg, added `asmjit::UniGp` and `asmjit::UniVec` which are now base
+//!     classes for platform specific `[x86|a64]::Gp` and `[x86|a64]::Vec`
+//!
+//!   - Gp and Vec register API is now more platform independent - use `isGp32()` instead of `isGpd()`, similarly,
+//!     use `isGp64` instead of `isGpq()` (X86_64) or `isGpX()` (AArch64), etc... The same applies to vectors -
+//!     use `isVec128()` instead of `isXmm()` (X86) or `isVecQ()` (AArch64), `isVec256()` instead of `isYmm()`,
+//!     etc...
+//!
+//!   - Renamed some member functions in Operand and Reg:
+//!
+//!     - `isType(regId)` -> `isReg(regId)`
+//!     - `isGroup(regGroup)` -> `isReg(regGroup)`
+//!     - `regOp.type()` -> `regOp.regType()`
+//!     - `regOp.group()` -> `regOp.regGroup()`
+//!
+//!   - Removed some static functions from \ref Operand, \reg Reg, etc... in favor of member functions. Most
+//!     of the operand functionality is now provided by \ref Operand_:
+//!
+//!     - `Operand::isGp(op)` -> op.isGp();
+//!     - `x86::Reg::isGp(op, id)` -> op.isGp(id);
+//!
+//!   - Removed sub-registers `x86::Gpb`, `x86::GpbLo`, `x86::GpbHi`, `x86::Gpw`, `x86::Gpd`, `x86::Gpq`, `x86::Xmm`,
+//!     `x86::Ymm`, `x86::Zmm` - use just `x86::Gp` and `x86::Vec`, which represent all removed X86 sub-registers.
+//!     From now, use `x86::Gp` to work with x86 general purpose registers and `x86::Vec` to work with XMM, YMM,
+//!     and ZMM registers.
+//!
+//!   - Removed sub-registers `a64::GpW` and `a64::GpX`, `a64::VecB`, `a64::VecH`, `a64::VecS`, `a64::VecD`,
+//!     `a64::VecV`, which represent all removed AArch64 sub-registers. From now, use `a64::Gp` to work with
+//!     general purpose registers and `a64::Vec` to work with NEON registers of any size, element type, and
+//!     element index.
+//!
+//!   - Since sub-register types are gone it's no longer possible to write `gpb(id)` to get AL register, etc...
+//!     However, all register operands that can hold multiple register types now offer `Reg::make_xxx(id)` API,
+//!     which can be used as a convenience or just use platform specific API like `x86::gpd(id)` or `x86::gp32(id)`,
+//!     similarly for AArch64 use `a64::x(id)` or `a64::gp64(id)`, etc...
+//!
+//!   - Renamed some id getters - `Section::id()` -> `Section::sectionId()`, etc...
+//!
+//! Builder changes:
+//!
+//!   - Removed BaseBuilder::deletePass() - this function was most likely never used by user code and it was also
+//!     never used by AsmJit. Passes should be only added and not removed, which simplifies some planned future
+//!     changes.
+//!
+//! ### Changes committed at 2025-05-24
+//!
+//! Core changes:
+//!
+//!   - AsmJit now requires C++17 to compile.
+//!
+//!   - Deprecated asmjit/asmjit.h header. Use asmjit/core.h to include everything except backend specific stuff,
+//!     and asmjit/x86.h or asmjit/a64.h to include tools of a specific architecture. At this time the asmjit.h
+//!     header is just deprecated, so it will still work as it used to for some time.
+//!
+//! ### Changes committed at 2025-05-10
+//!
+//! Core changes:
+//!
+//!   - Removed AVX512 functionality that was never used on x86 hardware as Xeon Phi was never supported by AsmJit:
+//!
+//!     - AVX512_ER
+//!     - AVX512_PF
+//!     - AVX512_4FMAPS
+//!     - AVX512_4VNNIW
+//!
+//!   - Instruction 'vcvtneps2bf16' no longer accepts memory operand without explicit size (to minimize ambiguity)
+//!
+//! ### Changes committed at 2024-01-01
+//!
+//! Core changes:
+//!
+//!   - Renamed equality functions `eq()` to `equals()` - Only related to `String`, `ZoneVector`, and `CpuFeatures`.
+//!     Old function names were deprecated.
+//!
+//!   - Removed `CallConvId::kNone` in favor of `CallConvId::kCDecl`, which is now the default calling convention.
+//!
+//!   - Deprecated `CallConvId::kHost` in favor of `CallConvId::kCDecl` - host calling convention is now not part
+//!     of CallConvId, it can be calculated from CallConvId and Environment instead.
+//!
+//! ### Changes committed at 2023-12-27
+//!
+//! Core changes:
+//!
+//!   - Renamed `a64::Vec::ElementType` to `a64::VecElementType` and made it a typed enum. This enum was used mostly
+//!     internally, but there is a public API using it, so it's a breaking change.
+//!
+//!   - Refactored `FuncSignature`, `FuncSignatureT`, and `FuncSignatureBuilder`. There is only `FuncSignature` now,
+//!     which acts as a function signature holder and builder. Replace `FuncSignatureBuilder` with `FuncSignature`
+//!     and use `FuncSignature::build<args>` instead of `FuncSignatureT<args>`. The old API has been deprecated.
+//!
+//!   - The maximum number of function arguments was raised from 16 to 32.
+//!
+//! ### Changes committed at 2023-12-26
+//!
+//! Core changes:
+//!
+//!   - Reworked InstNode and InstExNode to be friendlier to static analysis and to not cause undefined behavior.
+//!     InstNode has no operands visually embedded within the struct so there is no _opArray (which was internal).
+//!     This means that sizeof(InstNode) changed, but since it's allocated by AsmJit this should be fine. Moreover,
+//!     there is no longer InstExNode as that was more a hack, instead there is now InstNodeWithOperands, which is
+//!     a template and specifies the number of operands embedded (InstNode accesses these). All nodes that inherited
+//!     InstExNode now just inherit InstNodeWithOperands<InstNode::kBaseOpCapacity>, which would provide the same
+//!     number of nodes as InstNode.
+//!
+//!   - Moved GP and Vec registers from asmjit::arm namespace to asmjit::a64 namespace. At this time there was
+//!     no prior deprecation as having arm::Vec would collide with a64::Vec as arm namespace is used within a64
+//!     namespace. Just change `arm::Gp` to `a64::Gp` and `arm::Vec` to `a64::Vec`.
 //!
 //! ### Changes committed at 2023-09-10
 //!
@@ -419,7 +619,7 @@ namespace asmjit {
 //! // Calling a function (Compiler) changed - use invoke() instead of call().
 //! void functionInvocation(x86::Compiler& cc) {
 //!   InvokeNode* invokeNode;
-//!   cc.invoke(&invokeNode, targetOperand, FuncSignatureT<...>(...));
+//!   cc.invoke(&invokeNode, targetOperand, FuncSignature::build<...>(...));
 //! }
 //! ```
 
@@ -434,12 +634,13 @@ namespace asmjit {
 //!
 //!   - \ref Section - stores information about a code or data section.
 //!   - \ref CodeBuffer - stores actual code or data, part of \ref Section.
-//!   - \ref LabelEntry - stores information about a label - its name, offset, section where it belongs to, and
-//!     other bits.
-//!   - \ref LabelLink - stores information about yet unbound label, which was  already used by the assembler.
+//!   - \ref LabelEntry - stores information about a \ref Label - its name, offset, section where it belongs to,
+//!     and other bits.
+//!   - \ref Fixup - stores information about positions in code that needs to be fixed up later, for example
+//!     when referencing a \ref Label, which was not bound to a position in code yet.
 //!   - \ref RelocEntry - stores information about a relocation.
-//!   - \ref AddressTableEntry - stores information about an address, which was used in a jump or call. Such
-//!     address may need relocation.
+//!   - \ref AddressTableEntry - stores information about an absolute address, which was used in a jump or call.
+//!     Code referencing an absolute address may need relocation or a record in address table.
 //!
 //! To generate code you would need to instantiate at least the following classes:
 //!
@@ -464,7 +665,7 @@ namespace asmjit {
 //!
 //! \note CodeHolder examples use \ref x86::Assembler as abstract interfaces cannot be used to generate code.
 //!
-//! ### CodeHolder & Emitters
+//! \section code_holder_and_emitters CodeHolder & Emitters
 //!
 //! The example below shows how the mentioned classes interact to generate X86 code:
 //!
@@ -475,7 +676,7 @@ namespace asmjit {
 //! using namespace asmjit;
 //!
 //! // Signature of the generated function.
-//! typedef int (*Func)(void);
+//! using Func = int (*)(void);
 //!
 //! int main() {
 //!   JitRuntime rt;                    // Runtime specialized for JIT code execution.
@@ -513,7 +714,7 @@ namespace asmjit {
 //!   - \ref asmjit_builder - Low-level emitter that emits to a \ref BaseNode list.
 //!   - \ref asmjit_compiler - High-level emitter that provides register allocation.
 //!
-//! ### Targets and JitRuntime
+//! \section targets_and_jit_runtime Targets and JitRuntime
 //!
 //! AsmJit's \ref Target is an interface that provides basic target abstraction. At the moment AsmJit provides only
 //! one implementation called \ref JitRuntime, which as the name suggests provides JIT code target and execution
@@ -582,7 +783,7 @@ namespace asmjit {
 //! }
 //! ```
 //!
-//! ### Explicit Code Relocation
+//! \section explicit_code_relocation Explicit Code Relocation
 //!
 //! In addition to \ref Environment, \ref CodeHolder can be configured to specify a base-address (or a virtual base
 //! address in a linker terminology), which could be static (useful when you know the location where the target's
@@ -592,21 +793,21 @@ namespace asmjit {
 //! required if you call external functions from the generated code that cannot be encoded by using a 32-bit
 //! displacement (64-bit displacements are not provided by aby supported architecture).
 //!
-//! There is also a concept called \ref LabelLink - label link is a lightweight data structure that doesn't have any
-//! identifier and is stored in \ref LabelEntry as a single-linked list. Label link represents either unbound yet used
-//! label and cross-sections links (only relevant to code that uses multiple sections). Since crossing sections is
-//! something that cannot be resolved immediately these links persist until offsets of these sections are assigned and
-//! until \ref CodeHolder::resolveUnresolvedLinks() is called. It's an error if you end up with code that has
-//! unresolved label links after flattening. You can verify it by calling \ref CodeHolder::hasUnresolvedLinks(), which
-//! inspects the value returned by \ref CodeHolder::unresolvedLinkCount().
+//! There is also a concept called \ref Fixup - it's a lightweight data structure that doesn't have any identifier and
+//! is stored in \ref LabelEntry and \ref CodeHolder as a single-linked list. Fixup represents either a reference to an
+//! unbound label and cross-sections references (only relevant to code that uses multiple sections). Since crossing
+//! sections is something that cannot be resolved immediately these fixups persist until offsets of these sections are
+//! assigned and until \ref CodeHolder::resolveCrossSectionFixups() is called. It's an error if you end up with code that
+//! still has fixups after flattening. You can verify it by calling \ref CodeHolder::hasUnresolvedFixups(), which inspects
+//! the value returned by \ref CodeHolder::unresolvedFixupCount().
 //!
 //! AsmJit can flatten code that uses multiple sections by assigning each section an incrementing offset that respects
 //! its alignment. Use \ref CodeHolder::flatten() to do that. After the sections are flattened their offsets and
 //! virtual sizes are adjusted to respect each section's buffer size and alignment. The \ref
-//! CodeHolder::resolveUnresolvedLinks() function must be called before relocating the code held by \ref CodeHolder.
+//! CodeHolder::resolveCrossSectionFixups() function must be called before relocating the code held by \ref CodeHolder.
 //! You can also flatten your code manually by iterating over all sections and calculating their offsets (relative to
 //! base) by your own algorithm. In that case \ref CodeHolder::flatten() should not be called, however,
-//! \ref CodeHolder::resolveUnresolvedLinks() should be.
+//! \ref CodeHolder::resolveCrossSectionFixups() should be.
 //!
 //! The example below shows how to use a built-in virtual memory allocator \ref JitAllocator instead of using \ref
 //! JitRuntime (just in case you want to use your own memory management) and how to relocate the generated code
@@ -622,7 +823,7 @@ namespace asmjit {
 //!
 //! using namespace asmjit;
 //!
-//! typedef void (*SumIntsFunc)(int* dst, const int* a, const int* b);
+//! using SumIntsFunc = void (*)(int* dst, const int* a, const int* b);
 //!
 //! int main() {
 //!   // Create a custom environment that matches the current host environment.
@@ -675,7 +876,7 @@ namespace asmjit {
 //!   // such relocations. You can use `CodeHolder::hasAddressTable()` to verify
 //!   // whether the address table section does exist.
 //!   code.flatten();
-//!   code.resolveUnresolvedLinks();
+//!   code.resolveCrossSectionFixups();
 //!
 //!   // After the code was generated it can be relocated manually to any memory
 //!   // location, however, we need to know it's size before we perform memory
@@ -690,15 +891,18 @@ namespace asmjit {
 //!   JitAllocator allocator;
 //!
 //!   // Allocate an executable virtual memory and handle a possible failure.
-//!   void* p = allocator.alloc(estimatedSize);
-//!   if (!p)
+//!   JitAllocator::Span span;
+//!   Error err = allocator.alloc(span, estimatedSize);
+//!
+//!   if (err != kErrorOk) { // <- NOTE: This must be checked, always!
 //!     return 0;
+//!   }
 //!
 //!   // Now relocate the code to the address provided by the memory allocator.
-//!   // Please note that this DOESN'T COPY anything to `p`. This function will
-//!   // store the address in CodeHolder and use relocation entries to patch the
-//!   // existing code in all sections to respect the base address provided.
-//!   code.relocateToBase((uint64_t)p);
+//!   // Please note that this DOESN'T COPY anything to it. This function will
+//!   // store the address in CodeHolder and use relocation entries to patch
+//!   // the existing code in all sections to respect the base address provided.
+//!   code.relocateToBase((uint64_t)span.rx());
 //!
 //!   // This is purely optional. There are cases in which the relocation can omit
 //!   // unneeded data, which would shrink the size of address table. If that
@@ -711,12 +915,17 @@ namespace asmjit {
 //!   // additional options that can be used to also zero pad sections' virtual
 //!   // size, etc.
 //!   //
-//!   // With some additional features, copyFlattenData() does roughly this:
-//!   //   for (Section* section : code.sections())
-//!   //     memcpy((uint8_t*)p + section->offset(),
-//!   //            section->data(),
-//!   //            section->bufferSize());
-//!   code.copyFlattenedData(p, codeSize, CopySectionFlags::kPadSectionBuffer);
+//!   // With some additional features, copyFlattenData() does roughly the following:
+//!   //
+//!   // allocator.write([&](JitAllocator::Span& span) {
+//!   //   for (Section* section : code.sections()) {
+//!   //     uint8_t* p = (uint8_t*)span.rw() + section->offset();
+//!   //     memcpy(p, section->data(), section->bufferSize());
+//!   //   }
+//!   // }
+//!   allocator.write([&](JitAllocator::Span& span) {
+//!     code.copyFlattenedData(span.rw(), codeSize, CopySectionFlags::kPadSectionBuffer);
+//!   });
 //!
 //!   // Execute the generated function.
 //!   int inA[4] = { 4, 3, 2, 1 };
@@ -724,15 +933,16 @@ namespace asmjit {
 //!   int out[4];
 //!
 //!   // This code uses AsmJit's ptr_as_func<> to cast between void* and SumIntsFunc.
-//!   ptr_as_func<SumIntsFunc>(p)(out, inA, inB);
+//!   SumIntsFunc fn = ptr_as_func<SumIntsFunc>(span.rx());
+//!   fn(out, inA, inB);
 //!
 //!   // Prints {5 8 4 9}
 //!   printf("{%d %d %d %d}\n", out[0], out[1], out[2], out[3]);
 //!
-//!   // Release 'p' is it's no longer needed. It will be destroyed with 'vm'
+//!   // Release `fn` is it's no longer needed. It will be destroyed with 'vm'
 //!   // instance anyway, but it's a good practice to release it explicitly
 //!   // when you know that the function will not be needed anymore.
-//!   allocator.release(p);
+//!   allocator.release(fn);
 //!
 //!   return 0;
 //! }
@@ -759,11 +969,11 @@ namespace asmjit {
 //! }
 //! ```
 //!
-//! ### Label Offsets and Links
+//! \section labels Label Offsets and Links
 //!
-//! When a label that is not yet bound is used by the Assembler, it creates a \ref LabelLink, which is then added to
-//! a \ref LabelEntry. These links are also created if a label is used in a different section than in which it was
-//! bound. Let's examine some functions that can be used to check whether there are any unresolved links.
+//! When a label that is not yet bound is used by the Assembler, it creates a \ref Fixup, which is then referenced
+//! by \ref LabelEntry. Fixups are also created if a label is referenced in a different section than in which it was
+//! bound. Let's examine some functions that can be used to check whether there are any unresolved fixups.
 //!
 //! ```
 //! #include <asmjit/core.h>
@@ -777,17 +987,17 @@ namespace asmjit {
 //!   printf("Label %u is %s\n", label.id(), isBound ? "bound" : "not bound");
 //!
 //!   // Returns true if the code contains either referenced, but unbound
-//!   // labels, or cross-section label links that are not resolved yet.
-//!   bool hasUnresolved = code.hasUnresolvedLinks();  // Boolean answer.
-//!   size_t nUnresolved = code.unresolvedLinkCount(); // Count of unresolved links.
+//!   // labels, or cross-section fixups that are not resolved yet.
+//!   bool hasUnresolved = code.hasUnresolvedFixups();  // Boolean answer.
+//!   size_t nUnresolved = code.unresolvedFixupCount(); // Count of unresolved fixups.
 //!
-//!   printf("Number of unresolved links: %zu\n", nUnresolved);
+//!   printf("Number of unresolved fixups: %zu\n", nUnresolved);
 //! }
 //! ```
 //!
 //! There is no function that would return the number of unbound labels as this is completely unimportant from
 //! CodeHolder's perspective. If a label is not used then it doesn't matter whether it's bound or not, only actually
-//! used labels matter. After a Label is bound it's possible to query its offset offset relative to the start of the
+//! used labels matter. After a Label is bound it's possible to query its offset relative to the start of the
 //! section where it was bound:
 //!
 //! ```
@@ -813,7 +1023,7 @@ namespace asmjit {
 //! }
 //! ```
 //!
-//! ### Sections
+//! \section code_sections Code & Data Sections
 //!
 //! AsmJit allows to create multiple sections within the same \ref CodeHolder. A test-case
 //! [asmjit_test_x86_sections.cpp](https://github.com/asmjit/asmjit/blob/master/test/asmjit_test_x86_sections.cpp)
@@ -854,17 +1064,16 @@ namespace asmjit {
 //!   a.section(text);           // Switches to the end of .text section.
 //!   a.add(x86::ebx, x86::eax); // Emits in .text section.
 //!
-//!   // References a label in .text section, which was bound in .data section.
-//!   // This would create a LabelLink even when the L_Data is already bound,
-//!   // because the reference crosses sections. See below...
+//!   // References a label in .text section, which was bound in .data section. This would create a
+//!   // fixup even when the L_Data is already bound, because the reference crosses sections. See below...
 //!   a.lea(x86::rsi, x86::ptr(L_Data));
 //! }
 //! ```
 //!
-//! The last line in the example above shows that a LabelLink would be created even for bound labels that cross
-//! sections. In this case a referenced label was bound in another section, which means that the link couldn't be
-//! resolved at that moment. If your code uses sections, but you wish AsmJit to flatten these sections (you don't
-//! plan to flatten them manually) then there is an API for that.
+//! The last line in the example above shows that a \ref Fixup would be created even for bound labels that cross
+//! sections. In this case a referenced label was bound in another section, which means that the reference couldn't
+//! be resolved at that moment. If your code uses sections, but you wish AsmJit to flatten these sections (you don't
+//! plan to flatten them manually) then there is a ready API for that.
 //!
 //! ```
 //! #include <asmjit/x86.h>
@@ -889,18 +1098,18 @@ namespace asmjit {
 //!   // guaranteed that the offset cannot be greater than `2^32 - 1`.
 //!   printf("Data section offset %zu", size_t(data->offset()));
 //!
-//!   // The flattening doesn't resolve unresolved label links, this
+//!   // The flattening doesn't resolve unresolved fixups, this
 //!   // has to be done manually as flattening can be done separately.
-//!   err = code.resolveUnresolvedLinks();
+//!   err = code.resolveCrossSectionFixups();
 //!   if (err) {
 //!     // This is the kind of error that should always be handled...
-//!     printf("Failed to resolve label links: %s\n", DebugUtils::errorAsString(err));
+//!     printf("Failed to resolve fixups: %s\n", DebugUtils::errorAsString(err));
 //!     exit(1);
 //!   }
 //!
-//!   if (code.hasUnresolvedLinks()) {
+//!   if (code.hasUnresolvedFixups()) {
 //!     // This would mean either unbound label or some other issue.
-//!     printf("The code has %zu unbound labels\n", code.unresolvedLinkCount());
+//!     printf("The code has %zu unbound labels\n", code.unresolvedFixupCount());
 //!     exit(1);
 //!   }
 //! }
@@ -916,18 +1125,25 @@ namespace asmjit {
 //! with assembler requires the knowledge of the following:
 //!
 //!   - \ref BaseAssembler and architecture-specific assemblers:
-//!     - \ref x86::Assembler - Assembler specific to X86 architecture
+//!     - \ref x86::Assembler - Assembler implementation targeting X86 and X86_64 architectures.
+//!     - \ref a64::Assembler - Assembler implementation targeting AArch64 architecture.
 //!   - \ref Operand and its variations:
-//!     - \ref BaseReg - Base class for a register operand, inherited by:
-//!        - \ref x86::Reg - Register operand specific to X86 architecture.
+//!     - \ref Reg - Base class for a register operand, inherited by:
+//!        - \ref UniGp - Universal abstraction of a general purpose register, inherited by:
+//!          - \ref x86::Gp - GP register operand specific to X86 and X86_64 architectures.
+//!          - \ref a64::Gp - GP Register operand specific to AArch64 architecture.
+//!        - \ref UniVec - Universal abstraction of a vector register, inherited by:
+//!          - \ref x86::Vec - Vector register operand specific to X86 and X86_64 architectures.
+//!          - \ref a64::Vec - Vector register operand specific to AArch64 architecture.
 //!     - \ref BaseMem - Base class for a memory operand, inherited by:
-//!        - \ref x86::Mem - Memory operand specific to X86 architecture.
+//!        - \ref x86::Mem - Memory operand specific to X86 and X86_64 architectures.
+//!        - \ref arm::Mem - Memory operand specific to AArch64 architecture.
 //!     - \ref Imm - Immediate (value) operand.
 //!     - \ref Label - Label operand.
 //!
 //! \note Assembler examples use \ref x86::Assembler as abstract interfaces cannot be used to generate code.
 //!
-//! ### Operand Basics
+//! \section operand_basics Operand Basics
 //!
 //! Let's start with operands. \ref Operand is a data structure that defines a data layout of any operand. It can be
 //! inherited, but any class inheriting it cannot add any members to it, only the existing layout can be reused.
@@ -967,7 +1183,7 @@ namespace asmjit {
 //!   - \ref Label - used to reference a location in code or data. Labels must be created by the \ref BaseEmitter or
 //!     by \ref CodeHolder. Each label has its unique id per \ref CodeHolder instance.
 //!
-//! ### Operand Manipulation
+//! \section operand_manipulation Operand Manipulation
 //!
 //! AsmJit allows to construct operands dynamically, to store them, and to query a complete information about them at
 //! run-time. Operands are small (always 16 bytes per `Operand`) and should be always copied (by value) if you intend
@@ -996,7 +1212,7 @@ namespace asmjit {
 //!   // Constructs [src + idx] memory address - referencing [rax + r10].
 //!   x86::Mem m = x86::ptr(src, idx);
 //!
-//!   // Examine `m`: Returns `RegType::kX86_Gpq`.
+//!   // Examine `m`: Returns `RegType::kGp64`.
 //!   m.indexType();
 //!   // Examine `m`: Returns 10 (`r10`).
 //!   m.indexId();
@@ -1029,7 +1245,7 @@ namespace asmjit {
 //!
 //!   // Type-unsafe, but possible.
 //!   a.emit(x86::Inst::kIdMov, dst, m);
-//!   // Also possible, `emit()` is typeless and can be used with raw Operand.
+//!   // Also possible, `emit()` is type-less and can be used with raw Operand.
 //!   a.emit(x86::Inst::kIdMov, dst, op);
 //! }
 //! ```
@@ -1038,7 +1254,7 @@ namespace asmjit {
 //! BaseEmitter::newLabel(), which creates a label entry and returns a \ref Label operand with the id that refers
 //! to it. Such label then can be used by emitters.
 //!
-//! ### Memory Operands
+//! \section memory_operands Memory Operands
 //!
 //! Some architectures like X86 provide a complex memory addressing model that allows to encode addresses having a
 //! BASE register, INDEX register with a possible scale (left shift), and displacement (called offset in AsmJit).
@@ -1100,10 +1316,10 @@ namespace asmjit {
 //!
 //! void testX86Mem() {
 //!   // The same as: dword ptr [rax + rbx].
-//!   x86::Mem a = x86::dword_ptr(rax, rbx);
+//!   x86::Mem a = x86::dword_ptr(x86::rax, x86::rbx);
 //!
 //!   // The same as: qword ptr [rdx + rsi << 0 + 1].
-//!   x86::Mem b = x86::qword_ptr(rdx, rsi, 0, 1);
+//!   x86::Mem b = x86::qword_ptr(x86::rdx, x86::rsi, 0, 1);
 //! }
 //! ```
 //!
@@ -1116,18 +1332,18 @@ namespace asmjit {
 //!
 //! void testX86Mem() {
 //!   // The same as: dword ptr [rax + 12].
-//!   x86::Mem mem = x86::dword_ptr(rax, 12);
+//!   x86::Mem mem = x86::dword_ptr(x86::rax, 12);
 //!
 //!   mem.hasBase();                    // true.
 //!   mem.hasIndex();                   // false.
 //!   mem.size();                       // 4.
 //!   mem.offset();                     // 12.
 //!
-//!   mem.setSize(0);                   // Sets the size to 0 (makes it sizeless).
+//!   mem.setSize(0);                   // Sets the size to 0 (makes it size-less).
 //!   mem.addOffset(-1);                // Adds -1 to the offset and makes it 11.
 //!   mem.setOffset(0);                 // Sets the offset to 0.
-//!   mem.setBase(rcx);                 // Changes BASE to RCX.
-//!   mem.setIndex(rax);                // Changes INDEX to RAX.
+//!   mem.setBase(x86::rcx);            // Changes BASE to RCX.
+//!   mem.setIndex(x86::rax);           // Changes INDEX to RAX.
 //!   mem.hasIndex();                   // true.
 //! }
 //! // ...
@@ -1171,7 +1387,7 @@ namespace asmjit {
 //! }
 //! ```
 //!
-//! ### Assembler Examples
+//! \section examples Assembler Examples
 //!
 //!   - \ref x86::Assembler provides many X86/X64 examples.
 
@@ -1191,7 +1407,7 @@ namespace asmjit {
 //! compatibility with the existing \ref BaseAssembler emitter so users can move from assembler to builder when needed,
 //! for example to implement post-processing, which is not possible with Assembler.
 //!
-//! ### Builder Nodes
+//! \section builder_nodes Builder Nodes
 //!
 //! \ref BaseBuilder doesn't generate machine code directly, it uses an intermediate representation based on nodes,
 //! however, it allows to serialize to \ref BaseAssembler when the code is ready to be encoded.
@@ -1217,9 +1433,10 @@ namespace asmjit {
 //!
 //!   - Other nodes are provided by \ref asmjit_compiler infrastructure.
 //!
-//! ### Builder Examples
+//! \section builder_examples Examples
 //!
-//!   - \ref x86::Builder provides many X86/X64 examples.
+//!   - \ref x86::Builder - Builder implementation targeting X86 and X86_64 architectures.
+//!   - \ref a64::Builder - Builder implementation targeting AArch64 architecture.
 
 
 //! \defgroup asmjit_compiler Compiler
@@ -1243,7 +1460,7 @@ namespace asmjit {
 //! return value(s) are handled by assigning virtual registers to them. Similarly, function calls are handled the same
 //! way.
 //!
-//! ### Compiler Nodes
+//! \section compiler_nodes Compiler Nodes
 //!
 //! \ref BaseCompiler adds some nodes that are required for function generation and invocation:
 //!
@@ -1254,11 +1471,12 @@ namespace asmjit {
 //! \ref BaseCompiler also makes the use of passes (\ref Pass) and automatically adds an architecture-dependent
 //! register allocator pass to the list of passes when attached to \ref CodeHolder.
 //!
-//! ### Compiler Examples
+//! \section compiler_examples Compiler Examples
 //!
-//!   - \ref x86::Compiler provides many X86/X64 examples.
+//!   - \ref x86::Compiler - Compiler implementation targeting X86 and X86_64 architectures.
+//!   - \ref a64::Compiler - Compiler implementation targeting AArch64 architecture.
 //!
-//! ### Compiler Tips
+//! \section compiler_tips Compiler Tips
 //!
 //! Users of AsmJit have done mistakes in the past, this section should provide some useful tips for beginners:
 //!
@@ -1360,7 +1578,7 @@ namespace asmjit {
 //!   - \ref FormatFlags
 //!   - \ref FormatIndentationGroup
 //!
-//! ### Logging
+//! \section logging Logging
 //!
 //! A \ref Logger is typically attached to a \ref CodeHolder, which propagates it to all attached emitters
 //! automatically. The example below illustrates how to use \ref FileLogger that outputs to standard output:
@@ -1418,7 +1636,7 @@ namespace asmjit {
 //! }
 //! ```
 //!
-//! ### Formatting
+//! \section formatting Formatting
 //!
 //! AsmJit uses \ref Formatter to format inputs that are then passed to \ref Logger. Formatting is public and can be
 //! used by AsmJit users as well. The most important thing to know regarding formatting is that \ref Formatter always
@@ -1428,7 +1646,7 @@ namespace asmjit {
 //! The first example illustrates how to format operands:
 //!
 //! ```
-//! #include <asmjit/core.h>
+//! #include <asmjit/x86.h>
 //! #include <stdio.h>
 //!
 //! using namespace asmjit;
@@ -1453,17 +1671,17 @@ namespace asmjit {
 //!   // compatible with what AsmJit normally does.
 //!   Arch arch = Arch::kX64;
 //!
-//!   log(arch, rax);                    // Prints 'rax'.
-//!   log(arch, ptr(rax, rbx, 2));       // Prints '[rax + rbx * 4]`.
-//!   log(arch, dword_ptr(rax, rbx, 2)); // Prints 'dword [rax + rbx * 4]`.
-//!   log(arch, imm(42));                // Prints '42'.
+//!   logOperand(arch, rax);                    // Prints 'rax'.
+//!   logOperand(arch, ptr(rax, rbx, 2));       // Prints '[rax + rbx * 4]`.
+//!   logOperand(arch, dword_ptr(rax, rbx, 2)); // Prints 'dword [rax + rbx * 4]`.
+//!   logOperand(arch, imm(42));                // Prints '42'.
 //! }
 //! ```
 //!
 //! Next example illustrates how to format whole instructions:
 //!
 //! ```
-//! #include <asmjit/core.h>
+//! #include <asmjit/x86.h>
 //! #include <stdio.h>
 //! #include <utility>
 //!
@@ -1478,7 +1696,7 @@ namespace asmjit {
 //!   FormatFlags formatFlags = FormatFlags::kNone;
 //!
 //!   // The formatter expects operands in an array.
-//!   Operand_ operands { std::forward<Args>(args)... };
+//!   Operand_ operands[] { std::forward<Args>(args)... };
 //!
 //!   StringTmp<128> sb;
 //!   Formatter::formatInstruction(
@@ -1500,13 +1718,13 @@ namespace asmjit {
 //!   // Prints 'vaddpd zmm0, zmm1, [rax] {1to8}'.
 //!   logInstruction(arch,
 //!                  BaseInst(Inst::kIdVaddpd),
-//!                  zmm0, zmm1, ptr(rax)._1toN());
+//!                  zmm0, zmm1, ptr(rax)._1to8());
 //!
 //!   // BaseInst abstracts instruction id, instruction options, and extraReg.
 //!   // Prints 'lock add [rax], rcx'.
 //!   logInstruction(arch,
 //!                  BaseInst(Inst::kIdAdd, InstOptions::kX86_Lock),
-//!                  x86::ptr(rax), rcx);
+//!                  ptr(rax), rcx);
 //!
 //!   // Similarly an extra register (like AVX-512 selector) can be used.
 //!   // Prints 'vaddpd zmm0 {k2} {z}, zmm1, [rax]'.
@@ -1568,7 +1786,7 @@ namespace asmjit {
 //!     Zone memory and the ownership of memory it allocates always ends with the instance that allocated it. If
 //!     using this approach please never jump outside the life-time of \ref CodeHolder and \ref BaseEmitter.
 //!
-//! ### Using ErrorHandler
+//! \section using_error_handler Using ErrorHandler
 //!
 //! An example of attaching \ref ErrorHandler to \ref CodeHolder.
 //!
@@ -1624,7 +1842,7 @@ namespace asmjit {
 //!
 //! Each instruction can be then queried for the following information:
 //!
-//!   - \ref InstRWInfo - Read/write information of instruction and its oprands (includes \ref OpRWInfo).
+//!   - \ref InstRWInfo - Read/write information of instruction and its operands (includes \ref OpRWInfo).
 //!
 //!   - \ref CpuFeatures - CPU features required to execute the instruction.
 //!
@@ -1632,7 +1850,7 @@ namespace asmjit {
 //! valid. This is useful for making sure that what user tries to emit is correct and it can be also used by other
 //! projects that parse user input, like AsmTK project.
 //!
-//! ### Query API
+//! \section instruction_query Instruction Queries
 //!
 //! The instruction query API is provided by \ref InstAPI namespace. The following queries are possible:
 //!
@@ -1646,7 +1864,7 @@ namespace asmjit {
 //!   - <a href="https://github.com/asmjit/asmjit/blob/master/test/asmjit_test_instinfo.cpp">asmjit_test_instinfo.cpp</a>
 //!     can be also used as a reference about accessing instruction information.
 //!
-//! ### Validation API
+//! \section instruction_validation Instruction Validation
 //!
 //! The instruction validation API is provided by \ref InstAPI namespace in the similar fashion like the Query API,
 //! however, validation can also be turned on at \ref BaseEmitter level. The following is possible:
@@ -1685,7 +1903,7 @@ namespace asmjit {
 //! example. \ref JitAllocator then tracks used space of each page it maintains. Internally, \ref JitAllocator uses
 //! two bit arrays to track occupied regions in each allocated block of pages.
 //!
-//! ### Hardened Environments
+//! \section hardened_environments Hardened Environments
 //!
 //! In the past, allocating virtual memory with Read+Write+Execute (RWX) access permissions was easy. However, modern
 //! operating systems and runtime environments often use hardening, which typically prohibits mapping pages with both
@@ -1733,7 +1951,7 @@ namespace asmjit {
 //! its data in destructor or in their reset() member function for a future reuse. For this purpose all containers in
 //! AsmJit are also zone allocated.
 //!
-//! ### Zone Allocation
+//! \section zone_allocation Zone Allocation
 //!
 //!   - \ref Zone - Incremental zone memory allocator with minimum features. It can only allocate memory without the
 //!     possibility to return it back to the allocator.
@@ -1745,7 +1963,7 @@ namespace asmjit {
 //!   - \ref ZoneAllocator - A wrapper of \ref Zone that provides the capability of returning memory to the allocator.
 //!     Such memory is stored in a pool for later reuse.
 //!
-//! ### Zone Allocated Containers
+//! \section zone_containers Zone Allocated Containers
 //!
 //!   - \ref ZoneString - Zone allocated string.
 //!   - \ref ZoneHash - Zone allocated hash table.
@@ -1755,7 +1973,7 @@ namespace asmjit {
 //!   - \ref ZoneVector - Zone allocated vector.
 //!   - \ref ZoneBitVector - Zone allocated vector of bits.
 //!
-//! ### Using Zone Allocated Containers
+//! \section using_zone_containers Using Zone Allocated Containers
 //!
 //! The most common data structure exposed by AsmJit is \ref ZoneVector. It's very similar to `std::vector`, but the
 //! implementation doesn't use exceptions and uses the mentioned \ref ZoneAllocator for performance reasons. You don't
@@ -1768,14 +1986,11 @@ namespace asmjit {
 //! using namespace asmjit;
 //!
 //! void example(CodeHolder& code) {
-//!   // Contains all emitters attached to CodeHolder.
-//!   const ZoneVector<BaseEmitter*>& emitters = code.emitters();
-//!
 //!   // Contains all section entries managed by CodeHolder.
 //!   const ZoneVector<Section*>& sections = code.sections();
 //!
 //!   // Contains all label entries managed by CodeHolder.
-//!   const ZoneVector<LabelEntry*>& labelEntries = code.labelEntries();
+//!   const ZoneVector<LabelEntry>& labelEntries = code.labelEntries();
 //!
 //!   // Contains all relocation entries managed by CodeHolder.
 //!   const ZoneVector<RelocEntry*>& relocEntries = code.relocEntries();
@@ -1790,16 +2005,16 @@ namespace asmjit {
 //! using namespace asmjit;
 //!
 //! void example(CodeHolder& code) {
-//!   for (LabelEntry* le : code.labelEntries()) {
-//!     printf("Label #%u {Bound=%s Offset=%llu}",
-//!       le->id(),
-//!       le->isBound() ? "true" : "false",
-//!       (unsigned long long)le->offset());
+//!   for (uint32_t labelId = 0; labelId < code.labelCount(); labelId++) {
+//!     const LabelEntry& le = code.labelEntry(labelId);
+//!     if (le.isBound()) {
+//!       printf("Bound Label #%u at offset=%llu\n", labelId, (unsigned long long)le->offset());
+//!     }
 //!   }
 //! }
 //! ```
 //!
-//! ### Design Considerations
+//! \section design_considerations Design Considerations
 //!
 //! Zone-allocated containers do not store the allocator within the container. This decision was made to reduce the
 //! footprint of such containers as AsmJit tooling, especially Compiler's register allocation, may use many instances
@@ -1860,7 +2075,7 @@ namespace asmjit {
 //! AsmJit uses and provides utility classes and functions, that can be used with AsmJit. The functionality can be
 //! divided into the following topics:
 //!
-//! ### String Functionality
+//! \section string_utilities String Utilities
 //!
 //!   - \ref String - AsmJit's string container, which is used internally and which doesn't use exceptions and has
 //!     a stable layout, which is not dependent on C++ standard library.
@@ -1870,11 +2085,11 @@ namespace asmjit {
 //!
 //!   - \ref FixedString - Fixed string container limited up to N characters.
 //!
-//! ### Code Generation Utilities
+//! \section codegen_utilities Code Generation Utilities
 //!
 //!   - \ref ConstPool - Constant pool used by \ref BaseCompiler, but also available to users that may find use of it.
 //!
-//! ### Support Functionality Used by AsmJit
+//! \section support_utilities Support Functionality Used by AsmJit
 //!
 //!   - \ref Support namespace provides many other utility functions and classes that are used by AsmJit, and made
 //!     public.
@@ -1891,7 +2106,6 @@ namespace asmjit {
 //! \defgroup asmjit_a64 AArch64 Backend
 //! \brief AArch64 backend.
 
-
 //! \cond INTERNAL
 //! \defgroup asmjit_ra RA
 //! \brief Register allocator internals.
@@ -1903,6 +2117,7 @@ namespace asmjit {
 #include "core/archtraits.h"
 #include "core/assembler.h"
 #include "core/builder.h"
+#include "core/codebuffer.h"
 #include "core/codeholder.h"
 #include "core/compiler.h"
 #include "core/constpool.h"
@@ -1910,6 +2125,7 @@ namespace asmjit {
 #include "core/emitter.h"
 #include "core/environment.h"
 #include "core/errorhandler.h"
+#include "core/fixup.h"
 #include "core/formatter.h"
 #include "core/func.h"
 #include "core/globals.h"

@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -13,69 +13,120 @@ ASMJIT_BEGIN_NAMESPACE
 // ZoneVectorBase - Helpers
 // ========================
 
+// ZoneVector is used as an array to hold short-lived data structures used during code generation. The growing
+// strategy is simple - use small capacity at the beginning (very good for ZoneAllocator) and then grow quicker
+// to prevent successive reallocations.
+static ASMJIT_INLINE uint32_t ZoneVector_growCapacity(uint32_t current, uint32_t growMinimum, uint32_t sizeOfT) noexcept {
+  static constexpr size_t kGrowThreshold = Globals::kGrowThreshold;
+
+  size_t byteSize = size_t(current) * sizeOfT;
+  size_t minimumByteSize = size_t(growMinimum) * sizeOfT;
+
+  // This is more than exponential growth at the beginning.
+  if (byteSize < 32) {
+    byteSize = 32;
+  }
+  else if (byteSize < 128) {
+    byteSize = 128;
+  }
+  else if (byteSize < 512) {
+    byteSize = 512;
+  }
+
+  if (byteSize < minimumByteSize) {
+    // Exponential growth before we reach `kGrowThreshold`.
+    byteSize = Support::alignUpPowerOf2(minimumByteSize);
+
+    // Bail to `growMinimum` in case of overflow - most likely whatever that is happening afterwards would just fail.
+    if (byteSize < minimumByteSize) {
+      return growMinimum;
+    }
+
+    // Pretty much chunked growth advancing by `kGrowThreshold` after we exceed it.
+    // This should not be a common case, so we don't really have to optimize for it.
+    if (byteSize > kGrowThreshold) {
+      // Align to kGrowThreshold.
+      size_t remainder = minimumByteSize % kGrowThreshold;
+
+      byteSize = minimumByteSize + remainder;
+
+      // Bail to `growMinimum` in case of overflow - should never happen as it's unlikely we would hit this on a 32-bit
+      // machine (consecutive near 4GiB allocation is impossible, and this should never happen on 64-bit machine as we
+      // use 32-bit size & capacity, so overflow of 64 bit integer is not possible. Added just as an extreme measure.
+      if (byteSize < minimumByteSize) {
+        return growMinimum;
+      }
+    }
+  }
+
+  size_t n = byteSize / sizeOfT;
+  return uint32_t(Support::min<size_t>(n, 0xFFFFFFFFu));
+}
+
+static ASMJIT_INLINE bool ZoneVector_byteSizeIsSafe(size_t nBytes, uint32_t n) noexcept {
+  if constexpr (sizeof(uint32_t) < sizeof(size_t)) {
+    return true; // there is no problem when running on a 64-bit machine.
+  }
+  else {
+    return nBytes >= size_t(n);
+  }
+};
+
 Error ZoneVectorBase::_grow(ZoneAllocator* allocator, uint32_t sizeOfT, uint32_t n) noexcept {
-  uint32_t threshold = Globals::kGrowThreshold / sizeOfT;
   uint32_t capacity = _capacity;
   uint32_t after = _size;
 
-  if (ASMJIT_UNLIKELY(std::numeric_limits<uint32_t>::max() - n < after))
+  if (ASMJIT_UNLIKELY(std::numeric_limits<uint32_t>::max() - n < after)) {
     return DebugUtils::errored(kErrorOutOfMemory);
-
-  after += n;
-  if (capacity >= after)
-    return kErrorOk;
-
-  // ZoneVector is used as an array to hold short-lived data structures used
-  // during code generation. The growing strategy is simple - use small capacity
-  // at the beginning (very good for ZoneAllocator) and then grow quicker to
-  // prevent successive reallocations.
-  if (capacity < 4)
-    capacity = 4;
-  else if (capacity < 8)
-    capacity = 8;
-  else if (capacity < 16)
-    capacity = 16;
-  else if (capacity < 64)
-    capacity = 64;
-  else if (capacity < 256)
-    capacity = 256;
-
-  while (capacity < after) {
-    if (capacity < threshold)
-      capacity *= 2;
-    else
-      capacity += threshold;
   }
 
-  return _reserve(allocator, sizeOfT, capacity);
+  after += n;
+  if (capacity >= after) {
+    return kErrorOk;
+  }
+
+  return _reserve(allocator, sizeOfT, ZoneVector_growCapacity(capacity, after, sizeOfT));
 }
 
 Error ZoneVectorBase::_reserve(ZoneAllocator* allocator, uint32_t sizeOfT, uint32_t n) noexcept {
   uint32_t oldCapacity = _capacity;
-  if (oldCapacity >= n) return kErrorOk;
+  if (oldCapacity >= n) {
+    return kErrorOk;
+  }
 
-  uint32_t nBytes = n * sizeOfT;
-  if (ASMJIT_UNLIKELY(nBytes < n))
+  size_t nBytes = size_t(n) * sizeOfT;
+  if (ASMJIT_UNLIKELY(!ZoneVector_byteSizeIsSafe(nBytes, n))) {
     return DebugUtils::errored(kErrorOutOfMemory);
+  }
 
   size_t allocatedBytes;
   uint8_t* newData = static_cast<uint8_t*>(allocator->alloc(nBytes, allocatedBytes));
 
-  if (ASMJIT_UNLIKELY(!newData))
+  if (ASMJIT_UNLIKELY(!newData)) {
     return DebugUtils::errored(kErrorOutOfMemory);
+  }
+
+  uint32_t newCapacity = uint32_t(allocatedBytes / sizeOfT);
+  ASMJIT_ASSERT(newCapacity >= n);
 
   void* oldData = _data;
-  if (_size)
+  if (oldData && _size) {
     memcpy(newData, oldData, size_t(_size) * sizeOfT);
-
-  if (oldData)
     allocator->release(oldData, size_t(oldCapacity) * sizeOfT);
-
-  _capacity = uint32_t(allocatedBytes / sizeOfT);
-  ASMJIT_ASSERT(_capacity >= n);
+  }
 
   _data = newData;
+  _capacity = newCapacity;
+
   return kErrorOk;
+}
+
+Error ZoneVectorBase::_growingReserve(ZoneAllocator* allocator, uint32_t sizeOfT, uint32_t n) noexcept {
+  uint32_t capacity = _capacity;
+  if (capacity >= n) {
+    return kErrorOk;
+  }
+  return _reserve(allocator, sizeOfT, ZoneVector_growCapacity(capacity, n, sizeOfT));
 }
 
 Error ZoneVectorBase::_resize(ZoneAllocator* allocator, uint32_t sizeOfT, uint32_t n) noexcept {
@@ -86,8 +137,9 @@ Error ZoneVectorBase::_resize(ZoneAllocator* allocator, uint32_t sizeOfT, uint32
     ASMJIT_ASSERT(_capacity >= n);
   }
 
-  if (size < n)
+  if (size < n) {
     memset(static_cast<uint8_t*>(_data) + size_t(size) * sizeOfT, 0, size_t(n - size) * sizeOfT);
+  }
 
   _size = n;
   return kErrorOk;
@@ -108,16 +160,18 @@ Error ZoneBitVector::copyFrom(ZoneAllocator* allocator, const ZoneBitVector& oth
   if (newSize > _capacity) {
     // Realloc needed... Calculate the minimum capacity (in bytes) required.
     uint32_t minimumCapacityInBits = Support::alignUp<uint32_t>(newSize, kBitWordSizeInBits);
-    if (ASMJIT_UNLIKELY(minimumCapacityInBits < newSize))
+    if (ASMJIT_UNLIKELY(minimumCapacityInBits < newSize)) {
       return DebugUtils::errored(kErrorOutOfMemory);
+    }
 
     // Normalize to bytes.
     uint32_t minimumCapacity = minimumCapacityInBits / 8;
     size_t allocatedCapacity;
 
     BitWord* newData = static_cast<BitWord*>(allocator->alloc(minimumCapacity, allocatedCapacity));
-    if (ASMJIT_UNLIKELY(!newData))
+    if (ASMJIT_UNLIKELY(!newData)) {
       return DebugUtils::errored(kErrorOutOfMemory);
+    }
 
     // `allocatedCapacity` now contains number in bytes, we need bits.
     size_t allocatedCapacityInBits = allocatedCapacity * 8;
@@ -125,11 +179,13 @@ Error ZoneBitVector::copyFrom(ZoneAllocator* allocator, const ZoneBitVector& oth
     // Arithmetic overflow should normally not happen. If it happens we just
     // change the `allocatedCapacityInBits` to the `minimumCapacityInBits` as
     // this value is still safe to be used to call `_allocator->release(...)`.
-    if (ASMJIT_UNLIKELY(allocatedCapacityInBits < allocatedCapacity))
+    if (ASMJIT_UNLIKELY(allocatedCapacityInBits < allocatedCapacity)) {
       allocatedCapacityInBits = minimumCapacityInBits;
+    }
 
-    if (data)
+    if (data) {
       allocator->release(data, _capacity / 8);
+    }
     data = newData;
 
     _data = data;
@@ -155,8 +211,9 @@ Error ZoneBitVector::_resize(ZoneAllocator* allocator, uint32_t newSize, uint32_
     // happens when `newSize` is a multiply of `kBitWordSizeInBits` like 64, 128,
     // and so on. In that case don't change anything as that would mean settings
     // bits outside of the `_size`.
-    if (bit)
+    if (bit) {
       _data[idx] &= (BitWord(1) << bit) - 1u;
+    }
 
     _size = newSize;
     return kErrorOk;
@@ -169,16 +226,18 @@ Error ZoneBitVector::_resize(ZoneAllocator* allocator, uint32_t newSize, uint32_
     // Realloc needed, calculate the minimum capacity (in bytes) required.
     uint32_t minimumCapacityInBits = Support::alignUp<uint32_t>(idealCapacity, kBitWordSizeInBits);
 
-    if (ASMJIT_UNLIKELY(minimumCapacityInBits < newSize))
+    if (ASMJIT_UNLIKELY(minimumCapacityInBits < newSize)) {
       return DebugUtils::errored(kErrorOutOfMemory);
+    }
 
     // Normalize to bytes.
     uint32_t minimumCapacity = minimumCapacityInBits / 8;
     size_t allocatedCapacity;
 
     BitWord* newData = static_cast<BitWord*>(allocator->alloc(minimumCapacity, allocatedCapacity));
-    if (ASMJIT_UNLIKELY(!newData))
+    if (ASMJIT_UNLIKELY(!newData)) {
       return DebugUtils::errored(kErrorOutOfMemory);
+    }
 
     // `allocatedCapacity` now contains number in bytes, we need bits.
     size_t allocatedCapacityInBits = allocatedCapacity * 8;
@@ -186,13 +245,15 @@ Error ZoneBitVector::_resize(ZoneAllocator* allocator, uint32_t newSize, uint32_
     // Arithmetic overflow should normally not happen. If it happens we just
     // change the `allocatedCapacityInBits` to the `minimumCapacityInBits` as
     // this value is still safe to be used to call `_allocator->release(...)`.
-    if (ASMJIT_UNLIKELY(allocatedCapacityInBits < allocatedCapacity))
+    if (ASMJIT_UNLIKELY(allocatedCapacityInBits < allocatedCapacity)) {
       allocatedCapacityInBits = minimumCapacityInBits;
+    }
 
     _copyBits(newData, data, _wordsPerBits(oldSize));
 
-    if (data)
+    if (data) {
       allocator->release(data, _capacity / 8);
+    }
     data = newData;
 
     _data = data;
@@ -232,8 +293,9 @@ Error ZoneBitVector::_resize(ZoneAllocator* allocator, uint32_t newSize, uint32_
   while (idx < endIdx) data[idx++] = pattern;
 
   // Clear unused bits of the last bit-word.
-  if (endBit)
+  if (endBit) {
     data[endIdx - 1] = pattern & ((BitWord(1) << endBit) - 1);
+  }
 
   _size = newSize;
   return kErrorOk;
@@ -244,16 +306,20 @@ Error ZoneBitVector::_append(ZoneAllocator* allocator, bool value) noexcept {
   uint32_t newSize = _size + 1;
   uint32_t idealCapacity = _capacity;
 
-  if (idealCapacity < 128)
+  if (idealCapacity < 128) {
     idealCapacity = 128;
-  else if (idealCapacity <= kThreshold)
+  }
+  else if (idealCapacity <= kThreshold) {
     idealCapacity *= 2;
-  else
+  }
+  else {
     idealCapacity += kThreshold;
+  }
 
   if (ASMJIT_UNLIKELY(idealCapacity < _capacity)) {
-    if (ASMJIT_UNLIKELY(_size == std::numeric_limits<uint32_t>::max()))
+    if (ASMJIT_UNLIKELY(_size == std::numeric_limits<uint32_t>::max())) {
       return DebugUtils::errored(kErrorOutOfMemory);
+    }
     idealCapacity = newSize;
   }
 
@@ -266,6 +332,8 @@ Error ZoneBitVector::_append(ZoneAllocator* allocator, bool value) noexcept {
 #if defined(ASMJIT_TEST)
 template<typename T>
 static void test_zone_vector(ZoneAllocator* allocator, const char* typeName) {
+  constexpr uint32_t kMiB = 1024 * 1024;
+
   int i;
   int kMax = 100000;
 
@@ -289,15 +357,44 @@ static void test_zone_vector(ZoneAllocator* allocator, const char* typeName) {
   }
   EXPECT_FALSE(vec.empty());
   EXPECT_EQ(vec.size(), uint32_t(kMax));
+  EXPECT_EQ(vec.indexOf(T(0)), uint32_t(0));
   EXPECT_EQ(vec.indexOf(T(kMax - 1)), uint32_t(kMax - 1));
 
-  EXPECT_EQ(vec.rbegin()[0], kMax - 1);
+  EXPECT_EQ(vec.begin()[0], 0);
+  EXPECT_EQ(vec.end()[-1], kMax - 1);
 
-  vec.release(allocator);
+  EXPECT_EQ(vec.rbegin()[0], kMax - 1);
+  EXPECT_EQ(vec.rend()[-1], 0);
+
+  int64_t fsum = 0;
+  int64_t rsum = 0;
+
+  for (const T& item : vec) {
+    fsum += item;
+  }
+
+  for (auto it = vec.rbegin(); it != vec.rend(); ++it) {
+    rsum += *it;
+  }
+  EXPECT_EQ(fsum, rsum);
+
+  INFO("ZoneVector<%s>::operator=(ZoneVector<%s>&&)", typeName, typeName);
+  ZoneVector<T> movedVec(std::move(vec));
+  EXPECT_EQ(vec.data(), nullptr);
+  EXPECT_EQ(vec.size(), 0u);
+  EXPECT_EQ(vec.capacity(), 0u);
+
+  movedVec.release(allocator);
+
+  INFO("ZoneVector<%s>::growingReserve()", typeName);
+  for (uint32_t j = 0; j < 40 / sizeof(T); j += 8) {
+    EXPECT_EQ(vec.growingReserve(allocator, j * kMiB), kErrorOk);
+    EXPECT_GE(vec.capacity(), j * kMiB);
+  }
 }
 
 static void test_zone_bitvector(ZoneAllocator* allocator) {
-  Zone zone(8096 - Zone::kBlockOverhead);
+  Zone zone(8096);
 
   uint32_t i, count;
   uint32_t kMaxCount = 100;
@@ -312,15 +409,17 @@ static void test_zone_bitvector(ZoneAllocator* allocator) {
     EXPECT_EQ(vec.resize(allocator, count, false), kErrorOk);
     EXPECT_EQ(vec.size(), count);
 
-    for (i = 0; i < count; i++)
+    for (i = 0; i < count; i++) {
       EXPECT_FALSE(vec.bitAt(i));
+    }
 
     vec.clear();
     EXPECT_EQ(vec.resize(allocator, count, true), kErrorOk);
     EXPECT_EQ(vec.size(), count);
 
-    for (i = 0; i < count; i++)
+    for (i = 0; i < count; i++) {
       EXPECT_TRUE(vec.bitAt(i));
+    }
   }
 
   INFO("ZoneBitVector::fillBits() / clearBits()");
@@ -331,10 +430,12 @@ static void test_zone_bitvector(ZoneAllocator* allocator) {
 
     for (i = 0; i < (count + 1) / 2; i++) {
       bool value = bool(i & 1);
-      if (value)
+      if (value) {
         vec.fillBits(i, count - i * 2);
-      else
+      }
+      else {
         vec.clearBits(i, count - i * 2);
+      }
     }
 
     for (i = 0; i < count; i++) {
@@ -344,7 +445,7 @@ static void test_zone_bitvector(ZoneAllocator* allocator) {
 }
 
 UNIT(zone_vector) {
-  Zone zone(8096 - Zone::kBlockOverhead);
+  Zone zone(8096);
   ZoneAllocator allocator(&zone);
 
   test_zone_vector<int>(&allocator, "int");

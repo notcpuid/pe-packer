@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_A64EMITTER_H_INCLUDED
@@ -71,7 +71,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 //! ARM emitter.
 //!
 //! NOTE: This class cannot be instantiated, you can only cast to it and use it as emitter that emits to either
-//! \ref Assembler, \ref Builder, or \ref Compiler (use withcaution with \ref Compiler as it expects virtual
+//! \ref Assembler, \ref Builder, or \ref Compiler (use with caution with \ref Compiler as it expects virtual
 //! registers to be used).
 template<typename This>
 struct EmitterExplicitT {
@@ -79,10 +79,21 @@ struct EmitterExplicitT {
 
   // These two are unfortunately reported by the sanitizer. We know what we do, however, the sanitizer doesn't.
   // I have tried to use reinterpret_cast instead, but that would generate bad code when compiled by MSC.
-  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF inline This* _emitter() noexcept { return static_cast<This*>(this); }
-  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF inline const This* _emitter() const noexcept { return static_cast<const This*>(this); }
+  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG This* _emitter() noexcept { return static_cast<This*>(this); }
+  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG const This* _emitter() const noexcept { return static_cast<const This*>(this); }
 
   //! \endcond
+
+
+  //! \name Native Registers
+  //! \{
+
+  //! Returns either 32-bit or 64-bit GP register of the given `id` depending on the emitter's architecture.
+  inline Gp gpz(uint32_t id) const noexcept { return Gp(_emitter()->_gpSignature, id); }
+  //! Clones the given `reg` to either 32-bit or 64-bit GP register depending on the emitter's architecture.
+  inline Gp gpz(const Gp& reg) const noexcept { return Gp(_emitter()->_gpSignature, reg.id()); }
+
+  //! \}
 
   //! \name General Purpose Instructions
   //! \{
@@ -215,6 +226,9 @@ struct EmitterExplicitT {
   ASMJIT_INST_2x(mvn, Mvn, Gp, Gp)
   ASMJIT_INST_3x(mvn, Mvn, Gp, Gp, Imm)
 
+  ASMJIT_INST_2x(mvn_, Mvn, Gp, Gp)
+  ASMJIT_INST_3x(mvn_, Mvn, Gp, Gp, Imm)
+
   ASMJIT_INST_2x(neg, Neg, Gp, Gp)
   ASMJIT_INST_3x(neg, Neg, Gp, Gp, Imm)
   ASMJIT_INST_2x(negs, Negs, Gp, Gp)
@@ -300,27 +314,9 @@ struct EmitterExplicitT {
   ASMJIT_INST_1x(dcps1, Dcps1, Imm)
   ASMJIT_INST_1x(dcps2, Dcps2, Imm)
   ASMJIT_INST_1x(dcps3, Dcps3, Imm)
-  ASMJIT_INST_0x(dgh, Dgh)
   ASMJIT_INST_0x(pssbb, Pssbb)
   ASMJIT_INST_0x(ssbb, Ssbb)
   ASMJIT_INST_1x(udf, Udf, Imm)
-  ASMJIT_INST_1x(setf8, Setf8, Gp)
-  ASMJIT_INST_1x(setf16, Setf16, Gp)
-
-  //! \}
-
-  //! \name ARMv8.4 Instructions
-  //! \{
-
-  ASMJIT_INST_0x(cfinv, Cfinv)
-
-  //! \}
-
-  //! \name ARMv8.5 Instructions
-  //! \{
-
-  ASMJIT_INST_0x(axflag, Axflag)
-  ASMJIT_INST_0x(xaflag, Xaflag)
 
   //! \}
 
@@ -514,6 +510,8 @@ struct EmitterExplicitT {
   ASMJIT_INST_2x(ldxrb, Ldxrb, Gp, Mem)
   ASMJIT_INST_2x(ldxrh, Ldxrh, Gp, Mem)
 
+  ASMJIT_INST_2x(prfm, Prfm, Imm, Mem)
+
   ASMJIT_INST_2x(stadd, Stadd, Gp, Mem)
   ASMJIT_INST_2x(staddb, Staddb, Gp, Mem)
   ASMJIT_INST_2x(staddh, Staddh, Gp, Mem)
@@ -618,6 +616,27 @@ struct EmitterExplicitT {
   ASMJIT_INST_3x(swplh, Swplh, Gp, Gp, Mem)
   //! \}
 
+  //! \name BTI Instructions
+  //! \{
+
+  ASMJIT_INST_1x(bti, Bti, Imm);
+
+  //! \}
+
+  //! \name CHK Instructions
+  //! \{
+
+  ASMJIT_INST_1x(chkfeat, Chkfeat, Gp);
+
+  //! \}
+
+  //! \name CLRBHB Instructions
+  //! \{
+
+  ASMJIT_INST_0x(clrbhb, Clrbhb);
+
+  //! \}
+
   //! \name CRC Instructions (ARMv8.1-A, optional in ARMv8.0-A)
   //! \{
 
@@ -630,6 +649,55 @@ struct EmitterExplicitT {
   ASMJIT_INST_3x(crc32ch, Crc32ch, Gp, Gp, Gp);
   ASMJIT_INST_3x(crc32cw, Crc32cw, Gp, Gp, Gp);
   ASMJIT_INST_3x(crc32cx, Crc32cx, Gp, Gp, Gp);
+
+  //! \}
+
+  //! \name CSSC Instructions
+  //! \{
+
+  ASMJIT_INST_2x(abs, Abs, Gp, Gp);
+  ASMJIT_INST_2x(cnt, Cnt, Gp, Gp);
+  ASMJIT_INST_2x(ctz, Ctz, Gp, Gp);
+  ASMJIT_INST_3x(smax, Smax, Gp, Gp, Gp);
+  ASMJIT_INST_3x(smax, Smax, Gp, Gp, Imm);
+  ASMJIT_INST_3x(smin, Smin, Gp, Gp, Gp);
+  ASMJIT_INST_3x(smin, Smin, Gp, Gp, Imm);
+  ASMJIT_INST_3x(umax, Umax, Gp, Gp, Gp);
+  ASMJIT_INST_3x(umax, Umax, Gp, Gp, Imm);
+  ASMJIT_INST_3x(umin, Umin, Gp, Gp, Gp);
+  ASMJIT_INST_3x(umin, Umin, Gp, Gp, Imm);
+
+  //! \}
+
+  //! \name DGH Instructions
+  //! \{
+
+  ASMJIT_INST_0x(dgh, Dgh)
+
+  //! \}
+
+  //! \name FLAGM Instructions
+  //! \{
+
+  ASMJIT_INST_0x(cfinv, Cfinv)
+  ASMJIT_INST_1x(setf8, Setf8, Gp)
+  ASMJIT_INST_1x(setf16, Setf16, Gp)
+
+  //! \}
+
+  //! \name FLAGM2 Instructions
+  //! \{
+
+  ASMJIT_INST_0x(axflag, Axflag)
+  ASMJIT_INST_0x(xaflag, Xaflag)
+
+  //! \}
+
+  //! \name HBC Instructions
+  //! \{
+
+  ASMJIT_INST_1cc(bc, Bc, Imm)
+  ASMJIT_INST_1cc(bc, Bc, Label)
 
   //! \}
 
@@ -861,6 +929,7 @@ struct EmitterExplicitT {
   ASMJIT_INST_3x(movi, Movi_v, Vec, Imm, Imm);
   ASMJIT_INST_3x(mul, Mul_v, Vec, Vec, Vec);
   ASMJIT_INST_2x(mvn, Mvn_v, Vec, Vec);
+  ASMJIT_INST_2x(mvn_, Mvn_v, Vec, Vec);
   ASMJIT_INST_2x(mvni, Mvni_v, Vec, Imm);
   ASMJIT_INST_3x(mvni, Mvni_v, Vec, Imm, Imm);
   ASMJIT_INST_2x(neg, Neg_v, Vec, Vec);
@@ -1200,7 +1269,7 @@ struct EmitterExplicitT {
   //! \}
 };
 
-//! Emitter (ARM).
+//! Emitter (AArch64).
 //!
 //! \note This class cannot be instantiated, you can only cast to it and use it as emitter that emits to either
 //! `a64::Assembler`, `a64::Builder`, or `a64::Compiler` (use with caution with `a64::Compiler` as it requires

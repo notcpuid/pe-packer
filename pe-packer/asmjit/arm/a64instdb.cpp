@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -43,9 +43,6 @@ ERETAA, ERETAB: Exception Return, with pointer authentication.
 LDAPxxx
 PACIA, PACIA1716, PACIASP, PACIAZ, PACIZA: Pointer Authentication Code for Instruction address, using key A.
 PACIB, PACIB1716, PACIBSP, PACIBZ, PACIZB: Pointer Authentication Code for Instruction address, using key B.
-PRFM (immediate): Prefetch Memory (immediate).
-PRFM (literal): Prefetch Memory (literal).
-PRFM (register): Prefetch Memory (register).
 PRFUM: Prefetch Memory (unscaled offset).
 RETAA, RETAB: Return from subroutine, with pointer authentication.
 RMIF: Rotate, Mask Insert Flags.
@@ -59,769 +56,781 @@ const InstInfo _instInfoTable[] = {
   // +------------------+---------------------+--------------------------------------------------------------------------------------+-----------+---------------------------+----+
   // ${InstInfo:Begin}
   INST(None             , None               , (_)                                                                                   , 0         , 0                         , 0  ), // #0
-  INST(Adc              , BaseRRR            , (0b0001101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 0  ), // #1
-  INST(Adcs             , BaseRRR            , (0b0011101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 1  ), // #2
-  INST(Add              , BaseAddSub         , (0b0001011000, 0b0001011001, 0b0010001)                                               , kRWI_W    , 0                         , 0  ), // #3
-  INST(Addg             , BaseRRII           , (0b1001000110000000000000, kX, kSP, kX, kSP, 6, 4, 16, 4, 0, 10)                      , kRWI_W    , 0                         , 0  ), // #4
-  INST(Adds             , BaseAddSub         , (0b0101011000, 0b0101011001, 0b0110001)                                               , kRWI_W    , 0                         , 1  ), // #5
-  INST(Adr              , BaseAdr            , (0b0001000000000000000000, OffsetType::kAArch64_ADR)                                  , kRWI_W    , 0                         , 0  ), // #6
-  INST(Adrp             , BaseAdr            , (0b1001000000000000000000, OffsetType::kAArch64_ADRP)                                 , kRWI_W    , 0                         , 1  ), // #7
-  INST(And              , BaseLogical        , (0b0001010000, 0b00100100, 0)                                                         , kRWI_W    , 0                         , 0  ), // #8
-  INST(Ands             , BaseLogical        , (0b1101010000, 0b11100100, 0)                                                         , kRWI_W    , 0                         , 1  ), // #9
-  INST(Asr              , BaseShift          , (0b0001101011000000001010, 0b0001001100000000011111, 0)                               , kRWI_W    , 0                         , 0  ), // #10
-  INST(Asrv             , BaseShift          , (0b0001101011000000001010, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 1  ), // #11
-  INST(At               , BaseAtDcIcTlbi     , (0b00011111110000, 0b00001111000000, true)                                            , kRWI_RX   , 0                         , 0  ), // #12
-  INST(Autda            , BaseRR             , (0b11011010110000010001100000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 0  ), // #13
-  INST(Autdza           , BaseR              , (0b11011010110000010011101111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 0  ), // #14
-  INST(Autdb            , BaseRR             , (0b11011010110000010001110000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 1  ), // #15
-  INST(Autdzb           , BaseR              , (0b11011010110000010011111111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 1  ), // #16
-  INST(Autia            , BaseRR             , (0b11011010110000010001000000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 2  ), // #17
-  INST(Autia1716        , BaseOp             , (0b11010101000000110010000110011111)                                                  , 0         , 0                         , 0  ), // #18
-  INST(Autiasp          , BaseOp             , (0b11010101000000110010001110111111)                                                  , 0         , 0                         , 1  ), // #19
-  INST(Autiaz           , BaseOp             , (0b11010101000000110010001110011111)                                                  , 0         , 0                         , 2  ), // #20
-  INST(Autib            , BaseRR             , (0b11011010110000010001010000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 3  ), // #21
-  INST(Autib1716        , BaseOp             , (0b11010101000000110010000111011111)                                                  , 0         , 0                         , 3  ), // #22
-  INST(Autibsp          , BaseOp             , (0b11010101000000110010001111111111)                                                  , 0         , 0                         , 4  ), // #23
-  INST(Autibz           , BaseOp             , (0b11010101000000110010001111011111)                                                  , 0         , 0                         , 5  ), // #24
-  INST(Autiza           , BaseR              , (0b11011010110000010011001111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 2  ), // #25
-  INST(Autizb           , BaseR              , (0b11011010110000010011011111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 3  ), // #26
-  INST(Axflag           , BaseOp             , (0b11010101000000000100000001011111)                                                  , 0         , 0                         , 6  ), // #27
-  INST(B                , BaseBranchRel      , (0b00010100000000000000000000000000)                                                  , 0         , F(Cond)                   , 0  ), // #28
-  INST(Bfc              , BaseBfc            , (0b00110011000000000000001111100000)                                                  , kRWI_X    , 0                         , 0  ), // #29
-  INST(Bfi              , BaseBfi            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #30
-  INST(Bfm              , BaseBfm            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #31
-  INST(Bfxil            , BaseBfx            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #32
-  INST(Bic              , BaseLogical        , (0b0001010001, 0b00100100, 1)                                                         , kRWI_W    , 0                         , 2  ), // #33
-  INST(Bics             , BaseLogical        , (0b1101010001, 0b11100100, 1)                                                         , kRWI_W    , 0                         , 3  ), // #34
-  INST(Bl               , BaseBranchRel      , (0b10010100000000000000000000000000)                                                  , 0         , 0                         , 1  ), // #35
-  INST(Blr              , BaseBranchReg      , (0b11010110001111110000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #36
-  INST(Br               , BaseBranchReg      , (0b11010110000111110000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #37
-  INST(Brk              , BaseOpImm          , (0b11010100001000000000000000000000, 16, 5)                                           , 0         , 0                         , 0  ), // #38
-  INST(Cas              , BaseAtomicOp       , (0b1000100010100000011111, kWX, 30, 0)                                                , kRWI_XRX  , 0                         , 0  ), // #39
-  INST(Casa             , BaseAtomicOp       , (0b1000100011100000011111, kWX, 30, 1)                                                , kRWI_XRX  , 0                         , 1  ), // #40
-  INST(Casab            , BaseAtomicOp       , (0b0000100011100000011111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 2  ), // #41
-  INST(Casah            , BaseAtomicOp       , (0b0100100011100000011111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 3  ), // #42
-  INST(Casal            , BaseAtomicOp       , (0b1000100011100000111111, kWX, 30, 1)                                                , kRWI_XRX  , 0                         , 4  ), // #43
-  INST(Casalb           , BaseAtomicOp       , (0b0000100011100000111111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 5  ), // #44
-  INST(Casalh           , BaseAtomicOp       , (0b0100100011100000111111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 6  ), // #45
-  INST(Casb             , BaseAtomicOp       , (0b0000100010100000011111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 7  ), // #46
-  INST(Cash             , BaseAtomicOp       , (0b0100100010100000011111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 8  ), // #47
-  INST(Casl             , BaseAtomicOp       , (0b1000100010100000111111, kWX, 30, 0)                                                , kRWI_XRX  , 0                         , 9  ), // #48
-  INST(Caslb            , BaseAtomicOp       , (0b0000100010100000111111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 10 ), // #49
-  INST(Caslh            , BaseAtomicOp       , (0b0100100010100000111111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 11 ), // #50
-  INST(Casp             , BaseAtomicCasp     , (0b0000100000100000011111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 0  ), // #51
-  INST(Caspa            , BaseAtomicCasp     , (0b0000100001100000011111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 1  ), // #52
-  INST(Caspal           , BaseAtomicCasp     , (0b0000100001100000111111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 2  ), // #53
-  INST(Caspl            , BaseAtomicCasp     , (0b0000100000100000111111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 3  ), // #54
-  INST(Cbnz             , BaseBranchCmp      , (0b00110101000000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #55
-  INST(Cbz              , BaseBranchCmp      , (0b00110100000000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #56
-  INST(Ccmn             , BaseCCmp           , (0b00111010010000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #57
-  INST(Ccmp             , BaseCCmp           , (0b01111010010000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #58
-  INST(Cfinv            , BaseOp             , (0b11010101000000000100000000011111)                                                  , 0         , 0                         , 7  ), // #59
-  INST(Cinc             , BaseCInc           , (0b00011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 0  ), // #60
-  INST(Cinv             , BaseCInc           , (0b01011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #61
-  INST(Clrex            , BaseOpImm          , (0b11010101000000110011000001011111, 4, 8)                                            , 0         , 0                         , 1  ), // #62
-  INST(Cls              , BaseRR             , (0b01011010110000000001010000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 4  ), // #63
-  INST(Clz              , BaseRR             , (0b01011010110000000001000000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 5  ), // #64
-  INST(Cmn              , BaseCmpCmn         , (0b0101011000, 0b0101011001, 0b0110001)                                               , kRWI_R    , 0                         , 0  ), // #65
-  INST(Cmp              , BaseCmpCmn         , (0b1101011000, 0b1101011001, 0b1110001)                                               , kRWI_R    , 0                         , 1  ), // #66
-  INST(Cmpp             , BaseRR             , (0b10111010110000000000000000011111, kX, kSP, 5, kX, kSP, 16, true)                   , kRWI_R    , 0                         , 6  ), // #67
-  INST(Cneg             , BaseCInc           , (0b01011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 2  ), // #68
-  INST(Crc32b           , BaseRRR            , (0b0001101011000000010000, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 2  ), // #69
-  INST(Crc32cb          , BaseRRR            , (0b0001101011000000010100, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 3  ), // #70
-  INST(Crc32ch          , BaseRRR            , (0b0001101011000000010101, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 4  ), // #71
-  INST(Crc32cw          , BaseRRR            , (0b0001101011000000010110, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 5  ), // #72
-  INST(Crc32cx          , BaseRRR            , (0b1001101011000000010111, kW, kZR, kW, kZR, kX, kZR, false)                          , kRWI_W    , 0                         , 6  ), // #73
-  INST(Crc32h           , BaseRRR            , (0b0001101011000000010001, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 7  ), // #74
-  INST(Crc32w           , BaseRRR            , (0b0001101011000000010010, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 8  ), // #75
-  INST(Crc32x           , BaseRRR            , (0b1001101011000000010011, kW, kZR, kW, kZR, kX, kZR, false)                          , kRWI_W    , 0                         , 9  ), // #76
-  INST(Csdb             , BaseOp             , (0b11010101000000110010001010011111)                                                  , 0         , 0                         , 8  ), // #77
-  INST(Csel             , BaseCSel           , (0b00011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 0  ), // #78
-  INST(Cset             , BaseCSet           , (0b00011010100111110000011111100000)                                                  , kRWI_W    , 0                         , 0  ), // #79
-  INST(Csetm            , BaseCSet           , (0b01011010100111110000001111100000)                                                  , kRWI_W    , 0                         , 1  ), // #80
-  INST(Csinc            , BaseCSel           , (0b00011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 1  ), // #81
-  INST(Csinv            , BaseCSel           , (0b01011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #82
-  INST(Csneg            , BaseCSel           , (0b01011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 3  ), // #83
-  INST(Dc               , BaseAtDcIcTlbi     , (0b00011110000000, 0b00001110000000, true)                                            , kRWI_RX   , 0                         , 1  ), // #84
-  INST(Dcps1            , BaseOpImm          , (0b11010100101000000000000000000001, 16, 5)                                           , 0         , 0                         , 2  ), // #85
-  INST(Dcps2            , BaseOpImm          , (0b11010100101000000000000000000010, 16, 5)                                           , 0         , 0                         , 3  ), // #86
-  INST(Dcps3            , BaseOpImm          , (0b11010100101000000000000000000011, 16, 5)                                           , 0         , 0                         , 4  ), // #87
-  INST(Dgh              , BaseOp             , (0b11010101000000110010000011011111)                                                  , 0         , 0                         , 9  ), // #88
-  INST(Dmb              , BaseOpImm          , (0b11010101000000110011000010111111, 4, 8)                                            , 0         , 0                         , 5  ), // #89
-  INST(Drps             , BaseOp             , (0b11010110101111110000001111100000)                                                  , 0         , 0                         , 10 ), // #90
-  INST(Dsb              , BaseOpImm          , (0b11010101000000110011000010011111, 4, 8)                                            , 0         , 0                         , 6  ), // #91
-  INST(Eon              , BaseLogical        , (0b1001010001, 0b10100100, 1)                                                         , kRWI_W    , 0                         , 4  ), // #92
-  INST(Eor              , BaseLogical        , (0b1001010000, 0b10100100, 0)                                                         , kRWI_W    , 0                         , 5  ), // #93
-  INST(Esb              , BaseOp             , (0b11010101000000110010001000011111)                                                  , 0         , 0                         , 11 ), // #94
-  INST(Extr             , BaseExtract        , (0b00010011100000000000000000000000)                                                  , kRWI_W    , 0                         , 0  ), // #95
-  INST(Eret             , BaseOp             , (0b11010110100111110000001111100000)                                                  , 0         , 0                         , 12 ), // #96
-  INST(Gmi              , BaseRRR            , (0b1001101011000000000101, kX , kZR, kX , kSP, kX , kZR, true)                        , kRWI_W    , 0                         , 10 ), // #97
-  INST(Hint             , BaseOpImm          , (0b11010101000000110010000000011111, 7, 5)                                            , 0         , 0                         , 7  ), // #98
-  INST(Hlt              , BaseOpImm          , (0b11010100010000000000000000000000, 16, 5)                                           , 0         , 0                         , 8  ), // #99
-  INST(Hvc              , BaseOpImm          , (0b11010100000000000000000000000010, 16, 5)                                           , 0         , 0                         , 9  ), // #100
-  INST(Ic               , BaseAtDcIcTlbi     , (0b00011110000000, 0b00001110000000, false)                                           , kRWI_RX   , 0                         , 2  ), // #101
-  INST(Isb              , BaseOpImm          , (0b11010101000000110011000011011111, 4, 8)                                            , 0         , 0                         , 10 ), // #102
-  INST(Ldadd            , BaseAtomicOp       , (0b1011100000100000000000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 12 ), // #103
-  INST(Ldadda           , BaseAtomicOp       , (0b1011100010100000000000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 13 ), // #104
-  INST(Ldaddab          , BaseAtomicOp       , (0b0011100010100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 14 ), // #105
-  INST(Ldaddah          , BaseAtomicOp       , (0b0111100010100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 15 ), // #106
-  INST(Ldaddal          , BaseAtomicOp       , (0b1011100011100000000000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 16 ), // #107
-  INST(Ldaddalb         , BaseAtomicOp       , (0b0011100011100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 17 ), // #108
-  INST(Ldaddalh         , BaseAtomicOp       , (0b0111100011100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 18 ), // #109
-  INST(Ldaddb           , BaseAtomicOp       , (0b0011100000100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 19 ), // #110
-  INST(Ldaddh           , BaseAtomicOp       , (0b0111100000100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 20 ), // #111
-  INST(Ldaddl           , BaseAtomicOp       , (0b1011100001100000000000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 21 ), // #112
-  INST(Ldaddlb          , BaseAtomicOp       , (0b0011100001100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 22 ), // #113
-  INST(Ldaddlh          , BaseAtomicOp       , (0b0111100001100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 23 ), // #114
-  INST(Ldar             , BaseRM_NoImm       , (0b1000100011011111111111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 0  ), // #115
-  INST(Ldarb            , BaseRM_NoImm       , (0b0000100011011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 1  ), // #116
-  INST(Ldarh            , BaseRM_NoImm       , (0b0100100011011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 2  ), // #117
-  INST(Ldaxp            , BaseLdxp           , (0b1000100001111111100000, kWX, 30)                                                   , kRWI_WW   , 0                         , 0  ), // #118
-  INST(Ldaxr            , BaseRM_NoImm       , (0b1000100001011111111111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 3  ), // #119
-  INST(Ldaxrb           , BaseRM_NoImm       , (0b0000100001011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 4  ), // #120
-  INST(Ldaxrh           , BaseRM_NoImm       , (0b0100100001011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 5  ), // #121
-  INST(Ldclr            , BaseAtomicOp       , (0b1011100000100000000100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 24 ), // #122
-  INST(Ldclra           , BaseAtomicOp       , (0b1011100010100000000100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 25 ), // #123
-  INST(Ldclrab          , BaseAtomicOp       , (0b0011100010100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 26 ), // #124
-  INST(Ldclrah          , BaseAtomicOp       , (0b0111100010100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 27 ), // #125
-  INST(Ldclral          , BaseAtomicOp       , (0b1011100011100000000100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 28 ), // #126
-  INST(Ldclralb         , BaseAtomicOp       , (0b0011100011100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 29 ), // #127
-  INST(Ldclralh         , BaseAtomicOp       , (0b0111100011100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 30 ), // #128
-  INST(Ldclrb           , BaseAtomicOp       , (0b0011100000100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 31 ), // #129
-  INST(Ldclrh           , BaseAtomicOp       , (0b0111100000100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 32 ), // #130
-  INST(Ldclrl           , BaseAtomicOp       , (0b1011100001100000000100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 33 ), // #131
-  INST(Ldclrlb          , BaseAtomicOp       , (0b0011100001100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 34 ), // #132
-  INST(Ldclrlh          , BaseAtomicOp       , (0b0111100001100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 35 ), // #133
-  INST(Ldeor            , BaseAtomicOp       , (0b1011100000100000001000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 36 ), // #134
-  INST(Ldeora           , BaseAtomicOp       , (0b1011100010100000001000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 37 ), // #135
-  INST(Ldeorab          , BaseAtomicOp       , (0b0011100010100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 38 ), // #136
-  INST(Ldeorah          , BaseAtomicOp       , (0b0111100010100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 39 ), // #137
-  INST(Ldeoral          , BaseAtomicOp       , (0b1011100011100000001000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 40 ), // #138
-  INST(Ldeoralb         , BaseAtomicOp       , (0b0011100011100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 41 ), // #139
-  INST(Ldeoralh         , BaseAtomicOp       , (0b0111100011100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 42 ), // #140
-  INST(Ldeorb           , BaseAtomicOp       , (0b0011100000100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 43 ), // #141
-  INST(Ldeorh           , BaseAtomicOp       , (0b0111100000100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 44 ), // #142
-  INST(Ldeorl           , BaseAtomicOp       , (0b1011100001100000001000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 45 ), // #143
-  INST(Ldeorlb          , BaseAtomicOp       , (0b0011100001100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 46 ), // #144
-  INST(Ldeorlh          , BaseAtomicOp       , (0b0111100001100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 47 ), // #145
-  INST(Ldg              , BaseRM_SImm9       , (0b1101100101100000000000, 0b0000000000000000000000, kX , kZR, 0, 4)                  , kRWI_W    , 0                         , 0  ), // #146
-  INST(Ldgm             , BaseRM_NoImm       , (0b1101100111100000000000, kX , kZR, 0 )                                              , kRWI_W    , 0                         , 6  ), // #147
-  INST(Ldlar            , BaseRM_NoImm       , (0b1000100011011111011111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 7  ), // #148
-  INST(Ldlarb           , BaseRM_NoImm       , (0b0000100011011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 8  ), // #149
-  INST(Ldlarh           , BaseRM_NoImm       , (0b0100100011011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 9  ), // #150
-  INST(Ldnp             , BaseLdpStp         , (0b0010100001, 0           , kWX, 31, 2)                                              , kRWI_WW   , 0                         , 0  ), // #151
-  INST(Ldp              , BaseLdpStp         , (0b0010100101, 0b0010100011, kWX, 31, 2)                                              , kRWI_W    , 0                         , 1  ), // #152
-  INST(Ldpsw            , BaseLdpStp         , (0b0110100101, 0b0110100011, kX , 0 , 2)                                              , kRWI_WW   , 0                         , 2  ), // #153
-  INST(Ldr              , BaseLdSt           , (0b1011100101, 0b10111000010, 0b10111000011, 0b00011000, kWX, 30, 2, Inst::kIdLdur)   , kRWI_W    , 0                         , 0  ), // #154
-  INST(Ldraa            , BaseRM_SImm10      , (0b1111100000100000000001, kX , kZR, 0, 3)                                            , kRWI_W    , 0                         , 0  ), // #155
-  INST(Ldrab            , BaseRM_SImm10      , (0b1111100010100000000001, kX , kZR, 0, 3)                                            , kRWI_W    , 0                         , 1  ), // #156
-  INST(Ldrb             , BaseLdSt           , (0b0011100101, 0b00111000010, 0b00111000011, 0         , kW , 0 , 0, Inst::kIdLdurb)  , kRWI_W    , 0                         , 1  ), // #157
-  INST(Ldrh             , BaseLdSt           , (0b0111100101, 0b01111000010, 0b01111000011, 0         , kW , 0 , 1, Inst::kIdLdurh)  , kRWI_W    , 0                         , 2  ), // #158
-  INST(Ldrsb            , BaseLdSt           , (0b0011100111, 0b00111000100, 0b00111000111, 0         , kWX, 22, 0, Inst::kIdLdursb) , kRWI_W    , 0                         , 3  ), // #159
-  INST(Ldrsh            , BaseLdSt           , (0b0111100111, 0b01111000100, 0b01111000111, 0         , kWX, 22, 1, Inst::kIdLdursh) , kRWI_W    , 0                         , 4  ), // #160
-  INST(Ldrsw            , BaseLdSt           , (0b1011100110, 0b10111000100, 0b10111000101, 0b10011000, kX , 0 , 2, Inst::kIdLdursw) , kRWI_W    , 0                         , 5  ), // #161
-  INST(Ldset            , BaseAtomicOp       , (0b1011100000100000001100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 48 ), // #162
-  INST(Ldseta           , BaseAtomicOp       , (0b1011100010100000001100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 49 ), // #163
-  INST(Ldsetab          , BaseAtomicOp       , (0b0011100010100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 50 ), // #164
-  INST(Ldsetah          , BaseAtomicOp       , (0b0111100010100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 51 ), // #165
-  INST(Ldsetal          , BaseAtomicOp       , (0b1011100011100000001100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 52 ), // #166
-  INST(Ldsetalb         , BaseAtomicOp       , (0b0011100011100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 53 ), // #167
-  INST(Ldsetalh         , BaseAtomicOp       , (0b0111100011100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 54 ), // #168
-  INST(Ldsetb           , BaseAtomicOp       , (0b0011100000100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 55 ), // #169
-  INST(Ldseth           , BaseAtomicOp       , (0b0111100000100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 56 ), // #170
-  INST(Ldsetl           , BaseAtomicOp       , (0b1011100001100000001100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 57 ), // #171
-  INST(Ldsetlb          , BaseAtomicOp       , (0b0011100001100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 58 ), // #172
-  INST(Ldsetlh          , BaseAtomicOp       , (0b0111100001100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 59 ), // #173
-  INST(Ldsmax           , BaseAtomicOp       , (0b1011100000100000010000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 60 ), // #174
-  INST(Ldsmaxa          , BaseAtomicOp       , (0b1011100010100000010000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 61 ), // #175
-  INST(Ldsmaxab         , BaseAtomicOp       , (0b0011100010100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 62 ), // #176
-  INST(Ldsmaxah         , BaseAtomicOp       , (0b0111100010100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 63 ), // #177
-  INST(Ldsmaxal         , BaseAtomicOp       , (0b1011100011100000010000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 64 ), // #178
-  INST(Ldsmaxalb        , BaseAtomicOp       , (0b0011100011100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 65 ), // #179
-  INST(Ldsmaxalh        , BaseAtomicOp       , (0b0111100011100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 66 ), // #180
-  INST(Ldsmaxb          , BaseAtomicOp       , (0b0011100000100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 67 ), // #181
-  INST(Ldsmaxh          , BaseAtomicOp       , (0b0111100000100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 68 ), // #182
-  INST(Ldsmaxl          , BaseAtomicOp       , (0b1011100001100000010000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 69 ), // #183
-  INST(Ldsmaxlb         , BaseAtomicOp       , (0b0011100001100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 70 ), // #184
-  INST(Ldsmaxlh         , BaseAtomicOp       , (0b0111100001100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 71 ), // #185
-  INST(Ldsmin           , BaseAtomicOp       , (0b1011100000100000010100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 72 ), // #186
-  INST(Ldsmina          , BaseAtomicOp       , (0b1011100010100000010100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 73 ), // #187
-  INST(Ldsminab         , BaseAtomicOp       , (0b0011100010100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 74 ), // #188
-  INST(Ldsminah         , BaseAtomicOp       , (0b0111100010100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 75 ), // #189
-  INST(Ldsminal         , BaseAtomicOp       , (0b1011100011100000010100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 76 ), // #190
-  INST(Ldsminalb        , BaseAtomicOp       , (0b0011100011100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 77 ), // #191
-  INST(Ldsminalh        , BaseAtomicOp       , (0b0111100011100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 78 ), // #192
-  INST(Ldsminb          , BaseAtomicOp       , (0b0011100000100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 79 ), // #193
-  INST(Ldsminh          , BaseAtomicOp       , (0b0111100000100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 80 ), // #194
-  INST(Ldsminl          , BaseAtomicOp       , (0b1011100001100000010100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 81 ), // #195
-  INST(Ldsminlb         , BaseAtomicOp       , (0b0011100001100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 82 ), // #196
-  INST(Ldsminlh         , BaseAtomicOp       , (0b0111100001100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 83 ), // #197
-  INST(Ldtr             , BaseRM_SImm9       , (0b1011100001000000000010, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_W    , 0                         , 1  ), // #198
-  INST(Ldtrb            , BaseRM_SImm9       , (0b0011100001000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 2  ), // #199
-  INST(Ldtrh            , BaseRM_SImm9       , (0b0111100001000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 3  ), // #200
-  INST(Ldtrsb           , BaseRM_SImm9       , (0b0011100011000000000010, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 4  ), // #201
-  INST(Ldtrsh           , BaseRM_SImm9       , (0b0111100011000000000010, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 5  ), // #202
-  INST(Ldtrsw           , BaseRM_SImm9       , (0b1011100010000000000010, 0b0000000000000000000000, kX , kZR, 0 , 0)                 , kRWI_W    , 0                         , 6  ), // #203
-  INST(Ldumax           , BaseAtomicOp       , (0b1011100000100000011000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 84 ), // #204
-  INST(Ldumaxa          , BaseAtomicOp       , (0b1011100010100000011000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 85 ), // #205
-  INST(Ldumaxab         , BaseAtomicOp       , (0b0011100010100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 86 ), // #206
-  INST(Ldumaxah         , BaseAtomicOp       , (0b0111100010100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 87 ), // #207
-  INST(Ldumaxal         , BaseAtomicOp       , (0b1011100011100000011000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 88 ), // #208
-  INST(Ldumaxalb        , BaseAtomicOp       , (0b0011100011100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 89 ), // #209
-  INST(Ldumaxalh        , BaseAtomicOp       , (0b0111100011100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 90 ), // #210
-  INST(Ldumaxb          , BaseAtomicOp       , (0b0011100000100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 91 ), // #211
-  INST(Ldumaxh          , BaseAtomicOp       , (0b0111100000100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 92 ), // #212
-  INST(Ldumaxl          , BaseAtomicOp       , (0b1011100001100000011000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 93 ), // #213
-  INST(Ldumaxlb         , BaseAtomicOp       , (0b0011100001100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 94 ), // #214
-  INST(Ldumaxlh         , BaseAtomicOp       , (0b0111100001100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 95 ), // #215
-  INST(Ldumin           , BaseAtomicOp       , (0b1011100000100000011100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 96 ), // #216
-  INST(Ldumina          , BaseAtomicOp       , (0b1011100010100000011100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 97 ), // #217
-  INST(Lduminab         , BaseAtomicOp       , (0b0011100010100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 98 ), // #218
-  INST(Lduminah         , BaseAtomicOp       , (0b0111100010100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 99 ), // #219
-  INST(Lduminal         , BaseAtomicOp       , (0b1011100011100000011100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 100), // #220
-  INST(Lduminalb        , BaseAtomicOp       , (0b0011100011100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 101), // #221
-  INST(Lduminalh        , BaseAtomicOp       , (0b0111100011100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 102), // #222
-  INST(Lduminb          , BaseAtomicOp       , (0b0011100000100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 103), // #223
-  INST(Lduminh          , BaseAtomicOp       , (0b0111100000100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 104), // #224
-  INST(Lduminl          , BaseAtomicOp       , (0b1011100001100000011100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 105), // #225
-  INST(Lduminlb         , BaseAtomicOp       , (0b0011100001100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 106), // #226
-  INST(Lduminlh         , BaseAtomicOp       , (0b0111100001100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 107), // #227
-  INST(Ldur             , BaseRM_SImm9       , (0b1011100001000000000000, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_W    , 0                         , 7  ), // #228
-  INST(Ldurb            , BaseRM_SImm9       , (0b0011100001000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 8  ), // #229
-  INST(Ldurh            , BaseRM_SImm9       , (0b0111100001000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 9  ), // #230
-  INST(Ldursb           , BaseRM_SImm9       , (0b0011100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 10 ), // #231
-  INST(Ldursh           , BaseRM_SImm9       , (0b0111100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 11 ), // #232
-  INST(Ldursw           , BaseRM_SImm9       , (0b1011100010000000000000, 0b0000000000000000000000, kX , kZR, 0 , 0)                 , kRWI_W    , 0                         , 12 ), // #233
-  INST(Ldxp             , BaseLdxp           , (0b1000100001111111000000, kWX, 30)                                                   , kRWI_WW   , 0                         , 1  ), // #234
-  INST(Ldxr             , BaseRM_NoImm       , (0b1000100001011111011111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 10 ), // #235
-  INST(Ldxrb            , BaseRM_NoImm       , (0b0000100001011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 11 ), // #236
-  INST(Ldxrh            , BaseRM_NoImm       , (0b0100100001011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 12 ), // #237
-  INST(Lsl              , BaseShift          , (0b0001101011000000001000, 0b0101001100000000000000, 0)                               , kRWI_W    , 0                         , 2  ), // #238
-  INST(Lslv             , BaseShift          , (0b0001101011000000001000, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 3  ), // #239
-  INST(Lsr              , BaseShift          , (0b0001101011000000001001, 0b0101001100000000011111, 0)                               , kRWI_W    , 0                         , 4  ), // #240
-  INST(Lsrv             , BaseShift          , (0b0001101011000000001001, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 5  ), // #241
-  INST(Madd             , BaseRRRR           , (0b0001101100000000000000, kWX, kZR, kWX, kZR, kWX, kZR, kWX, kZR, true)              , kRWI_W    , 0                         , 0  ), // #242
-  INST(Mneg             , BaseRRR            , (0b0001101100000000111111, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 11 ), // #243
-  INST(Mov              , BaseMov            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #244
-  INST(Movk             , BaseMovKNZ         , (0b01110010100000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #245
-  INST(Movn             , BaseMovKNZ         , (0b00010010100000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #246
-  INST(Movz             , BaseMovKNZ         , (0b01010010100000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #247
-  INST(Mrs              , BaseMrs            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #248
-  INST(Msr              , BaseMsr            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #249
-  INST(Msub             , BaseRRRR           , (0b0001101100000000100000, kWX, kZR, kWX, kZR, kWX, kZR, kWX, kZR, true)              , kRWI_W    , 0                         , 1  ), // #250
-  INST(Mul              , BaseRRR            , (0b0001101100000000011111, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 12 ), // #251
-  INST(Mvn              , BaseMvnNeg         , (0b00101010001000000000001111100000)                                                  , kRWI_W    , 0                         , 0  ), // #252
-  INST(Neg              , BaseMvnNeg         , (0b01001011000000000000001111100000)                                                  , kRWI_W    , 0                         , 1  ), // #253
-  INST(Negs             , BaseMvnNeg         , (0b01101011000000000000001111100000)                                                  , kRWI_W    , 0                         , 2  ), // #254
-  INST(Ngc              , BaseRR             , (0b01011010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true)                 , kRWI_W    , 0                         , 7  ), // #255
-  INST(Ngcs             , BaseRR             , (0b01111010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true)                 , kRWI_W    , 0                         , 8  ), // #256
-  INST(Nop              , BaseOp             , (0b11010101000000110010000000011111)                                                  , 0         , 0                         , 13 ), // #257
-  INST(Orn              , BaseLogical        , (0b0101010001, 0b01100100, 1)                                                         , kRWI_W    , 0                         , 6  ), // #258
-  INST(Orr              , BaseLogical        , (0b0101010000, 0b01100100, 0)                                                         , kRWI_W    , 0                         , 7  ), // #259
-  INST(Pacda            , BaseRR             , (0b11011010110000010000100000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 9  ), // #260
-  INST(Pacdb            , BaseRR             , (0b11011010110000010000110000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 10 ), // #261
-  INST(Pacdza           , BaseR              , (0b11011010110000010010101111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 4  ), // #262
-  INST(Pacdzb           , BaseR              , (0b11011010110000010010111111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 5  ), // #263
-  INST(Pacga            , BaseRRR            , (0b1001101011000000001100, kX, kZR, kX, kZR, kX, kSP, false)                          , kRWI_W    , 0                         , 13 ), // #264
-  INST(Pssbb            , BaseOp             , (0b11010101000000110011010010011111)                                                  , 0         , 0                         , 14 ), // #265
-  INST(Rbit             , BaseRR             , (0b01011010110000000000000000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 11 ), // #266
-  INST(Ret              , BaseBranchReg      , (0b11010110010111110000000000000000)                                                  , kRWI_R    , 0                         , 2  ), // #267
-  INST(Rev              , BaseRev            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #268
-  INST(Rev16            , BaseRR             , (0b01011010110000000000010000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 12 ), // #269
-  INST(Rev32            , BaseRR             , (0b11011010110000000000100000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 13 ), // #270
-  INST(Rev64            , BaseRR             , (0b11011010110000000000110000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 14 ), // #271
-  INST(Ror              , BaseShift          , (0b0001101011000000001011, 0b0001001110000000000000, 1)                               , kRWI_W    , 0                         , 6  ), // #272
-  INST(Rorv             , BaseShift          , (0b0001101011000000001011, 0b0000000000000000000000, 1)                               , kRWI_W    , 0                         , 7  ), // #273
-  INST(Sbc              , BaseRRR            , (0b0101101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 14 ), // #274
-  INST(Sbcs             , BaseRRR            , (0b0111101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 15 ), // #275
-  INST(Sbfiz            , BaseBfi            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #276
-  INST(Sbfm             , BaseBfm            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #277
-  INST(Sbfx             , BaseBfx            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #278
-  INST(Sdiv             , BaseRRR            , (0b0001101011000000000011, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 16 ), // #279
-  INST(Setf8            , BaseR              , (0b00111010000000000000100000001101, kW, kZR, 5)                                      , 0         , 0                         , 6  ), // #280
-  INST(Setf16           , BaseR              , (0b00111010000000000100100000001101, kW, kZR, 5)                                      , 0         , 0                         , 7  ), // #281
-  INST(Sev              , BaseOp             , (0b11010101000000110010000010011111)                                                  , 0         , 0                         , 15 ), // #282
-  INST(Sevl             , BaseOp             , (0b11010101000000110010000010111111)                                                  , 0         , 0                         , 16 ), // #283
-  INST(Smaddl           , BaseRRRR           , (0b1001101100100000000000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 2  ), // #284
-  INST(Smc              , BaseOpImm          , (0b11010100000000000000000000000011, 16, 5)                                           , 0         , 0                         , 11 ), // #285
-  INST(Smnegl           , BaseRRR            , (0b1001101100100000111111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 17 ), // #286
-  INST(Smsubl           , BaseRRRR           , (0b1001101100100000100000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 3  ), // #287
-  INST(Smulh            , BaseRRR            , (0b1001101101000000011111, kX , kZR, kX , kZR, kX , kZR, true)                        , kRWI_W    , 0                         , 18 ), // #288
-  INST(Smull            , BaseRRR            , (0b1001101100100000011111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 19 ), // #289
-  INST(Ssbb             , BaseOp             , (0b11010101000000110011000010011111)                                                  , 0         , 0                         , 17 ), // #290
-  INST(St2g             , BaseRM_SImm9       , (0b1101100110100000000010, 0b1101100110100000000001, kX, kSP, 0, 4)                   , kRWI_RW   , 0                         , 13 ), // #291
-  INST(Stadd            , BaseAtomicSt       , (0b1011100000100000000000, kWX, 30)                                                   , kRWI_RX   , 0                         , 0  ), // #292
-  INST(Staddl           , BaseAtomicSt       , (0b1011100001100000000000, kWX, 30)                                                   , kRWI_RX   , 0                         , 1  ), // #293
-  INST(Staddb           , BaseAtomicSt       , (0b0011100000100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 2  ), // #294
-  INST(Staddlb          , BaseAtomicSt       , (0b0011100001100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 3  ), // #295
-  INST(Staddh           , BaseAtomicSt       , (0b0111100000100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 4  ), // #296
-  INST(Staddlh          , BaseAtomicSt       , (0b0111100001100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 5  ), // #297
-  INST(Stclr            , BaseAtomicSt       , (0b1011100000100000000100, kWX, 30)                                                   , kRWI_RX   , 0                         , 6  ), // #298
-  INST(Stclrl           , BaseAtomicSt       , (0b1011100001100000000100, kWX, 30)                                                   , kRWI_RX   , 0                         , 7  ), // #299
-  INST(Stclrb           , BaseAtomicSt       , (0b0011100000100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 8  ), // #300
-  INST(Stclrlb          , BaseAtomicSt       , (0b0011100001100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 9  ), // #301
-  INST(Stclrh           , BaseAtomicSt       , (0b0111100000100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 10 ), // #302
-  INST(Stclrlh          , BaseAtomicSt       , (0b0111100001100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 11 ), // #303
-  INST(Steor            , BaseAtomicSt       , (0b1011100000100000001000, kWX, 30)                                                   , kRWI_RX   , 0                         , 12 ), // #304
-  INST(Steorl           , BaseAtomicSt       , (0b1011100001100000001000, kWX, 30)                                                   , kRWI_RX   , 0                         , 13 ), // #305
-  INST(Steorb           , BaseAtomicSt       , (0b0011100000100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 14 ), // #306
-  INST(Steorlb          , BaseAtomicSt       , (0b0011100001100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 15 ), // #307
-  INST(Steorh           , BaseAtomicSt       , (0b0111100000100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 16 ), // #308
-  INST(Steorlh          , BaseAtomicSt       , (0b0111100001100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 17 ), // #309
-  INST(Stg              , BaseRM_SImm9       , (0b1101100100100000000010, 0b1101100100100000000001, kX, kSP, 0, 4)                   , kRWI_RW   , 0                         , 14 ), // #310
-  INST(Stgm             , BaseRM_NoImm       , (0b1101100110100000000000, kX , kZR, 0 )                                              , kRWI_RW   , 0                         , 13 ), // #311
-  INST(Stgp             , BaseLdpStp         , (0b0110100100, 0b0110100010, kX, 0, 4)                                                , kRWI_RRW  , 0                         , 3  ), // #312
-  INST(Stllr            , BaseRM_NoImm       , (0b1000100010011111011111, kWX, kZR, 30)                                              , kRWI_RW   , 0                         , 14 ), // #313
-  INST(Stllrb           , BaseRM_NoImm       , (0b0000100010011111011111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 15 ), // #314
-  INST(Stllrh           , BaseRM_NoImm       , (0b0100100010011111011111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 16 ), // #315
-  INST(Stlr             , BaseRM_NoImm       , (0b1000100010011111111111, kWX, kZR, 30)                                              , kRWI_RW   , 0                         , 17 ), // #316
-  INST(Stlrb            , BaseRM_NoImm       , (0b0000100010011111111111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 18 ), // #317
-  INST(Stlrh            , BaseRM_NoImm       , (0b0100100010011111111111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 19 ), // #318
-  INST(Stlxp            , BaseStxp           , (0b1000100000100000100000, kWX, 30)                                                   , kRWI_WRRX , 0                         , 0  ), // #319
-  INST(Stlxr            , BaseAtomicOp       , (0b1000100000000000111111, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 108), // #320
-  INST(Stlxrb           , BaseAtomicOp       , (0b0000100000000000111111, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 109), // #321
-  INST(Stlxrh           , BaseAtomicOp       , (0b0100100000000000111111, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 110), // #322
-  INST(Stnp             , BaseLdpStp         , (0b0010100000, 0           , kWX, 31, 2)                                              , kRWI_RRW  , 0                         , 4  ), // #323
-  INST(Stp              , BaseLdpStp         , (0b0010100100, 0b0010100010, kWX, 31, 2)                                              , kRWI_RRW  , 0                         , 5  ), // #324
-  INST(Str              , BaseLdSt           , (0b1011100100, 0b10111000000, 0b10111000001, 0         , kWX, 30, 2, Inst::kIdStur)   , kRWI_RW   , 0                         , 6  ), // #325
-  INST(Strb             , BaseLdSt           , (0b0011100100, 0b00111000000, 0b00111000001, 0         , kW , 30, 0, Inst::kIdSturb)  , kRWI_RW   , 0                         , 7  ), // #326
-  INST(Strh             , BaseLdSt           , (0b0111100100, 0b01111000000, 0b01111000001, 0         , kWX, 30, 1, Inst::kIdSturh)  , kRWI_RW   , 0                         , 8  ), // #327
-  INST(Stset            , BaseAtomicSt       , (0b1011100000100000001100, kWX, 30)                                                   , kRWI_RX   , 0                         , 18 ), // #328
-  INST(Stsetl           , BaseAtomicSt       , (0b1011100001100000001100, kWX, 30)                                                   , kRWI_RX   , 0                         , 19 ), // #329
-  INST(Stsetb           , BaseAtomicSt       , (0b0011100000100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 20 ), // #330
-  INST(Stsetlb          , BaseAtomicSt       , (0b0011100001100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 21 ), // #331
-  INST(Stseth           , BaseAtomicSt       , (0b0111100000100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 22 ), // #332
-  INST(Stsetlh          , BaseAtomicSt       , (0b0111100001100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 23 ), // #333
-  INST(Stsmax           , BaseAtomicSt       , (0b1011100000100000010000, kWX, 30)                                                   , kRWI_RX   , 0                         , 24 ), // #334
-  INST(Stsmaxl          , BaseAtomicSt       , (0b1011100001100000010000, kWX, 30)                                                   , kRWI_RX   , 0                         , 25 ), // #335
-  INST(Stsmaxb          , BaseAtomicSt       , (0b0011100000100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 26 ), // #336
-  INST(Stsmaxlb         , BaseAtomicSt       , (0b0011100001100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 27 ), // #337
-  INST(Stsmaxh          , BaseAtomicSt       , (0b0111100000100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 28 ), // #338
-  INST(Stsmaxlh         , BaseAtomicSt       , (0b0111100001100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 29 ), // #339
-  INST(Stsmin           , BaseAtomicSt       , (0b1011100000100000010100, kWX, 30)                                                   , kRWI_RX   , 0                         , 30 ), // #340
-  INST(Stsminl          , BaseAtomicSt       , (0b1011100001100000010100, kWX, 30)                                                   , kRWI_RX   , 0                         , 31 ), // #341
-  INST(Stsminb          , BaseAtomicSt       , (0b0011100000100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 32 ), // #342
-  INST(Stsminlb         , BaseAtomicSt       , (0b0011100001100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 33 ), // #343
-  INST(Stsminh          , BaseAtomicSt       , (0b0111100000100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 34 ), // #344
-  INST(Stsminlh         , BaseAtomicSt       , (0b0111100001100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 35 ), // #345
-  INST(Sttr             , BaseRM_SImm9       , (0b1011100000000000000010, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_RW   , 0                         , 15 ), // #346
-  INST(Sttrb            , BaseRM_SImm9       , (0b0011100000000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 16 ), // #347
-  INST(Sttrh            , BaseRM_SImm9       , (0b0111100000000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 17 ), // #348
-  INST(Stumax           , BaseAtomicSt       , (0b1011100000100000011000, kWX, 30)                                                   , kRWI_RX   , 0                         , 36 ), // #349
-  INST(Stumaxl          , BaseAtomicSt       , (0b1011100001100000011000, kWX, 30)                                                   , kRWI_RX   , 0                         , 37 ), // #350
-  INST(Stumaxb          , BaseAtomicSt       , (0b0011100000100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 38 ), // #351
-  INST(Stumaxlb         , BaseAtomicSt       , (0b0011100001100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 39 ), // #352
-  INST(Stumaxh          , BaseAtomicSt       , (0b0111100000100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 40 ), // #353
-  INST(Stumaxlh         , BaseAtomicSt       , (0b0111100001100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 41 ), // #354
-  INST(Stumin           , BaseAtomicSt       , (0b1011100000100000011100, kWX, 30)                                                   , kRWI_RX   , 0                         , 42 ), // #355
-  INST(Stuminl          , BaseAtomicSt       , (0b1011100001100000011100, kWX, 30)                                                   , kRWI_RX   , 0                         , 43 ), // #356
-  INST(Stuminb          , BaseAtomicSt       , (0b0011100000100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 44 ), // #357
-  INST(Stuminlb         , BaseAtomicSt       , (0b0011100001100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 45 ), // #358
-  INST(Stuminh          , BaseAtomicSt       , (0b0111100000100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 46 ), // #359
-  INST(Stuminlh         , BaseAtomicSt       , (0b0111100001100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 47 ), // #360
-  INST(Stur             , BaseRM_SImm9       , (0b1011100000000000000000, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_RW   , 0                         , 18 ), // #361
-  INST(Sturb            , BaseRM_SImm9       , (0b0011100000000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 19 ), // #362
-  INST(Sturh            , BaseRM_SImm9       , (0b0111100000000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 20 ), // #363
-  INST(Stxp             , BaseStxp           , (0b1000100000100000000000, kWX, 30)                                                   , kRWI_WRRW , 0                         , 1  ), // #364
-  INST(Stxr             , BaseStx            , (0b1000100000000000011111, kWX, 30)                                                   , kRWI_WRW  , 0                         , 0  ), // #365
-  INST(Stxrb            , BaseStx            , (0b0000100000000000011111, kW , 0 )                                                   , kRWI_WRW  , 0                         , 1  ), // #366
-  INST(Stxrh            , BaseStx            , (0b0100100000000000011111, kW , 0 )                                                   , kRWI_WRW  , 0                         , 2  ), // #367
-  INST(Stz2g            , BaseRM_SImm9       , (0b1101100111100000000010, 0b1101100111100000000001, kX , kSP, 0, 4)                  , kRWI_RW   , 0                         , 21 ), // #368
-  INST(Stzg             , BaseRM_SImm9       , (0b1101100101100000000010, 0b1101100101100000000001, kX , kSP, 0, 4)                  , kRWI_RW   , 0                         , 22 ), // #369
-  INST(Stzgm            , BaseRM_NoImm       , (0b1101100100100000000000, kX , kZR, 0)                                               , kRWI_RW   , 0                         , 20 ), // #370
-  INST(Sub              , BaseAddSub         , (0b1001011000, 0b1001011001, 0b1010001)                                               , kRWI_X    , 0                         , 2  ), // #371
-  INST(Subg             , BaseRRII           , (0b1101000110000000000000, kX, kSP, kX, kSP, 6, 4, 16, 4, 0, 10)                      , kRWI_W    , 0                         , 1  ), // #372
-  INST(Subp             , BaseRRR            , (0b1001101011000000000000, kX, kZR, kX, kSP, kX, kSP, false)                          , kRWI_W    , 0                         , 20 ), // #373
-  INST(Subps            , BaseRRR            , (0b1011101011000000000000, kX, kZR, kX, kSP, kX, kSP, false)                          , kRWI_W    , 0                         , 21 ), // #374
-  INST(Subs             , BaseAddSub         , (0b1101011000, 0b1101011001, 0b1110001)                                               , kRWI_X    , 0                         , 3  ), // #375
-  INST(Svc              , BaseOpImm          , (0b11010100000000000000000000000001, 16, 5)                                           , 0         , 0                         , 12 ), // #376
-  INST(Swp              , BaseAtomicOp       , (0b1011100000100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 111), // #377
-  INST(Swpa             , BaseAtomicOp       , (0b1011100010100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 112), // #378
-  INST(Swpab            , BaseAtomicOp       , (0b0011100010100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 113), // #379
-  INST(Swpah            , BaseAtomicOp       , (0b0111100010100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 114), // #380
-  INST(Swpal            , BaseAtomicOp       , (0b1011100011100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 115), // #381
-  INST(Swpalb           , BaseAtomicOp       , (0b0011100011100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 116), // #382
-  INST(Swpalh           , BaseAtomicOp       , (0b0111100011100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 117), // #383
-  INST(Swpb             , BaseAtomicOp       , (0b0011100000100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 118), // #384
-  INST(Swph             , BaseAtomicOp       , (0b0111100000100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 119), // #385
-  INST(Swpl             , BaseAtomicOp       , (0b1011100001100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 120), // #386
-  INST(Swplb            , BaseAtomicOp       , (0b0011100001100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 121), // #387
-  INST(Swplh            , BaseAtomicOp       , (0b0111100001100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 122), // #388
-  INST(Sxtb             , BaseExtend         , (0b0001001100000000000111, kWX, 0)                                                    , kRWI_W    , 0                         , 0  ), // #389
-  INST(Sxth             , BaseExtend         , (0b0001001100000000001111, kWX, 0)                                                    , kRWI_W    , 0                         , 1  ), // #390
-  INST(Sxtw             , BaseExtend         , (0b1001001101000000011111, kX , 0)                                                    , kRWI_W    , 0                         , 2  ), // #391
-  INST(Sys              , BaseSys            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #392
-  INST(Tlbi             , BaseAtDcIcTlbi     , (0b00011110000000, 0b00010000000000, false)                                           , kRWI_RX   , 0                         , 3  ), // #393
-  INST(Tst              , BaseTst            , (0b1101010000, 0b111001000)                                                           , kRWI_R    , 0                         , 0  ), // #394
-  INST(Tbnz             , BaseBranchTst      , (0b00110111000000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #395
-  INST(Tbz              , BaseBranchTst      , (0b00110110000000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #396
-  INST(Ubfiz            , BaseBfi            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #397
-  INST(Ubfm             , BaseBfm            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #398
-  INST(Ubfx             , BaseBfx            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #399
-  INST(Udf              , BaseOpImm          , (0b00000000000000000000000000000000, 16, 0)                                           , 0         , 0                         , 13 ), // #400
-  INST(Udiv             , BaseRRR            , (0b0001101011000000000010, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 22 ), // #401
-  INST(Umaddl           , BaseRRRR           , (0b1001101110100000000000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 4  ), // #402
-  INST(Umnegl           , BaseRRR            , (0b1001101110100000111111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 23 ), // #403
-  INST(Umull            , BaseRRR            , (0b1001101110100000011111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 24 ), // #404
-  INST(Umulh            , BaseRRR            , (0b1001101111000000011111, kX , kZR, kX , kZR, kX , kZR, false)                       , kRWI_W    , 0                         , 25 ), // #405
-  INST(Umsubl           , BaseRRRR           , (0b1001101110100000100000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 5  ), // #406
-  INST(Uxtb             , BaseExtend         , (0b0101001100000000000111, kW, 1)                                                     , kRWI_W    , 0                         , 3  ), // #407
-  INST(Uxth             , BaseExtend         , (0b0101001100000000001111, kW, 1)                                                     , kRWI_W    , 0                         , 4  ), // #408
-  INST(Wfe              , BaseOp             , (0b11010101000000110010000001011111)                                                  , 0         , 0                         , 18 ), // #409
-  INST(Wfi              , BaseOp             , (0b11010101000000110010000001111111)                                                  , 0         , 0                         , 19 ), // #410
-  INST(Xaflag           , BaseOp             , (0b11010101000000000100000000111111)                                                  , 0         , 0                         , 20 ), // #411
-  INST(Xpacd            , BaseR              , (0b11011010110000010100011111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 8  ), // #412
-  INST(Xpaci            , BaseR              , (0b11011010110000010100001111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 9  ), // #413
-  INST(Xpaclri          , BaseOp             , (0b11010101000000110010000011111111)                                                  , kRWI_X    , 0                         , 21 ), // #414
-  INST(Yield            , BaseOp             , (0b11010101000000110010000000111111)                                                  , 0         , 0                         , 22 ), // #415
-  INST(Abs_v            , ISimdVV            , (0b0000111000100000101110, kVO_V_Any)                                                 , kRWI_W    , 0                         , 0  ), // #416
-  INST(Add_v            , ISimdVVV           , (0b0000111000100000100001, kVO_V_Any)                                                 , kRWI_W    , 0                         , 0  ), // #417
-  INST(Addhn_v          , ISimdVVV           , (0b0000111000100000010000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 1  ), // #418
-  INST(Addhn2_v         , ISimdVVV           , (0b0100111000100000010000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Narrow)                 , 2  ), // #419
-  INST(Addp_v           , ISimdPair          , (0b0101111000110001101110, 0b0000111000100000101111, kVO_V_Any)                       , kRWI_W    , F(Pair)                   , 0  ), // #420
-  INST(Addv_v           , ISimdSV            , (0b0000111000110001101110, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 0  ), // #421
-  INST(Aesd_v           , ISimdVVx           , (0b0100111000101000010110, kOp_V16B, kOp_V16B)                                        , kRWI_X    , 0                         , 0  ), // #422
-  INST(Aese_v           , ISimdVVx           , (0b0100111000101000010010, kOp_V16B, kOp_V16B)                                        , kRWI_X    , 0                         , 1  ), // #423
-  INST(Aesimc_v         , ISimdVVx           , (0b0100111000101000011110, kOp_V16B, kOp_V16B)                                        , kRWI_W    , 0                         , 2  ), // #424
-  INST(Aesmc_v          , ISimdVVx           , (0b0100111000101000011010, kOp_V16B, kOp_V16B)                                        , kRWI_W    , 0                         , 3  ), // #425
-  INST(And_v            , ISimdVVV           , (0b0000111000100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 3  ), // #426
-  INST(Bcax_v           , ISimdVVVV          , (0b1100111000100000000000, kVO_V_B16)                                                 , kRWI_W    , 0                         , 0  ), // #427
-  INST(Bfcvt_v          , ISimdVVx           , (0b0001111001100011010000, kOp_H, kOp_S)                                              , kRWI_W    , 0                         , 4  ), // #428
-  INST(Bfcvtn_v         , ISimdVVx           , (0b0000111010100001011010, kOp_V4H, kOp_V4S)                                          , kRWI_W    , F(Narrow)                 , 5  ), // #429
-  INST(Bfcvtn2_v        , ISimdVVx           , (0b0100111010100001011010, kOp_V8H, kOp_V4S)                                          , kRWI_W    , F(Narrow)                 , 6  ), // #430
-  INST(Bfdot_v          , SimdDot            , (0b0010111001000000111111, 0b0000111101000000111100, kET_S, kET_H, kET_2H)            , kRWI_X    , 0                         , 0  ), // #431
-  INST(Bfmlalb_v        , SimdFmlal          , (0b0010111011000000111111, 0b0000111111000000111100, 0, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 0  ), // #432
-  INST(Bfmlalt_v        , SimdFmlal          , (0b0110111011000000111111, 0b0100111111000000111100, 0, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 1  ), // #433
-  INST(Bfmmla_v         , ISimdVVVx          , (0b0110111001000000111011, kOp_V4S, kOp_V8H, kOp_V8H)                                 , kRWI_X    , F(Long)                   , 0  ), // #434
-  INST(Bic_v            , SimdBicOrr         , (0b0000111001100000000111, 0b0010111100000000000001)                                  , kRWI_W    , 0                         , 0  ), // #435
-  INST(Bif_v            , ISimdVVV           , (0b0010111011100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 4  ), // #436
-  INST(Bit_v            , ISimdVVV           , (0b0010111010100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 5  ), // #437
-  INST(Bsl_v            , ISimdVVV           , (0b0010111001100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 6  ), // #438
-  INST(Cls_v            , ISimdVV            , (0b0000111000100000010010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 1  ), // #439
-  INST(Clz_v            , ISimdVV            , (0b0010111000100000010010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 2  ), // #440
-  INST(Cmeq_v           , SimdCmp            , (0b0010111000100000100011, 0b0000111000100000100110, kVO_V_Any)                       , kRWI_W    , 0                         , 0  ), // #441
-  INST(Cmge_v           , SimdCmp            , (0b0000111000100000001111, 0b0010111000100000100010, kVO_V_Any)                       , kRWI_W    , 0                         , 1  ), // #442
-  INST(Cmgt_v           , SimdCmp            , (0b0000111000100000001101, 0b0000111000100000100010, kVO_V_Any)                       , kRWI_W    , 0                         , 2  ), // #443
-  INST(Cmhi_v           , SimdCmp            , (0b0010111000100000001101, 0b0000000000000000000000, kVO_V_Any)                       , kRWI_W    , 0                         , 3  ), // #444
-  INST(Cmhs_v           , SimdCmp            , (0b0010111000100000001111, 0b0000000000000000000000, kVO_V_Any)                       , kRWI_W    , 0                         , 4  ), // #445
-  INST(Cmle_v           , SimdCmp            , (0b0000000000000000000000, 0b0010111000100000100110, kVO_V_Any)                       , kRWI_W    , 0                         , 5  ), // #446
-  INST(Cmlt_v           , SimdCmp            , (0b0000000000000000000000, 0b0000111000100000101010, kVO_V_Any)                       , kRWI_W    , 0                         , 6  ), // #447
-  INST(Cmtst_v          , ISimdVVV           , (0b0000111000100000100011, kVO_V_Any)                                                 , kRWI_W    , 0                         , 7  ), // #448
-  INST(Cnt_v            , ISimdVV            , (0b0000111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 3  ), // #449
-  INST(Dup_v            , SimdDup            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #450
-  INST(Eor_v            , ISimdVVV           , (0b0010111000100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 8  ), // #451
-  INST(Eor3_v           , ISimdVVVV          , (0b1100111000000000000000, kVO_V_B16)                                                 , kRWI_W    , 0                         , 1  ), // #452
-  INST(Ext_v            , ISimdVVVI          , (0b0010111000000000000000, kVO_V_B, 4, 11, 1)                                         , kRWI_W    , 0                         , 0  ), // #453
-  INST(Fabd_v           , FSimdVVV           , (0b0111111010100000110101, kHF_C, 0b0010111010100000110101, kHF_C)                    , kRWI_W    , 0                         , 0  ), // #454
-  INST(Fabs_v           , FSimdVV            , (0b0001111000100000110000, kHF_A, 0b0000111010100000111110, kHF_B)                    , kRWI_W    , 0                         , 0  ), // #455
-  INST(Facge_v          , FSimdVVV           , (0b0111111000100000111011, kHF_C, 0b0010111000100000111011, kHF_C)                    , kRWI_W    , 0                         , 1  ), // #456
-  INST(Facgt_v          , FSimdVVV           , (0b0111111010100000111011, kHF_C, 0b0010111010100000111011, kHF_C)                    , kRWI_W    , 0                         , 2  ), // #457
-  INST(Fadd_v           , FSimdVVV           , (0b0001111000100000001010, kHF_A, 0b0000111000100000110101, kHF_C)                    , kRWI_W    , 0                         , 3  ), // #458
-  INST(Faddp_v          , FSimdPair          , (0b0111111000110000110110, 0b0010111000100000110101)                                  , kRWI_W    , 0                         , 0  ), // #459
-  INST(Fcadd_v          , SimdFcadd          , (0b0010111000000000111001)                                                            , kRWI_W    , 0                         , 0  ), // #460
-  INST(Fccmp_v          , SimdFccmpFccmpe    , (0b00011110001000000000010000000000)                                                  , kRWI_R    , 0                         , 0  ), // #461
-  INST(Fccmpe_v         , SimdFccmpFccmpe    , (0b00011110001000000000010000010000)                                                  , kRWI_R    , 0                         , 1  ), // #462
-  INST(Fcmeq_v          , SimdFcm            , (0b0000111000100000111001, kHF_C, 0b0000111010100000110110)                           , kRWI_W    , 0                         , 0  ), // #463
-  INST(Fcmge_v          , SimdFcm            , (0b0010111000100000111001, kHF_C, 0b0010111010100000110010)                           , kRWI_W    , 0                         , 1  ), // #464
-  INST(Fcmgt_v          , SimdFcm            , (0b0010111010100000111001, kHF_C, 0b0000111010100000110010)                           , kRWI_W    , 0                         , 2  ), // #465
-  INST(Fcmla_v          , SimdFcmla          , (0b0010111000000000110001, 0b0010111100000000000100)                                  , kRWI_X    , 0                         , 0  ), // #466
-  INST(Fcmle_v          , SimdFcm            , (0b0000000000000000000000, kHF_C, 0b0010111010100000110110)                           , kRWI_W    , 0                         , 3  ), // #467
-  INST(Fcmlt_v          , SimdFcm            , (0b0000000000000000000000, kHF_C, 0b0000111010100000111010)                           , kRWI_W    , 0                         , 4  ), // #468
-  INST(Fcmp_v           , SimdFcmpFcmpe      , (0b00011110001000000010000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #469
-  INST(Fcmpe_v          , SimdFcmpFcmpe      , (0b00011110001000000010000000010000)                                                  , kRWI_R    , 0                         , 1  ), // #470
-  INST(Fcsel_v          , SimdFcsel          , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #471
-  INST(Fcvt_v           , SimdFcvt           , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #472
-  INST(Fcvtas_v         , SimdFcvtSV         , (0b0000111000100001110010, 0b0000000000000000000000, 0b0001111000100100000000, 1)     , kRWI_W    , 0                         , 0  ), // #473
-  INST(Fcvtau_v         , SimdFcvtSV         , (0b0010111000100001110010, 0b0000000000000000000000, 0b0001111000100101000000, 1)     , kRWI_W    , 0                         , 1  ), // #474
-  INST(Fcvtl_v          , SimdFcvtLN         , (0b0000111000100001011110, 0, 0)                                                      , kRWI_W    , F(Long)                   , 0  ), // #475
-  INST(Fcvtl2_v         , SimdFcvtLN         , (0b0100111000100001011110, 0, 0)                                                      , kRWI_W    , F(Long)                   , 1  ), // #476
-  INST(Fcvtms_v         , SimdFcvtSV         , (0b0000111000100001101110, 0b0000000000000000000000, 0b0001111000110000000000, 1)     , kRWI_W    , 0                         , 2  ), // #477
-  INST(Fcvtmu_v         , SimdFcvtSV         , (0b0010111000100001101110, 0b0000000000000000000000, 0b0001111000110001000000, 1)     , kRWI_W    , 0                         , 3  ), // #478
-  INST(Fcvtn_v          , SimdFcvtLN         , (0b0000111000100001011010, 0, 0)                                                      , kRWI_W    , F(Narrow)                 , 2  ), // #479
-  INST(Fcvtn2_v         , SimdFcvtLN         , (0b0100111000100001011010, 0, 0)                                                      , kRWI_X    , F(Narrow)                 , 3  ), // #480
-  INST(Fcvtns_v         , SimdFcvtSV         , (0b0000111000100001101010, 0b0000000000000000000000, 0b0001111000100000000000, 1)     , kRWI_W    , 0                         , 4  ), // #481
-  INST(Fcvtnu_v         , SimdFcvtSV         , (0b0010111000100001101010, 0b0000000000000000000000, 0b0001111000100001000000, 1)     , kRWI_W    , 0                         , 5  ), // #482
-  INST(Fcvtps_v         , SimdFcvtSV         , (0b0000111010100001101010, 0b0000000000000000000000, 0b0001111000101000000000, 1)     , kRWI_W    , 0                         , 6  ), // #483
-  INST(Fcvtpu_v         , SimdFcvtSV         , (0b0010111010100001101010, 0b0000000000000000000000, 0b0001111000101001000000, 1)     , kRWI_W    , 0                         , 7  ), // #484
-  INST(Fcvtxn_v         , SimdFcvtLN         , (0b0010111000100001011010, 1, 1)                                                      , kRWI_W    , F(Narrow)                 , 4  ), // #485
-  INST(Fcvtxn2_v        , SimdFcvtLN         , (0b0110111000100001011010, 1, 0)                                                      , kRWI_X    , F(Narrow)                 , 5  ), // #486
-  INST(Fcvtzs_v         , SimdFcvtSV         , (0b0000111010100001101110, 0b0000111100000000111111, 0b0001111000111000000000, 1)     , kRWI_W    , 0                         , 8  ), // #487
-  INST(Fcvtzu_v         , SimdFcvtSV         , (0b0010111010100001101110, 0b0010111100000000111111, 0b0001111000111001000000, 1)     , kRWI_W    , 0                         , 9  ), // #488
-  INST(Fdiv_v           , FSimdVVV           , (0b0001111000100000000110, kHF_A, 0b0010111000100000111111, kHF_C)                    , kRWI_W    , 0                         , 4  ), // #489
-  INST(Fjcvtzs_v        , ISimdVVx           , (0b0001111001111110000000, kOp_GpW, kOp_D)                                            , kRWI_W    , 0                         , 7  ), // #490
-  INST(Fmadd_v          , FSimdVVVV          , (0b0001111100000000000000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 0  ), // #491
-  INST(Fmax_v           , FSimdVVV           , (0b0001111000100000010010, kHF_A, 0b0000111000100000111101, kHF_C)                    , kRWI_W    , 0                         , 5  ), // #492
-  INST(Fmaxnm_v         , FSimdVVV           , (0b0001111000100000011010, kHF_A, 0b0000111000100000110001, kHF_C)                    , kRWI_W    , 0                         , 6  ), // #493
-  INST(Fmaxnmp_v        , FSimdPair          , (0b0111111000110000110010, 0b0010111000100000110001)                                  , kRWI_W    , 0                         , 1  ), // #494
-  INST(Fmaxnmv_v        , FSimdSV            , (0b0010111000110000110010)                                                            , kRWI_W    , 0                         , 0  ), // #495
-  INST(Fmaxp_v          , FSimdPair          , (0b0111111000110000111110, 0b0010111000100000111101)                                  , kRWI_W    , 0                         , 2  ), // #496
-  INST(Fmaxv_v          , FSimdSV            , (0b0010111000110000111110)                                                            , kRWI_W    , 0                         , 1  ), // #497
-  INST(Fmin_v           , FSimdVVV           , (0b0001111000100000010110, kHF_A, 0b0000111010100000111101, kHF_C)                    , kRWI_W    , 0                         , 7  ), // #498
-  INST(Fminnm_v         , FSimdVVV           , (0b0001111000100000011110, kHF_A, 0b0000111010100000110001, kHF_C)                    , kRWI_W    , 0                         , 8  ), // #499
-  INST(Fminnmp_v        , FSimdPair          , (0b0111111010110000110010, 0b0010111010100000110001)                                  , kRWI_W    , 0                         , 3  ), // #500
-  INST(Fminnmv_v        , FSimdSV            , (0b0010111010110000110010)                                                            , kRWI_W    , 0                         , 2  ), // #501
-  INST(Fminp_v          , FSimdPair          , (0b0111111010110000111110, 0b0010111010100000111101)                                  , kRWI_W    , 0                         , 4  ), // #502
-  INST(Fminv_v          , FSimdSV            , (0b0010111010110000111110)                                                            , kRWI_W    , 0                         , 3  ), // #503
-  INST(Fmla_v           , FSimdVVVe          , (0b0000000000000000000000, kHF_N, 0b0000111000100000110011, 0b0000111110000000000100) , kRWI_X    , F(VH0_15)                 , 0  ), // #504
-  INST(Fmlal_v          , SimdFmlal          , (0b0000111000100000111011, 0b0000111110000000000000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 2  ), // #505
-  INST(Fmlal2_v         , SimdFmlal          , (0b0010111000100000110011, 0b0010111110000000100000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 3  ), // #506
-  INST(Fmls_v           , FSimdVVVe          , (0b0000000000000000000000, kHF_N, 0b0000111010100000110011, 0b0000111110000000010100) , kRWI_X    , F(VH0_15)                 , 1  ), // #507
-  INST(Fmlsl_v          , SimdFmlal          , (0b0000111010100000111011, 0b0000111110000000010000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 4  ), // #508
-  INST(Fmlsl2_v         , SimdFmlal          , (0b0010111010100000110011, 0b0010111110000000110000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 5  ), // #509
-  INST(Fmov_v           , SimdFmov           , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #510
-  INST(Fmsub_v          , FSimdVVVV          , (0b0001111100000000100000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 1  ), // #511
-  INST(Fmul_v           , FSimdVVVe          , (0b0001111000100000000010, kHF_A, 0b0010111000100000110111, 0b0000111110000000100100) , kRWI_W    , F(VH0_15)                 , 2  ), // #512
-  INST(Fmulx_v          , FSimdVVVe          , (0b0101111000100000110111, kHF_C, 0b0000111000100000110111, 0b0010111110000000100100) , kRWI_W    , F(VH0_15)                 , 3  ), // #513
-  INST(Fneg_v           , FSimdVV            , (0b0001111000100001010000, kHF_A, 0b0010111010100000111110, kHF_B)                    , kRWI_W    , 0                         , 1  ), // #514
-  INST(Fnmadd_v         , FSimdVVVV          , (0b0001111100100000000000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 2  ), // #515
-  INST(Fnmsub_v         , FSimdVVVV          , (0b0001111100100000100000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 3  ), // #516
-  INST(Fnmul_v          , FSimdVVV           , (0b0001111000100000100010, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 9  ), // #517
-  INST(Frecpe_v         , FSimdVV            , (0b0101111010100001110110, kHF_B, 0b0000111010100001110110, kHF_B)                    , kRWI_W    , 0                         , 2  ), // #518
-  INST(Frecps_v         , FSimdVVV           , (0b0101111000100000111111, kHF_C, 0b0000111000100000111111, kHF_C)                    , kRWI_W    , 0                         , 10 ), // #519
-  INST(Frecpx_v         , FSimdVV            , (0b0101111010100001111110, kHF_B, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 3  ), // #520
-  INST(Frint32x_v       , FSimdVV            , (0b0001111000101000110000, kHF_N, 0b0010111000100001111010, kHF_N)                    , kRWI_W    , 0                         , 4  ), // #521
-  INST(Frint32z_v       , FSimdVV            , (0b0001111000101000010000, kHF_N, 0b0000111000100001111010, kHF_N)                    , kRWI_W    , 0                         , 5  ), // #522
-  INST(Frint64x_v       , FSimdVV            , (0b0001111000101001110000, kHF_N, 0b0010111000100001111110, kHF_N)                    , kRWI_W    , 0                         , 6  ), // #523
-  INST(Frint64z_v       , FSimdVV            , (0b0001111000101001010000, kHF_N, 0b0000111000100001111110, kHF_N)                    , kRWI_W    , 0                         , 7  ), // #524
-  INST(Frinta_v         , FSimdVV            , (0b0001111000100110010000, kHF_A, 0b0010111000100001100010, kHF_B)                    , kRWI_W    , 0                         , 8  ), // #525
-  INST(Frinti_v         , FSimdVV            , (0b0001111000100111110000, kHF_A, 0b0010111010100001100110, kHF_B)                    , kRWI_W    , 0                         , 9  ), // #526
-  INST(Frintm_v         , FSimdVV            , (0b0001111000100101010000, kHF_A, 0b0000111000100001100110, kHF_B)                    , kRWI_W    , 0                         , 10 ), // #527
-  INST(Frintn_v         , FSimdVV            , (0b0001111000100100010000, kHF_A, 0b0000111000100001100010, kHF_B)                    , kRWI_W    , 0                         , 11 ), // #528
-  INST(Frintp_v         , FSimdVV            , (0b0001111000100100110000, kHF_A, 0b0000111010100001100010, kHF_B)                    , kRWI_W    , 0                         , 12 ), // #529
-  INST(Frintx_v         , FSimdVV            , (0b0001111000100111010000, kHF_A, 0b0010111000100001100110, kHF_B)                    , kRWI_W    , 0                         , 13 ), // #530
-  INST(Frintz_v         , FSimdVV            , (0b0001111000100101110000, kHF_A, 0b0000111010100001100110, kHF_B)                    , kRWI_W    , 0                         , 14 ), // #531
-  INST(Frsqrte_v        , FSimdVV            , (0b0111111010100001110110, kHF_B, 0b0010111010100001110110, kHF_B)                    , kRWI_W    , 0                         , 15 ), // #532
-  INST(Frsqrts_v        , FSimdVVV           , (0b0101111010100000111111, kHF_C, 0b0000111010100000111111, kHF_C)                    , kRWI_W    , 0                         , 11 ), // #533
-  INST(Fsqrt_v          , FSimdVV            , (0b0001111000100001110000, kHF_A, 0b0010111010100001111110, kHF_B)                    , kRWI_W    , 0                         , 16 ), // #534
-  INST(Fsub_v           , FSimdVVV           , (0b0001111000100000001110, kHF_A, 0b0000111010100000110101, kHF_C)                    , kRWI_W    , 0                         , 12 ), // #535
-  INST(Ins_v            , SimdIns            , (_)                                                                                   , kRWI_X    , 0                         , 0  ), // #536
-  INST(Ld1_v            , SimdLdNStN         , (0b0000110101000000000000, 0b0000110001000000001000, 1, 0)                            , kRWI_LDn  , F(Consecutive)            , 0  ), // #537
-  INST(Ld1r_v           , SimdLdNStN         , (0b0000110101000000110000, 0b0000000000000000000000, 1, 1)                            , kRWI_LDn  , F(Consecutive)            , 1  ), // #538
-  INST(Ld2_v            , SimdLdNStN         , (0b0000110101100000000000, 0b0000110001000000100000, 2, 0)                            , kRWI_LDn  , F(Consecutive)            , 2  ), // #539
-  INST(Ld2r_v           , SimdLdNStN         , (0b0000110101100000110000, 0b0000000000000000000000, 2, 1)                            , kRWI_LDn  , F(Consecutive)            , 3  ), // #540
-  INST(Ld3_v            , SimdLdNStN         , (0b0000110101000000001000, 0b0000110001000000010000, 3, 0)                            , kRWI_LDn  , F(Consecutive)            , 4  ), // #541
-  INST(Ld3r_v           , SimdLdNStN         , (0b0000110101000000111000, 0b0000000000000000000000, 3, 1)                            , kRWI_LDn  , F(Consecutive)            , 5  ), // #542
-  INST(Ld4_v            , SimdLdNStN         , (0b0000110101100000001000, 0b0000110001000000000000, 4, 0)                            , kRWI_LDn  , F(Consecutive)            , 6  ), // #543
-  INST(Ld4r_v           , SimdLdNStN         , (0b0000110101100000111000, 0b0000000000000000000000, 4, 1)                            , kRWI_LDn  , F(Consecutive)            , 7  ), // #544
-  INST(Ldnp_v           , SimdLdpStp         , (0b0010110001, 0b0000000000)                                                          , kRWI_WW   , 0                         , 0  ), // #545
-  INST(Ldp_v            , SimdLdpStp         , (0b0010110101, 0b0010110011)                                                          , kRWI_WW   , 0                         , 1  ), // #546
-  INST(Ldr_v            , SimdLdSt           , (0b0011110101, 0b00111100010, 0b00111100011, 0b00011100, Inst::kIdLdur_v)             , kRWI_W    , 0                         , 0  ), // #547
-  INST(Ldur_v           , SimdLdurStur       , (0b0011110001000000000000)                                                            , kRWI_W    , 0                         , 0  ), // #548
-  INST(Mla_v            , ISimdVVVe          , (0b0000111000100000100101, kVO_V_BHS, 0b0010111100000000000000, kVO_V_HS)             , kRWI_X    , F(VH0_15)                 , 0  ), // #549
-  INST(Mls_v            , ISimdVVVe          , (0b0010111000100000100101, kVO_V_BHS, 0b0010111100000000010000, kVO_V_HS)             , kRWI_X    , F(VH0_15)                 , 1  ), // #550
-  INST(Mov_v            , SimdMov            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #551
-  INST(Movi_v           , SimdMoviMvni       , (0b0000111100000000000001, 0)                                                         , kRWI_W    , 0                         , 0  ), // #552
-  INST(Mul_v            , ISimdVVVe          , (0b0000111000100000100111, kVO_V_BHS, 0b0000111100000000100000, kVO_V_HS)             , kRWI_W    , F(VH0_15)                 , 2  ), // #553
-  INST(Mvn_v            , ISimdVV            , (0b0010111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 4  ), // #554
-  INST(Mvni_v           , SimdMoviMvni       , (0b0000111100000000000001, 1)                                                         , kRWI_W    , 0                         , 1  ), // #555
-  INST(Neg_v            , ISimdVV            , (0b0010111000100000101110, kVO_V_Any)                                                 , kRWI_W    , 0                         , 5  ), // #556
-  INST(Not_v            , ISimdVV            , (0b0010111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 6  ), // #557
-  INST(Orn_v            , ISimdVVV           , (0b0000111011100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 9  ), // #558
-  INST(Orr_v            , SimdBicOrr         , (0b0000111010100000000111, 0b0000111100000000000001)                                  , kRWI_W    , 0                         , 1  ), // #559
-  INST(Pmul_v           , ISimdVVV           , (0b0010111000100000100111, kVO_V_B)                                                   , kRWI_W    , 0                         , 10 ), // #560
-  INST(Pmull_v          , ISimdVVV           , (0b0000111000100000111000, kVO_V_B8D1)                                                , kRWI_W    , F(Long)                   , 11 ), // #561
-  INST(Pmull2_v         , ISimdVVV           , (0b0100111000100000111000, kVO_V_B16D2)                                               , kRWI_W    , F(Long)                   , 12 ), // #562
-  INST(Raddhn_v         , ISimdVVV           , (0b0010111000100000010000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 13 ), // #563
-  INST(Raddhn2_v        , ISimdVVV           , (0b0110111000100000010000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 14 ), // #564
-  INST(Rax1_v           , ISimdVVV           , (0b1100111001100000100011, kVO_V_D2)                                                  , kRWI_W    , 0                         , 15 ), // #565
-  INST(Rbit_v           , ISimdVV            , (0b0010111001100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 7  ), // #566
-  INST(Rev16_v          , ISimdVV            , (0b0000111000100000000110, kVO_V_B)                                                   , kRWI_W    , 0                         , 8  ), // #567
-  INST(Rev32_v          , ISimdVV            , (0b0010111000100000000010, kVO_V_BH)                                                  , kRWI_W    , 0                         , 9  ), // #568
-  INST(Rev64_v          , ISimdVV            , (0b0000111000100000000010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 10 ), // #569
-  INST(Rshrn_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100011, 1, kVO_V_B8H4S2)                 , kRWI_W    , F(Narrow)                 , 0  ), // #570
-  INST(Rshrn2_v         , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100011, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 1  ), // #571
-  INST(Rsubhn_v         , ISimdVVV           , (0b0010111000100000011000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 16 ), // #572
-  INST(Rsubhn2_v        , ISimdVVV           , (0b0110111000100000011000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 17 ), // #573
-  INST(Saba_v           , ISimdVVV           , (0b0000111000100000011111, kVO_V_BHS)                                                 , kRWI_X    , 0                         , 18 ), // #574
-  INST(Sabal_v          , ISimdVVV           , (0b0000111000100000010100, kVO_V_B8H4S2)                                              , kRWI_X    , F(Long)                   , 19 ), // #575
-  INST(Sabal2_v         , ISimdVVV           , (0b0100111000100000010100, kVO_V_B16H8S4)                                             , kRWI_X    , F(Long)                   , 20 ), // #576
-  INST(Sabd_v           , ISimdVVV           , (0b0000111000100000011101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 21 ), // #577
-  INST(Sabdl_v          , ISimdVVV           , (0b0000111000100000011100, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 22 ), // #578
-  INST(Sabdl2_v         , ISimdVVV           , (0b0100111000100000011100, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 23 ), // #579
-  INST(Sadalp_v         , ISimdVV            , (0b0000111000100000011010, kVO_V_BHS)                                                 , kRWI_X    , F(Long) | F(Pair)         , 11 ), // #580
-  INST(Saddl_v          , ISimdVVV           , (0b0000111000100000000000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 24 ), // #581
-  INST(Saddl2_v         , ISimdVVV           , (0b0100111000100000000000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 25 ), // #582
-  INST(Saddlp_v         , ISimdVV            , (0b0000111000100000001010, kVO_V_BHS)                                                 , kRWI_W    , F(Long) | F(Pair)         , 12 ), // #583
-  INST(Saddlv_v         , ISimdSV            , (0b0000111000110000001110, kVO_V_BH_4S)                                               , kRWI_W    , F(Long)                   , 1  ), // #584
-  INST(Saddw_v          , ISimdWWV           , (0b0000111000100000000100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 0  ), // #585
-  INST(Saddw2_v         , ISimdWWV           , (0b0000111000100000000100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 1  ), // #586
-  INST(Scvtf_v          , SimdFcvtSV         , (0b0000111000100001110110, 0b0000111100000000111001, 0b0001111000100010000000, 0)     , kRWI_W    , 0                         , 10 ), // #587
-  INST(Sdot_v           , SimdDot            , (0b0000111010000000100101, 0b0000111110000000111000, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 1  ), // #588
-  INST(Sha1c_v          , ISimdVVVx          , (0b0101111000000000000000, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 1  ), // #589
-  INST(Sha1h_v          , ISimdVVx           , (0b0101111000101000000010, kOp_S, kOp_S)                                              , kRWI_W    , 0                         , 8  ), // #590
-  INST(Sha1m_v          , ISimdVVVx          , (0b0101111000000000001000, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 2  ), // #591
-  INST(Sha1p_v          , ISimdVVVx          , (0b0101111000000000000100, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 3  ), // #592
-  INST(Sha1su0_v        , ISimdVVVx          , (0b0101111000000000001100, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 4  ), // #593
-  INST(Sha1su1_v        , ISimdVVx           , (0b0101111000101000000110, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 9  ), // #594
-  INST(Sha256h_v        , ISimdVVVx          , (0b0101111000000000010000, kOp_Q, kOp_Q, kOp_V4S)                                     , kRWI_X    , 0                         , 5  ), // #595
-  INST(Sha256h2_v       , ISimdVVVx          , (0b0101111000000000010100, kOp_Q, kOp_Q, kOp_V4S)                                     , kRWI_X    , 0                         , 6  ), // #596
-  INST(Sha256su0_v      , ISimdVVx           , (0b0101111000101000001010, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 10 ), // #597
-  INST(Sha256su1_v      , ISimdVVVx          , (0b0101111000000000011000, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 7  ), // #598
-  INST(Sha512h_v        , ISimdVVVx          , (0b1100111001100000100000, kOp_Q, kOp_Q, kOp_V2D)                                     , kRWI_X    , 0                         , 8  ), // #599
-  INST(Sha512h2_v       , ISimdVVVx          , (0b1100111001100000100001, kOp_Q, kOp_Q, kOp_V2D)                                     , kRWI_X    , 0                         , 9  ), // #600
-  INST(Sha512su0_v      , ISimdVVx           , (0b1100111011000000100000, kOp_V2D, kOp_V2D)                                          , kRWI_X    , 0                         , 11 ), // #601
-  INST(Sha512su1_v      , ISimdVVVx          , (0b1100111001100000100010, kOp_V2D, kOp_V2D, kOp_V2D)                                 , kRWI_X    , 0                         , 10 ), // #602
-  INST(Shadd_v          , ISimdVVV           , (0b0000111000100000000001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 26 ), // #603
-  INST(Shl_v            , SimdShift          , (0b0000000000000000000000, 0b0000111100000000010101, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 2  ), // #604
-  INST(Shll_v           , SimdShiftES        , (0b0010111000100001001110, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 0  ), // #605
-  INST(Shll2_v          , SimdShiftES        , (0b0110111000100001001110, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 1  ), // #606
-  INST(Shrn_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100001, 1, kVO_V_B8H4S2)                 , kRWI_W    , F(Narrow)                 , 3  ), // #607
-  INST(Shrn2_v          , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100001, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 4  ), // #608
-  INST(Shsub_v          , ISimdVVV           , (0b0000111000100000001001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 27 ), // #609
-  INST(Sli_v            , SimdShift          , (0b0000000000000000000000, 0b0010111100000000010101, 0, kVO_V_Any)                    , kRWI_X    , 0                         , 5  ), // #610
-  INST(Sm3partw1_v      , ISimdVVVx          , (0b1100111001100000110000, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 11 ), // #611
-  INST(Sm3partw2_v      , ISimdVVVx          , (0b1100111001100000110001, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 12 ), // #612
-  INST(Sm3ss1_v         , ISimdVVVVx         , (0b1100111001000000000000, kOp_V4S, kOp_V4S, kOp_V4S, kOp_V4S)                        , kRWI_W    , 0                         , 0  ), // #613
-  INST(Sm3tt1a_v        , SimdSm3tt          , (0b1100111001000000100000)                                                            , kRWI_X    , 0                         , 0  ), // #614
-  INST(Sm3tt1b_v        , SimdSm3tt          , (0b1100111001000000100001)                                                            , kRWI_X    , 0                         , 1  ), // #615
-  INST(Sm3tt2a_v        , SimdSm3tt          , (0b1100111001000000100010)                                                            , kRWI_X    , 0                         , 2  ), // #616
-  INST(Sm3tt2b_v        , SimdSm3tt          , (0b1100111001000000100011)                                                            , kRWI_X    , 0                         , 3  ), // #617
-  INST(Sm4e_v           , ISimdVVx           , (0b1100111011000000100001, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 12 ), // #618
-  INST(Sm4ekey_v        , ISimdVVVx          , (0b1100111001100000110010, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 13 ), // #619
-  INST(Smax_v           , ISimdVVV           , (0b0000111000100000011001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 28 ), // #620
-  INST(Smaxp_v          , ISimdVVV           , (0b0000111000100000101001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 29 ), // #621
-  INST(Smaxv_v          , ISimdSV            , (0b0000111000110000101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 2  ), // #622
-  INST(Smin_v           , ISimdVVV           , (0b0000111000100000011011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 30 ), // #623
-  INST(Sminp_v          , ISimdVVV           , (0b0000111000100000101011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 31 ), // #624
-  INST(Sminv_v          , ISimdSV            , (0b0000111000110001101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 3  ), // #625
-  INST(Smlal_v          , ISimdVVVe          , (0b0000111000100000100000, kVO_V_B8H4S2, 0b0000111100000000001000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 3  ), // #626
-  INST(Smlal2_v         , ISimdVVVe          , (0b0100111000100000100000, kVO_V_B16H8S4, 0b0100111100000000001000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 4  ), // #627
-  INST(Smlsl_v          , ISimdVVVe          , (0b0000111000100000101000, kVO_V_B8H4S2, 0b0000111100000000011000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 5  ), // #628
-  INST(Smlsl2_v         , ISimdVVVe          , (0b0100111000100000101000, kVO_V_B16H8S4, 0b0100111100000000011000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 6  ), // #629
-  INST(Smmla_v          , ISimdVVVx          , (0b0100111010000000101001, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 14 ), // #630
-  INST(Smov_v           , SimdSmovUmov       , (0b0000111000000000001011, kVO_V_BHS, 1)                                              , kRWI_W    , 0                         , 0  ), // #631
-  INST(Smull_v          , ISimdVVVe          , (0b0000111000100000110000, kVO_V_B8H4S2, 0b0000111100000000101000, kVO_V_H4S2)        , kRWI_W    , F(Long) | F(VH0_15)       , 7  ), // #632
-  INST(Smull2_v         , ISimdVVVe          , (0b0100111000100000110000, kVO_V_B16H8S4, 0b0100111100000000101000, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 8  ), // #633
-  INST(Sqabs_v          , ISimdVV            , (0b0000111000100000011110, kVO_SV_Any)                                                , kRWI_W    , 0                         , 13 ), // #634
-  INST(Sqadd_v          , ISimdVVV           , (0b0000111000100000000011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 32 ), // #635
-  INST(Sqdmlal_v        , ISimdVVVe          , (0b0000111000100000100100, kVO_SV_BHS, 0b0000111100000000001100, kVO_V_H4S2)          , kRWI_X    , F(Long) | F(VH0_15)       , 9  ), // #636
-  INST(Sqdmlal2_v       , ISimdVVVe          , (0b0100111000100000100100, kVO_V_B16H8S4, 0b0100111100000000001100, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 10 ), // #637
-  INST(Sqdmlsl_v        , ISimdVVVe          , (0b0000111000100000101100, kVO_SV_BHS, 0b0000111100000000011100, kVO_V_H4S2)          , kRWI_X    , F(Long) | F(VH0_15)       , 11 ), // #638
-  INST(Sqdmlsl2_v       , ISimdVVVe          , (0b0100111000100000101100, kVO_V_B16H8S4, 0b0100111100000000011100, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 12 ), // #639
-  INST(Sqdmulh_v        , ISimdVVVe          , (0b0000111000100000101101, kVO_SV_HS, 0b0000111100000000110000, kVO_SV_HS)            , kRWI_W    , F(VH0_15)                 , 13 ), // #640
-  INST(Sqdmull_v        , ISimdVVVe          , (0b0000111000100000110100, kVO_SV_BHS, 0b0000111100000000101100, kVO_V_H4S2)          , kRWI_W    , F(Long) | F(VH0_15)       , 14 ), // #641
-  INST(Sqdmull2_v       , ISimdVVVe          , (0b0100111000100000110100, kVO_V_B16H8S4, 0b0100111100000000101100, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 15 ), // #642
-  INST(Sqneg_v          , ISimdVV            , (0b0010111000100000011110, kVO_SV_Any)                                                , kRWI_W    , 0                         , 14 ), // #643
-  INST(Sqrdmlah_v       , ISimdVVVe          , (0b0010111000000000100001, kVO_SV_HS, 0b0010111100000000110100, kVO_SV_HS)            , kRWI_X    , F(VH0_15)                 , 16 ), // #644
-  INST(Sqrdmlsh_v       , ISimdVVVe          , (0b0010111000000000100011, kVO_SV_HS, 0b0010111100000000111100, kVO_SV_HS)            , kRWI_X    , F(VH0_15)                 , 17 ), // #645
-  INST(Sqrdmulh_v       , ISimdVVVe          , (0b0010111000100000101101, kVO_SV_HS, 0b0000111100000000110100, kVO_SV_HS)            , kRWI_W    , F(VH0_15)                 , 18 ), // #646
-  INST(Sqrshl_v         , SimdShift          , (0b0000111000100000010111, 0b0000000000000000000000, 1, kVO_SV_Any)                   , kRWI_W    , 0                         , 6  ), // #647
-  INST(Sqrshrn_v        , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100111, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 7  ), // #648
-  INST(Sqrshrn2_v       , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100111, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 8  ), // #649
-  INST(Sqrshrun_v       , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100011, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 9  ), // #650
-  INST(Sqrshrun2_v      , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100011, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 10 ), // #651
-  INST(Sqshl_v          , SimdShift          , (0b0000111000100000010011, 0b0000111100000000011101, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 11 ), // #652
-  INST(Sqshlu_v         , SimdShift          , (0b0000000000000000000000, 0b0010111100000000011001, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 12 ), // #653
-  INST(Sqshrn_v         , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100101, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 13 ), // #654
-  INST(Sqshrn2_v        , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100101, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 14 ), // #655
-  INST(Sqshrun_v        , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100001, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 15 ), // #656
-  INST(Sqshrun2_v       , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100001, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 16 ), // #657
-  INST(Sqsub_v          , ISimdVVV           , (0b0000111000100000001011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 33 ), // #658
-  INST(Sqxtn_v          , ISimdVV            , (0b0000111000100001010010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 15 ), // #659
-  INST(Sqxtn2_v         , ISimdVV            , (0b0100111000100001010010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 16 ), // #660
-  INST(Sqxtun_v         , ISimdVV            , (0b0010111000100001001010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 17 ), // #661
-  INST(Sqxtun2_v        , ISimdVV            , (0b0110111000100001001010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 18 ), // #662
-  INST(Srhadd_v         , ISimdVVV           , (0b0000111000100000000101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 34 ), // #663
-  INST(Sri_v            , SimdShift          , (0b0000000000000000000000, 0b0010111100000000010001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 17 ), // #664
-  INST(Srshl_v          , SimdShift          , (0b0000111000100000010101, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 18 ), // #665
-  INST(Srshr_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000001001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 19 ), // #666
-  INST(Srsra_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000001101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 20 ), // #667
-  INST(Sshl_v           , SimdShift          , (0b0000111000100000010001, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 21 ), // #668
-  INST(Sshll_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000101001, 0, kVO_V_B8H4S2)                 , kRWI_W    , F(Long)                   , 22 ), // #669
-  INST(Sshll2_v         , SimdShift          , (0b0000000000000000000000, 0b0100111100000000101001, 0, kVO_V_B16H8S4)                , kRWI_W    , F(Long)                   , 23 ), // #670
-  INST(Sshr_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000000001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 24 ), // #671
-  INST(Ssra_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000000101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 25 ), // #672
-  INST(Ssubl_v          , ISimdVVV           , (0b0000111000100000001000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 35 ), // #673
-  INST(Ssubl2_v         , ISimdVVV           , (0b0100111000100000001000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 36 ), // #674
-  INST(Ssubw_v          , ISimdWWV           , (0b0000111000100000001100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 2  ), // #675
-  INST(Ssubw2_v         , ISimdWWV           , (0b0000111000100000001100, kVO_V_B16H8S4)                                             , kRWI_X    , 0                         , 3  ), // #676
-  INST(St1_v            , SimdLdNStN         , (0b0000110100000000000000, 0b0000110000000000001000, 1, 0)                            , kRWI_STn  , F(Consecutive)            , 8  ), // #677
-  INST(St2_v            , SimdLdNStN         , (0b0000110100100000000000, 0b0000110000000000100000, 2, 0)                            , kRWI_STn  , F(Consecutive)            , 9  ), // #678
-  INST(St3_v            , SimdLdNStN         , (0b0000110100000000001000, 0b0000110000000000010000, 3, 0)                            , kRWI_STn  , F(Consecutive)            , 10 ), // #679
-  INST(St4_v            , SimdLdNStN         , (0b0000110100100000001000, 0b0000110000000000000000, 4, 0)                            , kRWI_STn  , F(Consecutive)            , 11 ), // #680
-  INST(Stnp_v           , SimdLdpStp         , (0b0010110000, 0b0000000000)                                                          , kRWI_RRW  , 0                         , 2  ), // #681
-  INST(Stp_v            , SimdLdpStp         , (0b0010110100, 0b0010110010)                                                          , kRWI_RRW  , 0                         , 3  ), // #682
-  INST(Str_v            , SimdLdSt           , (0b0011110100, 0b00111100000, 0b00111100001, 0b00000000, Inst::kIdStur_v)             , kRWI_RW   , 0                         , 1  ), // #683
-  INST(Stur_v           , SimdLdurStur       , (0b0011110000000000000000)                                                            , kRWI_RW   , 0                         , 1  ), // #684
-  INST(Sub_v            , ISimdVVV           , (0b0010111000100000100001, kVO_V_Any)                                                 , kRWI_W    , 0                         , 37 ), // #685
-  INST(Subhn_v          , ISimdVVV           , (0b0000111000100000011000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 38 ), // #686
-  INST(Subhn2_v         , ISimdVVV           , (0b0000111000100000011000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 39 ), // #687
-  INST(Sudot_v          , SimdDot            , (0b0000000000000000000000, 0b0000111100000000111100, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 2  ), // #688
-  INST(Suqadd_v         , ISimdVV            , (0b0000111000100000001110, kVO_SV_Any)                                                , kRWI_X    , 0                         , 19 ), // #689
-  INST(Sxtl_v           , SimdSxtlUxtl       , (0b0000111100000000101001, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 0  ), // #690
-  INST(Sxtl2_v          , SimdSxtlUxtl       , (0b0100111100000000101001, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 1  ), // #691
-  INST(Tbl_v            , SimdTblTbx         , (0b0000111000000000000000)                                                            , kRWI_W    , 0                         , 0  ), // #692
-  INST(Tbx_v            , SimdTblTbx         , (0b0000111000000000000100)                                                            , kRWI_W    , 0                         , 1  ), // #693
-  INST(Trn1_v           , ISimdVVV           , (0b0000111000000000001010, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 40 ), // #694
-  INST(Trn2_v           , ISimdVVV           , (0b0000111000000000011010, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 41 ), // #695
-  INST(Uaba_v           , ISimdVVV           , (0b0010111000100000011111, kVO_V_BHS)                                                 , kRWI_X    , 0                         , 42 ), // #696
-  INST(Uabal_v          , ISimdVVV           , (0b0010111000100000010100, kVO_V_B8H4S2)                                              , kRWI_X    , F(Long)                   , 43 ), // #697
-  INST(Uabal2_v         , ISimdVVV           , (0b0110111000100000010100, kVO_V_B16H8S4)                                             , kRWI_X    , F(Long)                   , 44 ), // #698
-  INST(Uabd_v           , ISimdVVV           , (0b0010111000100000011101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 45 ), // #699
-  INST(Uabdl_v          , ISimdVVV           , (0b0010111000100000011100, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 46 ), // #700
-  INST(Uabdl2_v         , ISimdVVV           , (0b0110111000100000011100, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 47 ), // #701
-  INST(Uadalp_v         , ISimdVV            , (0b0010111000100000011010, kVO_V_BHS)                                                 , kRWI_X    , F(Long) | F(Pair)         , 20 ), // #702
-  INST(Uaddl_v          , ISimdVVV           , (0b0010111000100000000000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 48 ), // #703
-  INST(Uaddl2_v         , ISimdVVV           , (0b0110111000100000000000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 49 ), // #704
-  INST(Uaddlp_v         , ISimdVV            , (0b0010111000100000001010, kVO_V_BHS)                                                 , kRWI_W    , F(Long) | F(Pair)         , 21 ), // #705
-  INST(Uaddlv_v         , ISimdSV            , (0b0010111000110000001110, kVO_V_BH_4S)                                               , kRWI_W    , F(Long)                   , 4  ), // #706
-  INST(Uaddw_v          , ISimdWWV           , (0b0010111000100000000100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 4  ), // #707
-  INST(Uaddw2_v         , ISimdWWV           , (0b0010111000100000000100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 5  ), // #708
-  INST(Ucvtf_v          , SimdFcvtSV         , (0b0010111000100001110110, 0b0010111100000000111001, 0b0001111000100011000000, 0)     , kRWI_W    , 0                         , 11 ), // #709
-  INST(Udot_v           , SimdDot            , (0b0010111010000000100101, 0b0010111110000000111000, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 3  ), // #710
-  INST(Uhadd_v          , ISimdVVV           , (0b0010111000100000000001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 50 ), // #711
-  INST(Uhsub_v          , ISimdVVV           , (0b0010111000100000001001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 51 ), // #712
-  INST(Umax_v           , ISimdVVV           , (0b0010111000100000011001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 52 ), // #713
-  INST(Umaxp_v          , ISimdVVV           , (0b0010111000100000101001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 53 ), // #714
-  INST(Umaxv_v          , ISimdSV            , (0b0010111000110000101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 5  ), // #715
-  INST(Umin_v           , ISimdVVV           , (0b0010111000100000011011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 54 ), // #716
-  INST(Uminp_v          , ISimdVVV           , (0b0010111000100000101011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 55 ), // #717
-  INST(Uminv_v          , ISimdSV            , (0b0010111000110001101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 6  ), // #718
-  INST(Umlal_v          , ISimdVVVe          , (0b0010111000100000100000, kVO_V_B8H4S2, 0b0010111100000000001000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 19 ), // #719
-  INST(Umlal2_v         , ISimdVVVe          , (0b0110111000100000100000, kVO_V_B16H8S4, 0b0010111100000000001000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 20 ), // #720
-  INST(Umlsl_v          , ISimdVVVe          , (0b0010111000100000101000, kVO_V_B8H4S2, 0b0010111100000000011000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 21 ), // #721
-  INST(Umlsl2_v         , ISimdVVVe          , (0b0110111000100000101000, kVO_V_B16H8S4, 0b0110111100000000011000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 22 ), // #722
-  INST(Ummla_v          , ISimdVVVx          , (0b0110111010000000101001, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 15 ), // #723
-  INST(Umov_v           , SimdSmovUmov       , (0b0000111000000000001111, kVO_V_Any, 0)                                              , kRWI_W    , 0                         , 1  ), // #724
-  INST(Umull_v          , ISimdVVVe          , (0b0010111000100000110000, kVO_V_B8H4S2, 0b0010111100000000101000, kVO_V_H4S2)        , kRWI_W    , F(Long) | F(VH0_15)       , 23 ), // #725
-  INST(Umull2_v         , ISimdVVVe          , (0b0110111000100000110000, kVO_V_B16H8S4, 0b0110111100000000101000, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 24 ), // #726
-  INST(Uqadd_v          , ISimdVVV           , (0b0010111000100000000011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 56 ), // #727
-  INST(Uqrshl_v         , SimdShift          , (0b0010111000100000010111, 0b0000000000000000000000, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 26 ), // #728
-  INST(Uqrshrn_v        , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100111, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 27 ), // #729
-  INST(Uqrshrn2_v       , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100111, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 28 ), // #730
-  INST(Uqshl_v          , SimdShift          , (0b0010111000100000010011, 0b0010111100000000011101, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 29 ), // #731
-  INST(Uqshrn_v         , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100101, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 30 ), // #732
-  INST(Uqshrn2_v        , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100101, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 31 ), // #733
-  INST(Uqsub_v          , ISimdVVV           , (0b0010111000100000001011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 57 ), // #734
-  INST(Uqxtn_v          , ISimdVV            , (0b0010111000100001010010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 22 ), // #735
-  INST(Uqxtn2_v         , ISimdVV            , (0b0110111000100001010010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 23 ), // #736
-  INST(Urecpe_v         , ISimdVV            , (0b0000111010100001110010, kVO_V_S)                                                   , kRWI_W    , 0                         , 24 ), // #737
-  INST(Urhadd_v         , ISimdVVV           , (0b0010111000100000000101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 58 ), // #738
-  INST(Urshl_v          , SimdShift          , (0b0010111000100000010101, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 32 ), // #739
-  INST(Urshr_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000001001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 33 ), // #740
-  INST(Ursqrte_v        , ISimdVV            , (0b0010111010100001110010, kVO_V_S)                                                   , kRWI_W    , 0                         , 25 ), // #741
-  INST(Ursra_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000001101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 34 ), // #742
-  INST(Usdot_v          , SimdDot            , (0b0000111010000000100111, 0b0000111110000000111100, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 4  ), // #743
-  INST(Ushl_v           , SimdShift          , (0b0010111000100000010001, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 35 ), // #744
-  INST(Ushll_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000101001, 0, kVO_V_B8H4S2)                 , kRWI_W    , F(Long)                   , 36 ), // #745
-  INST(Ushll2_v         , SimdShift          , (0b0000000000000000000000, 0b0110111100000000101001, 0, kVO_V_B16H8S4)                , kRWI_W    , F(Long)                   , 37 ), // #746
-  INST(Ushr_v           , SimdShift          , (0b0000000000000000000000, 0b0010111100000000000001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 38 ), // #747
-  INST(Usmmla_v         , ISimdVVVx          , (0b0100111010000000101011, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 16 ), // #748
-  INST(Usqadd_v         , ISimdVV            , (0b0010111000100000001110, kVO_SV_Any)                                                , kRWI_X    , 0                         , 26 ), // #749
-  INST(Usra_v           , SimdShift          , (0b0000000000000000000000, 0b0010111100000000000101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 39 ), // #750
-  INST(Usubl_v          , ISimdVVV           , (0b0010111000100000001000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 59 ), // #751
-  INST(Usubl2_v         , ISimdVVV           , (0b0110111000100000001000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 60 ), // #752
-  INST(Usubw_v          , ISimdWWV           , (0b0010111000100000001100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 6  ), // #753
-  INST(Usubw2_v         , ISimdWWV           , (0b0010111000100000001100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 7  ), // #754
-  INST(Uxtl_v           , SimdSxtlUxtl       , (0b0010111100000000101001, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 2  ), // #755
-  INST(Uxtl2_v          , SimdSxtlUxtl       , (0b0110111100000000101001, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 3  ), // #756
-  INST(Uzp1_v           , ISimdVVV           , (0b0000111000000000000110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 61 ), // #757
-  INST(Uzp2_v           , ISimdVVV           , (0b0000111000000000010110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 62 ), // #758
-  INST(Xar_v            , ISimdVVVI          , (0b1100111001100000100011, kVO_V_D2, 6, 10, 0)                                        , kRWI_W    , 0                         , 1  ), // #759
-  INST(Xtn_v            , ISimdVV            , (0b0000111000100001001010, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 27 ), // #760
-  INST(Xtn2_v           , ISimdVV            , (0b0100111000100001001010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 28 ), // #761
-  INST(Zip1_v           , ISimdVVV           , (0b0000111000000000001110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 63 ), // #762
-  INST(Zip2_v           , ISimdVVV           , (0b0000111000000000011110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 64 )  // #763
+  INST(Abs              , BaseRR             , (0b01011010110000000010000000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 0  ), // #1
+  INST(Adc              , BaseRRR            , (0b0001101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 0  ), // #2
+  INST(Adcs             , BaseRRR            , (0b0011101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 1  ), // #3
+  INST(Add              , BaseAddSub         , (0b0001011000, 0b0001011001, 0b0010001)                                               , kRWI_W    , 0                         , 0  ), // #4
+  INST(Addg             , BaseRRII           , (0b1001000110000000000000, kX, kSP, kX, kSP, 6, 4, 16, 4, 0, 10)                      , kRWI_W    , 0                         , 0  ), // #5
+  INST(Adds             , BaseAddSub         , (0b0101011000, 0b0101011001, 0b0110001)                                               , kRWI_W    , 0                         , 1  ), // #6
+  INST(Adr              , BaseAdr            , (0b0001000000000000000000, OffsetType::kAArch64_ADR)                                  , kRWI_W    , 0                         , 0  ), // #7
+  INST(Adrp             , BaseAdr            , (0b1001000000000000000000, OffsetType::kAArch64_ADRP)                                 , kRWI_W    , 0                         , 1  ), // #8
+  INST(And              , BaseLogical        , (0b0001010000, 0b00100100, 0)                                                         , kRWI_W    , 0                         , 0  ), // #9
+  INST(Ands             , BaseLogical        , (0b1101010000, 0b11100100, 0)                                                         , kRWI_W    , 0                         , 1  ), // #10
+  INST(Asr              , BaseShift          , (0b0001101011000000001010, 0b0001001100000000011111, 0)                               , kRWI_W    , 0                         , 0  ), // #11
+  INST(Asrv             , BaseShift          , (0b0001101011000000001010, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 1  ), // #12
+  INST(At               , BaseAtDcIcTlbi     , (0b00011111110000, 0b00001111000000, true)                                            , kRWI_RX   , 0                         , 0  ), // #13
+  INST(Autda            , BaseRR             , (0b11011010110000010001100000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 1  ), // #14
+  INST(Autdza           , BaseR              , (0b11011010110000010011101111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 0  ), // #15
+  INST(Autdb            , BaseRR             , (0b11011010110000010001110000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 2  ), // #16
+  INST(Autdzb           , BaseR              , (0b11011010110000010011111111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 1  ), // #17
+  INST(Autia            , BaseRR             , (0b11011010110000010001000000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 3  ), // #18
+  INST(Autia1716        , BaseOp             , (0b11010101000000110010000110011111)                                                  , 0         , 0                         , 0  ), // #19
+  INST(Autiasp          , BaseOp             , (0b11010101000000110010001110111111)                                                  , 0         , 0                         , 1  ), // #20
+  INST(Autiaz           , BaseOp             , (0b11010101000000110010001110011111)                                                  , 0         , 0                         , 2  ), // #21
+  INST(Autib            , BaseRR             , (0b11011010110000010001010000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 4  ), // #22
+  INST(Autib1716        , BaseOp             , (0b11010101000000110010000111011111)                                                  , 0         , 0                         , 3  ), // #23
+  INST(Autibsp          , BaseOp             , (0b11010101000000110010001111111111)                                                  , 0         , 0                         , 4  ), // #24
+  INST(Autibz           , BaseOp             , (0b11010101000000110010001111011111)                                                  , 0         , 0                         , 5  ), // #25
+  INST(Autiza           , BaseR              , (0b11011010110000010011001111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 2  ), // #26
+  INST(Autizb           , BaseR              , (0b11011010110000010011011111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 3  ), // #27
+  INST(Axflag           , BaseOp             , (0b11010101000000000100000001011111)                                                  , 0         , 0                         , 6  ), // #28
+  INST(B                , BaseBranchRel      , (0b00010100000000000000000000000000)                                                  , 0         , F(Cond)                   , 0  ), // #29
+  INST(Bc               , BaseBranchRel      , (0b00010100000000000000000000010000)                                                  , 0         , F(Cond)                   , 1  ), // #30
+  INST(Bfc              , BaseBfc            , (0b00110011000000000000001111100000)                                                  , kRWI_X    , 0                         , 0  ), // #31
+  INST(Bfi              , BaseBfi            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #32
+  INST(Bfm              , BaseBfm            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #33
+  INST(Bfxil            , BaseBfx            , (0b00110011000000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #34
+  INST(Bic              , BaseLogical        , (0b0001010001, 0b00100100, 1)                                                         , kRWI_W    , 0                         , 2  ), // #35
+  INST(Bics             , BaseLogical        , (0b1101010001, 0b11100100, 1)                                                         , kRWI_W    , 0                         , 3  ), // #36
+  INST(Bl               , BaseBranchRel      , (0b10010100000000000000000000000000)                                                  , 0         , 0                         , 2  ), // #37
+  INST(Blr              , BaseBranchReg      , (0b11010110001111110000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #38
+  INST(Br               , BaseBranchReg      , (0b11010110000111110000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #39
+  INST(Brk              , BaseOpImm          , (0b11010100001000000000000000000000, 16, 5)                                           , 0         , 0                         , 0  ), // #40
+  INST(Bti              , BaseOpImm          , (0b11010101000000110010010000011111, 2, 6)                                            , 0         , 0                         , 1  ), // #41
+  INST(Cas              , BaseAtomicOp       , (0b1000100010100000011111, kWX, 30, 0)                                                , kRWI_XRX  , 0                         , 0  ), // #42
+  INST(Casa             , BaseAtomicOp       , (0b1000100011100000011111, kWX, 30, 1)                                                , kRWI_XRX  , 0                         , 1  ), // #43
+  INST(Casab            , BaseAtomicOp       , (0b0000100011100000011111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 2  ), // #44
+  INST(Casah            , BaseAtomicOp       , (0b0100100011100000011111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 3  ), // #45
+  INST(Casal            , BaseAtomicOp       , (0b1000100011100000111111, kWX, 30, 1)                                                , kRWI_XRX  , 0                         , 4  ), // #46
+  INST(Casalb           , BaseAtomicOp       , (0b0000100011100000111111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 5  ), // #47
+  INST(Casalh           , BaseAtomicOp       , (0b0100100011100000111111, kW , 0 , 1)                                                , kRWI_XRX  , 0                         , 6  ), // #48
+  INST(Casb             , BaseAtomicOp       , (0b0000100010100000011111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 7  ), // #49
+  INST(Cash             , BaseAtomicOp       , (0b0100100010100000011111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 8  ), // #50
+  INST(Casl             , BaseAtomicOp       , (0b1000100010100000111111, kWX, 30, 0)                                                , kRWI_XRX  , 0                         , 9  ), // #51
+  INST(Caslb            , BaseAtomicOp       , (0b0000100010100000111111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 10 ), // #52
+  INST(Caslh            , BaseAtomicOp       , (0b0100100010100000111111, kW , 0 , 0)                                                , kRWI_XRX  , 0                         , 11 ), // #53
+  INST(Casp             , BaseAtomicCasp     , (0b0000100000100000011111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 0  ), // #54
+  INST(Caspa            , BaseAtomicCasp     , (0b0000100001100000011111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 1  ), // #55
+  INST(Caspal           , BaseAtomicCasp     , (0b0000100001100000111111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 2  ), // #56
+  INST(Caspl            , BaseAtomicCasp     , (0b0000100000100000111111, kWX, 30)                                                   , kRWI_XXRRX, 0                         , 3  ), // #57
+  INST(Cbnz             , BaseBranchCmp      , (0b00110101000000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #58
+  INST(Cbz              , BaseBranchCmp      , (0b00110100000000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #59
+  INST(Ccmn             , BaseCCmp           , (0b00111010010000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #60
+  INST(Ccmp             , BaseCCmp           , (0b01111010010000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #61
+  INST(Cfinv            , BaseOp             , (0b11010101000000000100000000011111)                                                  , 0         , 0                         , 7  ), // #62
+  INST(Chkfeat          , BaseOpX16          , (0b11010101000000110010010100011111)                                                  , 0         , 0                         , 0  ), // #63
+  INST(Cinc             , BaseCInc           , (0b00011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 0  ), // #64
+  INST(Cinv             , BaseCInc           , (0b01011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #65
+  INST(Clrbhb           , BaseOp             , (0b11010101000000110010001011011111)                                                  , 0         , 0                         , 8  ), // #66
+  INST(Clrex            , BaseOpImm          , (0b11010101000000110011000001011111, 4, 8)                                            , 0         , 0                         , 2  ), // #67
+  INST(Cls              , BaseRR             , (0b01011010110000000001010000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 5  ), // #68
+  INST(Clz              , BaseRR             , (0b01011010110000000001000000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 6  ), // #69
+  INST(Cmn              , BaseCmpCmn         , (0b0101011000, 0b0101011001, 0b0110001)                                               , kRWI_R    , 0                         , 0  ), // #70
+  INST(Cmp              , BaseCmpCmn         , (0b1101011000, 0b1101011001, 0b1110001)                                               , kRWI_R    , 0                         , 1  ), // #71
+  INST(Cmpp             , BaseRR             , (0b10111010110000000000000000011111, kX, kSP, 5, kX, kSP, 16, true)                   , kRWI_R    , 0                         , 7  ), // #72
+  INST(Cneg             , BaseCInc           , (0b01011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 2  ), // #73
+  INST(Cnt              , BaseRR             , (0b01011010110000000001110000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 8  ), // #74
+  INST(Crc32b           , BaseRRR            , (0b0001101011000000010000, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 2  ), // #75
+  INST(Crc32cb          , BaseRRR            , (0b0001101011000000010100, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 3  ), // #76
+  INST(Crc32ch          , BaseRRR            , (0b0001101011000000010101, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 4  ), // #77
+  INST(Crc32cw          , BaseRRR            , (0b0001101011000000010110, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 5  ), // #78
+  INST(Crc32cx          , BaseRRR            , (0b1001101011000000010111, kW, kZR, kW, kZR, kX, kZR, false)                          , kRWI_W    , 0                         , 6  ), // #79
+  INST(Crc32h           , BaseRRR            , (0b0001101011000000010001, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 7  ), // #80
+  INST(Crc32w           , BaseRRR            , (0b0001101011000000010010, kW, kZR, kW, kZR, kW, kZR, false)                          , kRWI_W    , 0                         , 8  ), // #81
+  INST(Crc32x           , BaseRRR            , (0b1001101011000000010011, kW, kZR, kW, kZR, kX, kZR, false)                          , kRWI_W    , 0                         , 9  ), // #82
+  INST(Csdb             , BaseOp             , (0b11010101000000110010001010011111)                                                  , 0         , 0                         , 9  ), // #83
+  INST(Csel             , BaseCSel           , (0b00011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 0  ), // #84
+  INST(Cset             , BaseCSet           , (0b00011010100111110000011111100000)                                                  , kRWI_W    , 0                         , 0  ), // #85
+  INST(Csetm            , BaseCSet           , (0b01011010100111110000001111100000)                                                  , kRWI_W    , 0                         , 1  ), // #86
+  INST(Csinc            , BaseCSel           , (0b00011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 1  ), // #87
+  INST(Csinv            , BaseCSel           , (0b01011010100000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #88
+  INST(Csneg            , BaseCSel           , (0b01011010100000000000010000000000)                                                  , kRWI_W    , 0                         , 3  ), // #89
+  INST(Ctz              , BaseRR             , (0b01011010110000000001100000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 9  ), // #90
+  INST(Dc               , BaseAtDcIcTlbi     , (0b00011110000000, 0b00001110000000, true)                                            , kRWI_RX   , 0                         , 1  ), // #91
+  INST(Dcps1            , BaseOpImm          , (0b11010100101000000000000000000001, 16, 5)                                           , 0         , 0                         , 3  ), // #92
+  INST(Dcps2            , BaseOpImm          , (0b11010100101000000000000000000010, 16, 5)                                           , 0         , 0                         , 4  ), // #93
+  INST(Dcps3            , BaseOpImm          , (0b11010100101000000000000000000011, 16, 5)                                           , 0         , 0                         , 5  ), // #94
+  INST(Dgh              , BaseOp             , (0b11010101000000110010000011011111)                                                  , 0         , 0                         , 10 ), // #95
+  INST(Dmb              , BaseOpImm          , (0b11010101000000110011000010111111, 4, 8)                                            , 0         , 0                         , 6  ), // #96
+  INST(Drps             , BaseOp             , (0b11010110101111110000001111100000)                                                  , 0         , 0                         , 11 ), // #97
+  INST(Dsb              , BaseOpImm          , (0b11010101000000110011000010011111, 4, 8)                                            , 0         , 0                         , 7  ), // #98
+  INST(Eon              , BaseLogical        , (0b1001010001, 0b10100100, 1)                                                         , kRWI_W    , 0                         , 4  ), // #99
+  INST(Eor              , BaseLogical        , (0b1001010000, 0b10100100, 0)                                                         , kRWI_W    , 0                         , 5  ), // #100
+  INST(Esb              , BaseOp             , (0b11010101000000110010001000011111)                                                  , 0         , 0                         , 12 ), // #101
+  INST(Extr             , BaseExtract        , (0b00010011100000000000000000000000)                                                  , kRWI_W    , 0                         , 0  ), // #102
+  INST(Eret             , BaseOp             , (0b11010110100111110000001111100000)                                                  , 0         , 0                         , 13 ), // #103
+  INST(Gmi              , BaseRRR            , (0b1001101011000000000101, kX , kZR, kX , kSP, kX , kZR, true)                        , kRWI_W    , 0                         , 10 ), // #104
+  INST(Hint             , BaseOpImm          , (0b11010101000000110010000000011111, 7, 5)                                            , 0         , 0                         , 8  ), // #105
+  INST(Hlt              , BaseOpImm          , (0b11010100010000000000000000000000, 16, 5)                                           , 0         , 0                         , 9  ), // #106
+  INST(Hvc              , BaseOpImm          , (0b11010100000000000000000000000010, 16, 5)                                           , 0         , 0                         , 10 ), // #107
+  INST(Ic               , BaseAtDcIcTlbi     , (0b00011110000000, 0b00001110000000, false)                                           , kRWI_RX   , 0                         , 2  ), // #108
+  INST(Isb              , BaseOpImm          , (0b11010101000000110011000011011111, 4, 8)                                            , 0         , 0                         , 11 ), // #109
+  INST(Ldadd            , BaseAtomicOp       , (0b1011100000100000000000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 12 ), // #110
+  INST(Ldadda           , BaseAtomicOp       , (0b1011100010100000000000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 13 ), // #111
+  INST(Ldaddab          , BaseAtomicOp       , (0b0011100010100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 14 ), // #112
+  INST(Ldaddah          , BaseAtomicOp       , (0b0111100010100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 15 ), // #113
+  INST(Ldaddal          , BaseAtomicOp       , (0b1011100011100000000000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 16 ), // #114
+  INST(Ldaddalb         , BaseAtomicOp       , (0b0011100011100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 17 ), // #115
+  INST(Ldaddalh         , BaseAtomicOp       , (0b0111100011100000000000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 18 ), // #116
+  INST(Ldaddb           , BaseAtomicOp       , (0b0011100000100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 19 ), // #117
+  INST(Ldaddh           , BaseAtomicOp       , (0b0111100000100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 20 ), // #118
+  INST(Ldaddl           , BaseAtomicOp       , (0b1011100001100000000000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 21 ), // #119
+  INST(Ldaddlb          , BaseAtomicOp       , (0b0011100001100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 22 ), // #120
+  INST(Ldaddlh          , BaseAtomicOp       , (0b0111100001100000000000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 23 ), // #121
+  INST(Ldar             , BaseRM_NoImm       , (0b1000100011011111111111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 0  ), // #122
+  INST(Ldarb            , BaseRM_NoImm       , (0b0000100011011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 1  ), // #123
+  INST(Ldarh            , BaseRM_NoImm       , (0b0100100011011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 2  ), // #124
+  INST(Ldaxp            , BaseLdxp           , (0b1000100001111111100000, kWX, 30)                                                   , kRWI_WW   , 0                         , 0  ), // #125
+  INST(Ldaxr            , BaseRM_NoImm       , (0b1000100001011111111111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 3  ), // #126
+  INST(Ldaxrb           , BaseRM_NoImm       , (0b0000100001011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 4  ), // #127
+  INST(Ldaxrh           , BaseRM_NoImm       , (0b0100100001011111111111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 5  ), // #128
+  INST(Ldclr            , BaseAtomicOp       , (0b1011100000100000000100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 24 ), // #129
+  INST(Ldclra           , BaseAtomicOp       , (0b1011100010100000000100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 25 ), // #130
+  INST(Ldclrab          , BaseAtomicOp       , (0b0011100010100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 26 ), // #131
+  INST(Ldclrah          , BaseAtomicOp       , (0b0111100010100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 27 ), // #132
+  INST(Ldclral          , BaseAtomicOp       , (0b1011100011100000000100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 28 ), // #133
+  INST(Ldclralb         , BaseAtomicOp       , (0b0011100011100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 29 ), // #134
+  INST(Ldclralh         , BaseAtomicOp       , (0b0111100011100000000100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 30 ), // #135
+  INST(Ldclrb           , BaseAtomicOp       , (0b0011100000100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 31 ), // #136
+  INST(Ldclrh           , BaseAtomicOp       , (0b0111100000100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 32 ), // #137
+  INST(Ldclrl           , BaseAtomicOp       , (0b1011100001100000000100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 33 ), // #138
+  INST(Ldclrlb          , BaseAtomicOp       , (0b0011100001100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 34 ), // #139
+  INST(Ldclrlh          , BaseAtomicOp       , (0b0111100001100000000100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 35 ), // #140
+  INST(Ldeor            , BaseAtomicOp       , (0b1011100000100000001000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 36 ), // #141
+  INST(Ldeora           , BaseAtomicOp       , (0b1011100010100000001000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 37 ), // #142
+  INST(Ldeorab          , BaseAtomicOp       , (0b0011100010100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 38 ), // #143
+  INST(Ldeorah          , BaseAtomicOp       , (0b0111100010100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 39 ), // #144
+  INST(Ldeoral          , BaseAtomicOp       , (0b1011100011100000001000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 40 ), // #145
+  INST(Ldeoralb         , BaseAtomicOp       , (0b0011100011100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 41 ), // #146
+  INST(Ldeoralh         , BaseAtomicOp       , (0b0111100011100000001000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 42 ), // #147
+  INST(Ldeorb           , BaseAtomicOp       , (0b0011100000100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 43 ), // #148
+  INST(Ldeorh           , BaseAtomicOp       , (0b0111100000100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 44 ), // #149
+  INST(Ldeorl           , BaseAtomicOp       , (0b1011100001100000001000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 45 ), // #150
+  INST(Ldeorlb          , BaseAtomicOp       , (0b0011100001100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 46 ), // #151
+  INST(Ldeorlh          , BaseAtomicOp       , (0b0111100001100000001000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 47 ), // #152
+  INST(Ldg              , BaseRM_SImm9       , (0b1101100101100000000000, 0b0000000000000000000000, kX , kZR, 0, 4)                  , kRWI_W    , 0                         , 0  ), // #153
+  INST(Ldgm             , BaseRM_NoImm       , (0b1101100111100000000000, kX , kZR, 0 )                                              , kRWI_W    , 0                         , 6  ), // #154
+  INST(Ldlar            , BaseRM_NoImm       , (0b1000100011011111011111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 7  ), // #155
+  INST(Ldlarb           , BaseRM_NoImm       , (0b0000100011011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 8  ), // #156
+  INST(Ldlarh           , BaseRM_NoImm       , (0b0100100011011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 9  ), // #157
+  INST(Ldnp             , BaseLdpStp         , (0b0010100001, 0           , kWX, 31, 2)                                              , kRWI_WW   , 0                         , 0  ), // #158
+  INST(Ldp              , BaseLdpStp         , (0b0010100101, 0b0010100011, kWX, 31, 2)                                              , kRWI_WW   , 0                         , 1  ), // #159
+  INST(Ldpsw            , BaseLdpStp         , (0b0110100101, 0b0110100011, kX , 0 , 2)                                              , kRWI_WW   , 0                         , 2  ), // #160
+  INST(Ldr              , BaseLdSt           , (0b1011100101, 0b10111000010, 0b10111000011, 0b00011000, kWX, 30, 2, Inst::kIdLdur)   , kRWI_W    , 0                         , 0  ), // #161
+  INST(Ldraa            , BaseRM_SImm10      , (0b1111100000100000000001, kX , kZR, 0, 3)                                            , kRWI_W    , 0                         , 0  ), // #162
+  INST(Ldrab            , BaseRM_SImm10      , (0b1111100010100000000001, kX , kZR, 0, 3)                                            , kRWI_W    , 0                         , 1  ), // #163
+  INST(Ldrb             , BaseLdSt           , (0b0011100101, 0b00111000010, 0b00111000011, 0         , kW , 0 , 0, Inst::kIdLdurb)  , kRWI_W    , 0                         , 1  ), // #164
+  INST(Ldrh             , BaseLdSt           , (0b0111100101, 0b01111000010, 0b01111000011, 0         , kW , 0 , 1, Inst::kIdLdurh)  , kRWI_W    , 0                         , 2  ), // #165
+  INST(Ldrsb            , BaseLdSt           , (0b0011100111, 0b00111000100, 0b00111000111, 0         , kWX, 22, 0, Inst::kIdLdursb) , kRWI_W    , 0                         , 3  ), // #166
+  INST(Ldrsh            , BaseLdSt           , (0b0111100111, 0b01111000100, 0b01111000111, 0         , kWX, 22, 1, Inst::kIdLdursh) , kRWI_W    , 0                         , 4  ), // #167
+  INST(Ldrsw            , BaseLdSt           , (0b1011100110, 0b10111000100, 0b10111000101, 0b10011000, kX , 0 , 2, Inst::kIdLdursw) , kRWI_W    , 0                         , 5  ), // #168
+  INST(Ldset            , BaseAtomicOp       , (0b1011100000100000001100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 48 ), // #169
+  INST(Ldseta           , BaseAtomicOp       , (0b1011100010100000001100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 49 ), // #170
+  INST(Ldsetab          , BaseAtomicOp       , (0b0011100010100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 50 ), // #171
+  INST(Ldsetah          , BaseAtomicOp       , (0b0111100010100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 51 ), // #172
+  INST(Ldsetal          , BaseAtomicOp       , (0b1011100011100000001100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 52 ), // #173
+  INST(Ldsetalb         , BaseAtomicOp       , (0b0011100011100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 53 ), // #174
+  INST(Ldsetalh         , BaseAtomicOp       , (0b0111100011100000001100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 54 ), // #175
+  INST(Ldsetb           , BaseAtomicOp       , (0b0011100000100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 55 ), // #176
+  INST(Ldseth           , BaseAtomicOp       , (0b0111100000100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 56 ), // #177
+  INST(Ldsetl           , BaseAtomicOp       , (0b1011100001100000001100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 57 ), // #178
+  INST(Ldsetlb          , BaseAtomicOp       , (0b0011100001100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 58 ), // #179
+  INST(Ldsetlh          , BaseAtomicOp       , (0b0111100001100000001100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 59 ), // #180
+  INST(Ldsmax           , BaseAtomicOp       , (0b1011100000100000010000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 60 ), // #181
+  INST(Ldsmaxa          , BaseAtomicOp       , (0b1011100010100000010000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 61 ), // #182
+  INST(Ldsmaxab         , BaseAtomicOp       , (0b0011100010100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 62 ), // #183
+  INST(Ldsmaxah         , BaseAtomicOp       , (0b0111100010100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 63 ), // #184
+  INST(Ldsmaxal         , BaseAtomicOp       , (0b1011100011100000010000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 64 ), // #185
+  INST(Ldsmaxalb        , BaseAtomicOp       , (0b0011100011100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 65 ), // #186
+  INST(Ldsmaxalh        , BaseAtomicOp       , (0b0111100011100000010000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 66 ), // #187
+  INST(Ldsmaxb          , BaseAtomicOp       , (0b0011100000100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 67 ), // #188
+  INST(Ldsmaxh          , BaseAtomicOp       , (0b0111100000100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 68 ), // #189
+  INST(Ldsmaxl          , BaseAtomicOp       , (0b1011100001100000010000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 69 ), // #190
+  INST(Ldsmaxlb         , BaseAtomicOp       , (0b0011100001100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 70 ), // #191
+  INST(Ldsmaxlh         , BaseAtomicOp       , (0b0111100001100000010000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 71 ), // #192
+  INST(Ldsmin           , BaseAtomicOp       , (0b1011100000100000010100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 72 ), // #193
+  INST(Ldsmina          , BaseAtomicOp       , (0b1011100010100000010100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 73 ), // #194
+  INST(Ldsminab         , BaseAtomicOp       , (0b0011100010100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 74 ), // #195
+  INST(Ldsminah         , BaseAtomicOp       , (0b0111100010100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 75 ), // #196
+  INST(Ldsminal         , BaseAtomicOp       , (0b1011100011100000010100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 76 ), // #197
+  INST(Ldsminalb        , BaseAtomicOp       , (0b0011100011100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 77 ), // #198
+  INST(Ldsminalh        , BaseAtomicOp       , (0b0111100011100000010100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 78 ), // #199
+  INST(Ldsminb          , BaseAtomicOp       , (0b0011100000100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 79 ), // #200
+  INST(Ldsminh          , BaseAtomicOp       , (0b0111100000100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 80 ), // #201
+  INST(Ldsminl          , BaseAtomicOp       , (0b1011100001100000010100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 81 ), // #202
+  INST(Ldsminlb         , BaseAtomicOp       , (0b0011100001100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 82 ), // #203
+  INST(Ldsminlh         , BaseAtomicOp       , (0b0111100001100000010100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 83 ), // #204
+  INST(Ldtr             , BaseRM_SImm9       , (0b1011100001000000000010, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_W    , 0                         , 1  ), // #205
+  INST(Ldtrb            , BaseRM_SImm9       , (0b0011100001000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 2  ), // #206
+  INST(Ldtrh            , BaseRM_SImm9       , (0b0111100001000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 3  ), // #207
+  INST(Ldtrsb           , BaseRM_SImm9       , (0b0011100011000000000010, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 4  ), // #208
+  INST(Ldtrsh           , BaseRM_SImm9       , (0b0111100011000000000010, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 5  ), // #209
+  INST(Ldtrsw           , BaseRM_SImm9       , (0b1011100010000000000010, 0b0000000000000000000000, kX , kZR, 0 , 0)                 , kRWI_W    , 0                         , 6  ), // #210
+  INST(Ldumax           , BaseAtomicOp       , (0b1011100000100000011000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 84 ), // #211
+  INST(Ldumaxa          , BaseAtomicOp       , (0b1011100010100000011000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 85 ), // #212
+  INST(Ldumaxab         , BaseAtomicOp       , (0b0011100010100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 86 ), // #213
+  INST(Ldumaxah         , BaseAtomicOp       , (0b0111100010100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 87 ), // #214
+  INST(Ldumaxal         , BaseAtomicOp       , (0b1011100011100000011000, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 88 ), // #215
+  INST(Ldumaxalb        , BaseAtomicOp       , (0b0011100011100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 89 ), // #216
+  INST(Ldumaxalh        , BaseAtomicOp       , (0b0111100011100000011000, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 90 ), // #217
+  INST(Ldumaxb          , BaseAtomicOp       , (0b0011100000100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 91 ), // #218
+  INST(Ldumaxh          , BaseAtomicOp       , (0b0111100000100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 92 ), // #219
+  INST(Ldumaxl          , BaseAtomicOp       , (0b1011100001100000011000, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 93 ), // #220
+  INST(Ldumaxlb         , BaseAtomicOp       , (0b0011100001100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 94 ), // #221
+  INST(Ldumaxlh         , BaseAtomicOp       , (0b0111100001100000011000, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 95 ), // #222
+  INST(Ldumin           , BaseAtomicOp       , (0b1011100000100000011100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 96 ), // #223
+  INST(Ldumina          , BaseAtomicOp       , (0b1011100010100000011100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 97 ), // #224
+  INST(Lduminab         , BaseAtomicOp       , (0b0011100010100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 98 ), // #225
+  INST(Lduminah         , BaseAtomicOp       , (0b0111100010100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 99 ), // #226
+  INST(Lduminal         , BaseAtomicOp       , (0b1011100011100000011100, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 100), // #227
+  INST(Lduminalb        , BaseAtomicOp       , (0b0011100011100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 101), // #228
+  INST(Lduminalh        , BaseAtomicOp       , (0b0111100011100000011100, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 102), // #229
+  INST(Lduminb          , BaseAtomicOp       , (0b0011100000100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 103), // #230
+  INST(Lduminh          , BaseAtomicOp       , (0b0111100000100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 104), // #231
+  INST(Lduminl          , BaseAtomicOp       , (0b1011100001100000011100, kWX, 30, 0)                                                , kRWI_WRX  , 0                         , 105), // #232
+  INST(Lduminlb         , BaseAtomicOp       , (0b0011100001100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 106), // #233
+  INST(Lduminlh         , BaseAtomicOp       , (0b0111100001100000011100, kW , 0 , 0)                                                , kRWI_WRX  , 0                         , 107), // #234
+  INST(Ldur             , BaseRM_SImm9       , (0b1011100001000000000000, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_W    , 0                         , 7  ), // #235
+  INST(Ldurb            , BaseRM_SImm9       , (0b0011100001000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 8  ), // #236
+  INST(Ldurh            , BaseRM_SImm9       , (0b0111100001000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_W    , 0                         , 9  ), // #237
+  INST(Ldursb           , BaseRM_SImm9       , (0b0011100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 10 ), // #238
+  INST(Ldursh           , BaseRM_SImm9       , (0b0111100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0)                 , kRWI_W    , 0                         , 11 ), // #239
+  INST(Ldursw           , BaseRM_SImm9       , (0b1011100010000000000000, 0b0000000000000000000000, kX , kZR, 0 , 0)                 , kRWI_W    , 0                         , 12 ), // #240
+  INST(Ldxp             , BaseLdxp           , (0b1000100001111111000000, kWX, 30)                                                   , kRWI_WW   , 0                         , 1  ), // #241
+  INST(Ldxr             , BaseRM_NoImm       , (0b1000100001011111011111, kWX, kZR, 30)                                              , kRWI_W    , 0                         , 10 ), // #242
+  INST(Ldxrb            , BaseRM_NoImm       , (0b0000100001011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 11 ), // #243
+  INST(Ldxrh            , BaseRM_NoImm       , (0b0100100001011111011111, kW , kZR, 0 )                                              , kRWI_W    , 0                         , 12 ), // #244
+  INST(Lsl              , BaseShift          , (0b0001101011000000001000, 0b0101001100000000000000, 0)                               , kRWI_W    , 0                         , 2  ), // #245
+  INST(Lslv             , BaseShift          , (0b0001101011000000001000, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 3  ), // #246
+  INST(Lsr              , BaseShift          , (0b0001101011000000001001, 0b0101001100000000011111, 0)                               , kRWI_W    , 0                         , 4  ), // #247
+  INST(Lsrv             , BaseShift          , (0b0001101011000000001001, 0b0000000000000000000000, 0)                               , kRWI_W    , 0                         , 5  ), // #248
+  INST(Madd             , BaseRRRR           , (0b0001101100000000000000, kWX, kZR, kWX, kZR, kWX, kZR, kWX, kZR, true)              , kRWI_W    , 0                         , 0  ), // #249
+  INST(Mneg             , BaseRRR            , (0b0001101100000000111111, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 11 ), // #250
+  INST(Mov              , BaseMov            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #251
+  INST(Movk             , BaseMovKNZ         , (0b01110010100000000000000000000000)                                                  , kRWI_X    , 0                         , 0  ), // #252
+  INST(Movn             , BaseMovKNZ         , (0b00010010100000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #253
+  INST(Movz             , BaseMovKNZ         , (0b01010010100000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #254
+  INST(Mrs              , BaseMrs            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #255
+  INST(Msr              , BaseMsr            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #256
+  INST(Msub             , BaseRRRR           , (0b0001101100000000100000, kWX, kZR, kWX, kZR, kWX, kZR, kWX, kZR, true)              , kRWI_W    , 0                         , 1  ), // #257
+  INST(Mul              , BaseRRR            , (0b0001101100000000011111, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 12 ), // #258
+  INST(Mvn              , BaseMvnNeg         , (0b00101010001000000000001111100000)                                                  , kRWI_W    , 0                         , 0  ), // #259
+  INST(Neg              , BaseMvnNeg         , (0b01001011000000000000001111100000)                                                  , kRWI_W    , 0                         , 1  ), // #260
+  INST(Negs             , BaseMvnNeg         , (0b01101011000000000000001111100000)                                                  , kRWI_W    , 0                         , 2  ), // #261
+  INST(Ngc              , BaseRR             , (0b01011010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true)                 , kRWI_W    , 0                         , 10 ), // #262
+  INST(Ngcs             , BaseRR             , (0b01111010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true)                 , kRWI_W    , 0                         , 11 ), // #263
+  INST(Nop              , BaseOp             , (0b11010101000000110010000000011111)                                                  , 0         , 0                         , 14 ), // #264
+  INST(Orn              , BaseLogical        , (0b0101010001, 0b01100100, 1)                                                         , kRWI_W    , 0                         , 6  ), // #265
+  INST(Orr              , BaseLogical        , (0b0101010000, 0b01100100, 0)                                                         , kRWI_W    , 0                         , 7  ), // #266
+  INST(Pacda            , BaseRR             , (0b11011010110000010000100000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 12 ), // #267
+  INST(Pacdb            , BaseRR             , (0b11011010110000010000110000000000, kX, kZR, 0, kX, kSP, 5, true)                    , kRWI_X    , 0                         , 13 ), // #268
+  INST(Pacdza           , BaseR              , (0b11011010110000010010101111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 4  ), // #269
+  INST(Pacdzb           , BaseR              , (0b11011010110000010010111111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 5  ), // #270
+  INST(Pacga            , BaseRRR            , (0b1001101011000000001100, kX, kZR, kX, kZR, kX, kSP, false)                          , kRWI_W    , 0                         , 13 ), // #271
+  INST(Prfm             , BasePrfm           , (0b11111000101, 0b1111100110, 0b11111000100, 0b11011000)                              , kRWI_R    , 0                         , 0  ), // #272
+  INST(Pssbb            , BaseOp             , (0b11010101000000110011010010011111)                                                  , 0         , 0                         , 15 ), // #273
+  INST(Rbit             , BaseRR             , (0b01011010110000000000000000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 14 ), // #274
+  INST(Ret              , BaseBranchReg      , (0b11010110010111110000000000000000)                                                  , kRWI_R    , 0                         , 2  ), // #275
+  INST(Rev              , BaseRev            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #276
+  INST(Rev16            , BaseRR             , (0b01011010110000000000010000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 15 ), // #277
+  INST(Rev32            , BaseRR             , (0b11011010110000000000100000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 16 ), // #278
+  INST(Rev64            , BaseRR             , (0b11011010110000000000110000000000, kWX, kZR, 0, kWX, kZR, 5, true)                  , kRWI_W    , 0                         , 17 ), // #279
+  INST(Ror              , BaseShift          , (0b0001101011000000001011, 0b0001001110000000000000, 1)                               , kRWI_W    , 0                         , 6  ), // #280
+  INST(Rorv             , BaseShift          , (0b0001101011000000001011, 0b0000000000000000000000, 1)                               , kRWI_W    , 0                         , 7  ), // #281
+  INST(Sbc              , BaseRRR            , (0b0101101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 14 ), // #282
+  INST(Sbcs             , BaseRRR            , (0b0111101000000000000000, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 15 ), // #283
+  INST(Sbfiz            , BaseBfi            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #284
+  INST(Sbfm             , BaseBfm            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #285
+  INST(Sbfx             , BaseBfx            , (0b00010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 1  ), // #286
+  INST(Sdiv             , BaseRRR            , (0b0001101011000000000011, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 16 ), // #287
+  INST(Setf8            , BaseR              , (0b00111010000000000000100000001101, kW, kZR, 5)                                      , 0         , 0                         , 6  ), // #288
+  INST(Setf16           , BaseR              , (0b00111010000000000100100000001101, kW, kZR, 5)                                      , 0         , 0                         , 7  ), // #289
+  INST(Sev              , BaseOp             , (0b11010101000000110010000010011111)                                                  , 0         , 0                         , 16 ), // #290
+  INST(Sevl             , BaseOp             , (0b11010101000000110010000010111111)                                                  , 0         , 0                         , 17 ), // #291
+  INST(Smaddl           , BaseRRRR           , (0b1001101100100000000000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 2  ), // #292
+  INST(Smax             , BaseMinMax         , (0b00011010110000000110000000000000, 0b00010001110000000000000000000000)              , kRWI_W    , 0                         , 0  ), // #293
+  INST(Smc              , BaseOpImm          , (0b11010100000000000000000000000011, 16, 5)                                           , 0         , 0                         , 12 ), // #294
+  INST(Smin             , BaseMinMax         , (0b00011010110000000110100000000000, 0b00010001110010000000000000000000)              , kRWI_W    , 0                         , 1  ), // #295
+  INST(Smnegl           , BaseRRR            , (0b1001101100100000111111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 17 ), // #296
+  INST(Smsubl           , BaseRRRR           , (0b1001101100100000100000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 3  ), // #297
+  INST(Smulh            , BaseRRR            , (0b1001101101000000011111, kX , kZR, kX , kZR, kX , kZR, true)                        , kRWI_W    , 0                         , 18 ), // #298
+  INST(Smull            , BaseRRR            , (0b1001101100100000011111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 19 ), // #299
+  INST(Ssbb             , BaseOp             , (0b11010101000000110011000010011111)                                                  , 0         , 0                         , 18 ), // #300
+  INST(St2g             , BaseRM_SImm9       , (0b1101100110100000000010, 0b1101100110100000000001, kX, kSP, 0, 4)                   , kRWI_RW   , 0                         , 13 ), // #301
+  INST(Stadd            , BaseAtomicSt       , (0b1011100000100000000000, kWX, 30)                                                   , kRWI_RX   , 0                         , 0  ), // #302
+  INST(Staddl           , BaseAtomicSt       , (0b1011100001100000000000, kWX, 30)                                                   , kRWI_RX   , 0                         , 1  ), // #303
+  INST(Staddb           , BaseAtomicSt       , (0b0011100000100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 2  ), // #304
+  INST(Staddlb          , BaseAtomicSt       , (0b0011100001100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 3  ), // #305
+  INST(Staddh           , BaseAtomicSt       , (0b0111100000100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 4  ), // #306
+  INST(Staddlh          , BaseAtomicSt       , (0b0111100001100000000000, kW , 0 )                                                   , kRWI_RX   , 0                         , 5  ), // #307
+  INST(Stclr            , BaseAtomicSt       , (0b1011100000100000000100, kWX, 30)                                                   , kRWI_RX   , 0                         , 6  ), // #308
+  INST(Stclrl           , BaseAtomicSt       , (0b1011100001100000000100, kWX, 30)                                                   , kRWI_RX   , 0                         , 7  ), // #309
+  INST(Stclrb           , BaseAtomicSt       , (0b0011100000100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 8  ), // #310
+  INST(Stclrlb          , BaseAtomicSt       , (0b0011100001100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 9  ), // #311
+  INST(Stclrh           , BaseAtomicSt       , (0b0111100000100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 10 ), // #312
+  INST(Stclrlh          , BaseAtomicSt       , (0b0111100001100000000100, kW , 0 )                                                   , kRWI_RX   , 0                         , 11 ), // #313
+  INST(Steor            , BaseAtomicSt       , (0b1011100000100000001000, kWX, 30)                                                   , kRWI_RX   , 0                         , 12 ), // #314
+  INST(Steorl           , BaseAtomicSt       , (0b1011100001100000001000, kWX, 30)                                                   , kRWI_RX   , 0                         , 13 ), // #315
+  INST(Steorb           , BaseAtomicSt       , (0b0011100000100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 14 ), // #316
+  INST(Steorlb          , BaseAtomicSt       , (0b0011100001100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 15 ), // #317
+  INST(Steorh           , BaseAtomicSt       , (0b0111100000100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 16 ), // #318
+  INST(Steorlh          , BaseAtomicSt       , (0b0111100001100000001000, kW , 0 )                                                   , kRWI_RX   , 0                         , 17 ), // #319
+  INST(Stg              , BaseRM_SImm9       , (0b1101100100100000000010, 0b1101100100100000000001, kX, kSP, 0, 4)                   , kRWI_RW   , 0                         , 14 ), // #320
+  INST(Stgm             , BaseRM_NoImm       , (0b1101100110100000000000, kX , kZR, 0 )                                              , kRWI_RW   , 0                         , 13 ), // #321
+  INST(Stgp             , BaseLdpStp         , (0b0110100100, 0b0110100010, kX, 0, 4)                                                , kRWI_RRW  , 0                         , 3  ), // #322
+  INST(Stllr            , BaseRM_NoImm       , (0b1000100010011111011111, kWX, kZR, 30)                                              , kRWI_RW   , 0                         , 14 ), // #323
+  INST(Stllrb           , BaseRM_NoImm       , (0b0000100010011111011111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 15 ), // #324
+  INST(Stllrh           , BaseRM_NoImm       , (0b0100100010011111011111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 16 ), // #325
+  INST(Stlr             , BaseRM_NoImm       , (0b1000100010011111111111, kWX, kZR, 30)                                              , kRWI_RW   , 0                         , 17 ), // #326
+  INST(Stlrb            , BaseRM_NoImm       , (0b0000100010011111111111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 18 ), // #327
+  INST(Stlrh            , BaseRM_NoImm       , (0b0100100010011111111111, kW , kZR, 0 )                                              , kRWI_RW   , 0                         , 19 ), // #328
+  INST(Stlxp            , BaseStxp           , (0b1000100000100000100000, kWX, 30)                                                   , kRWI_WRRX , 0                         , 0  ), // #329
+  INST(Stlxr            , BaseAtomicOp       , (0b1000100000000000111111, kWX, 30, 1)                                                , kRWI_WRX  , 0                         , 108), // #330
+  INST(Stlxrb           , BaseAtomicOp       , (0b0000100000000000111111, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 109), // #331
+  INST(Stlxrh           , BaseAtomicOp       , (0b0100100000000000111111, kW , 0 , 1)                                                , kRWI_WRX  , 0                         , 110), // #332
+  INST(Stnp             , BaseLdpStp         , (0b0010100000, 0           , kWX, 31, 2)                                              , kRWI_RRW  , 0                         , 4  ), // #333
+  INST(Stp              , BaseLdpStp         , (0b0010100100, 0b0010100010, kWX, 31, 2)                                              , kRWI_RRW  , 0                         , 5  ), // #334
+  INST(Str              , BaseLdSt           , (0b1011100100, 0b10111000000, 0b10111000001, 0         , kWX, 30, 2, Inst::kIdStur)   , kRWI_RW   , 0                         , 6  ), // #335
+  INST(Strb             , BaseLdSt           , (0b0011100100, 0b00111000000, 0b00111000001, 0         , kW , 30, 0, Inst::kIdSturb)  , kRWI_RW   , 0                         , 7  ), // #336
+  INST(Strh             , BaseLdSt           , (0b0111100100, 0b01111000000, 0b01111000001, 0         , kWX, 30, 1, Inst::kIdSturh)  , kRWI_RW   , 0                         , 8  ), // #337
+  INST(Stset            , BaseAtomicSt       , (0b1011100000100000001100, kWX, 30)                                                   , kRWI_RX   , 0                         , 18 ), // #338
+  INST(Stsetl           , BaseAtomicSt       , (0b1011100001100000001100, kWX, 30)                                                   , kRWI_RX   , 0                         , 19 ), // #339
+  INST(Stsetb           , BaseAtomicSt       , (0b0011100000100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 20 ), // #340
+  INST(Stsetlb          , BaseAtomicSt       , (0b0011100001100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 21 ), // #341
+  INST(Stseth           , BaseAtomicSt       , (0b0111100000100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 22 ), // #342
+  INST(Stsetlh          , BaseAtomicSt       , (0b0111100001100000001100, kW , 0 )                                                   , kRWI_RX   , 0                         , 23 ), // #343
+  INST(Stsmax           , BaseAtomicSt       , (0b1011100000100000010000, kWX, 30)                                                   , kRWI_RX   , 0                         , 24 ), // #344
+  INST(Stsmaxl          , BaseAtomicSt       , (0b1011100001100000010000, kWX, 30)                                                   , kRWI_RX   , 0                         , 25 ), // #345
+  INST(Stsmaxb          , BaseAtomicSt       , (0b0011100000100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 26 ), // #346
+  INST(Stsmaxlb         , BaseAtomicSt       , (0b0011100001100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 27 ), // #347
+  INST(Stsmaxh          , BaseAtomicSt       , (0b0111100000100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 28 ), // #348
+  INST(Stsmaxlh         , BaseAtomicSt       , (0b0111100001100000010000, kW , 0 )                                                   , kRWI_RX   , 0                         , 29 ), // #349
+  INST(Stsmin           , BaseAtomicSt       , (0b1011100000100000010100, kWX, 30)                                                   , kRWI_RX   , 0                         , 30 ), // #350
+  INST(Stsminl          , BaseAtomicSt       , (0b1011100001100000010100, kWX, 30)                                                   , kRWI_RX   , 0                         , 31 ), // #351
+  INST(Stsminb          , BaseAtomicSt       , (0b0011100000100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 32 ), // #352
+  INST(Stsminlb         , BaseAtomicSt       , (0b0011100001100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 33 ), // #353
+  INST(Stsminh          , BaseAtomicSt       , (0b0111100000100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 34 ), // #354
+  INST(Stsminlh         , BaseAtomicSt       , (0b0111100001100000010100, kW , 0 )                                                   , kRWI_RX   , 0                         , 35 ), // #355
+  INST(Sttr             , BaseRM_SImm9       , (0b1011100000000000000010, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_RW   , 0                         , 15 ), // #356
+  INST(Sttrb            , BaseRM_SImm9       , (0b0011100000000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 16 ), // #357
+  INST(Sttrh            , BaseRM_SImm9       , (0b0111100000000000000010, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 17 ), // #358
+  INST(Stumax           , BaseAtomicSt       , (0b1011100000100000011000, kWX, 30)                                                   , kRWI_RX   , 0                         , 36 ), // #359
+  INST(Stumaxl          , BaseAtomicSt       , (0b1011100001100000011000, kWX, 30)                                                   , kRWI_RX   , 0                         , 37 ), // #360
+  INST(Stumaxb          , BaseAtomicSt       , (0b0011100000100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 38 ), // #361
+  INST(Stumaxlb         , BaseAtomicSt       , (0b0011100001100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 39 ), // #362
+  INST(Stumaxh          , BaseAtomicSt       , (0b0111100000100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 40 ), // #363
+  INST(Stumaxlh         , BaseAtomicSt       , (0b0111100001100000011000, kW , 0 )                                                   , kRWI_RX   , 0                         , 41 ), // #364
+  INST(Stumin           , BaseAtomicSt       , (0b1011100000100000011100, kWX, 30)                                                   , kRWI_RX   , 0                         , 42 ), // #365
+  INST(Stuminl          , BaseAtomicSt       , (0b1011100001100000011100, kWX, 30)                                                   , kRWI_RX   , 0                         , 43 ), // #366
+  INST(Stuminb          , BaseAtomicSt       , (0b0011100000100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 44 ), // #367
+  INST(Stuminlb         , BaseAtomicSt       , (0b0011100001100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 45 ), // #368
+  INST(Stuminh          , BaseAtomicSt       , (0b0111100000100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 46 ), // #369
+  INST(Stuminlh         , BaseAtomicSt       , (0b0111100001100000011100, kW , 0 )                                                   , kRWI_RX   , 0                         , 47 ), // #370
+  INST(Stur             , BaseRM_SImm9       , (0b1011100000000000000000, 0b0000000000000000000000, kWX, kZR, 30, 0)                 , kRWI_RW   , 0                         , 18 ), // #371
+  INST(Sturb            , BaseRM_SImm9       , (0b0011100000000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 19 ), // #372
+  INST(Sturh            , BaseRM_SImm9       , (0b0111100000000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0)                 , kRWI_RW   , 0                         , 20 ), // #373
+  INST(Stxp             , BaseStxp           , (0b1000100000100000000000, kWX, 30)                                                   , kRWI_WRRW , 0                         , 1  ), // #374
+  INST(Stxr             , BaseStx            , (0b1000100000000000011111, kWX, 30)                                                   , kRWI_WRW  , 0                         , 0  ), // #375
+  INST(Stxrb            , BaseStx            , (0b0000100000000000011111, kW , 0 )                                                   , kRWI_WRW  , 0                         , 1  ), // #376
+  INST(Stxrh            , BaseStx            , (0b0100100000000000011111, kW , 0 )                                                   , kRWI_WRW  , 0                         , 2  ), // #377
+  INST(Stz2g            , BaseRM_SImm9       , (0b1101100111100000000010, 0b1101100111100000000001, kX , kSP, 0, 4)                  , kRWI_RW   , 0                         , 21 ), // #378
+  INST(Stzg             , BaseRM_SImm9       , (0b1101100101100000000010, 0b1101100101100000000001, kX , kSP, 0, 4)                  , kRWI_RW   , 0                         , 22 ), // #379
+  INST(Stzgm            , BaseRM_NoImm       , (0b1101100100100000000000, kX , kZR, 0)                                               , kRWI_RW   , 0                         , 20 ), // #380
+  INST(Sub              , BaseAddSub         , (0b1001011000, 0b1001011001, 0b1010001)                                               , kRWI_W    , 0                         , 2  ), // #381
+  INST(Subg             , BaseRRII           , (0b1101000110000000000000, kX, kSP, kX, kSP, 6, 4, 16, 4, 0, 10)                      , kRWI_W    , 0                         , 1  ), // #382
+  INST(Subp             , BaseRRR            , (0b1001101011000000000000, kX, kZR, kX, kSP, kX, kSP, false)                          , kRWI_W    , 0                         , 20 ), // #383
+  INST(Subps            , BaseRRR            , (0b1011101011000000000000, kX, kZR, kX, kSP, kX, kSP, false)                          , kRWI_W    , 0                         , 21 ), // #384
+  INST(Subs             , BaseAddSub         , (0b1101011000, 0b1101011001, 0b1110001)                                               , kRWI_W    , 0                         , 3  ), // #385
+  INST(Svc              , BaseOpImm          , (0b11010100000000000000000000000001, 16, 5)                                           , 0         , 0                         , 13 ), // #386
+  INST(Swp              , BaseAtomicOp       , (0b1011100000100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 111), // #387
+  INST(Swpa             , BaseAtomicOp       , (0b1011100010100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 112), // #388
+  INST(Swpab            , BaseAtomicOp       , (0b0011100010100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 113), // #389
+  INST(Swpah            , BaseAtomicOp       , (0b0111100010100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 114), // #390
+  INST(Swpal            , BaseAtomicOp       , (0b1011100011100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 115), // #391
+  INST(Swpalb           , BaseAtomicOp       , (0b0011100011100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 116), // #392
+  INST(Swpalh           , BaseAtomicOp       , (0b0111100011100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 117), // #393
+  INST(Swpb             , BaseAtomicOp       , (0b0011100000100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 118), // #394
+  INST(Swph             , BaseAtomicOp       , (0b0111100000100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 119), // #395
+  INST(Swpl             , BaseAtomicOp       , (0b1011100001100000100000, kWX, 30, 1)                                                , kRWI_RWX  , 0                         , 120), // #396
+  INST(Swplb            , BaseAtomicOp       , (0b0011100001100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 121), // #397
+  INST(Swplh            , BaseAtomicOp       , (0b0111100001100000100000, kW , 0 , 1)                                                , kRWI_RWX  , 0                         , 122), // #398
+  INST(Sxtb             , BaseExtend         , (0b0001001100000000000111, kWX, 0)                                                    , kRWI_W    , 0                         , 0  ), // #399
+  INST(Sxth             , BaseExtend         , (0b0001001100000000001111, kWX, 0)                                                    , kRWI_W    , 0                         , 1  ), // #400
+  INST(Sxtw             , BaseExtend         , (0b1001001101000000011111, kX , 0)                                                    , kRWI_W    , 0                         , 2  ), // #401
+  INST(Sys              , BaseSys            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #402
+  INST(Tlbi             , BaseAtDcIcTlbi     , (0b00011110000000, 0b00010000000000, false)                                           , kRWI_RX   , 0                         , 3  ), // #403
+  INST(Tst              , BaseTst            , (0b1101010000, 0b111001000)                                                           , kRWI_R    , 0                         , 0  ), // #404
+  INST(Tbnz             , BaseBranchTst      , (0b00110111000000000000000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #405
+  INST(Tbz              , BaseBranchTst      , (0b00110110000000000000000000000000)                                                  , kRWI_R    , 0                         , 1  ), // #406
+  INST(Ubfiz            , BaseBfi            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #407
+  INST(Ubfm             , BaseBfm            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #408
+  INST(Ubfx             , BaseBfx            , (0b01010011000000000000000000000000)                                                  , kRWI_W    , 0                         , 2  ), // #409
+  INST(Udf              , BaseOpImm          , (0b00000000000000000000000000000000, 16, 0)                                           , 0         , 0                         , 14 ), // #410
+  INST(Udiv             , BaseRRR            , (0b0001101011000000000010, kWX, kZR, kWX, kZR, kWX, kZR, true)                        , kRWI_W    , 0                         , 22 ), // #411
+  INST(Umaddl           , BaseRRRR           , (0b1001101110100000000000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 4  ), // #412
+  INST(Umax             , BaseMinMax         , (0b00011010110000000110010000000000, 0b00010001110001000000000000000000)              , kRWI_W    , 0                         , 2  ), // #413
+  INST(Umin             , BaseMinMax         , (0b00011010110000000110110000000000, 0b00010001110011000000000000000000)              , kRWI_W    , 0                         , 3  ), // #414
+  INST(Umnegl           , BaseRRR            , (0b1001101110100000111111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 23 ), // #415
+  INST(Umull            , BaseRRR            , (0b1001101110100000011111, kX , kZR, kW , kZR, kW , kZR, false)                       , kRWI_W    , 0                         , 24 ), // #416
+  INST(Umulh            , BaseRRR            , (0b1001101111000000011111, kX , kZR, kX , kZR, kX , kZR, false)                       , kRWI_W    , 0                         , 25 ), // #417
+  INST(Umsubl           , BaseRRRR           , (0b1001101110100000100000, kX , kZR, kW , kZR, kW , kZR, kX , kZR, false)             , kRWI_W    , 0                         , 5  ), // #418
+  INST(Uxtb             , BaseExtend         , (0b0101001100000000000111, kW, 1)                                                     , kRWI_W    , 0                         , 3  ), // #419
+  INST(Uxth             , BaseExtend         , (0b0101001100000000001111, kW, 1)                                                     , kRWI_W    , 0                         , 4  ), // #420
+  INST(Wfe              , BaseOp             , (0b11010101000000110010000001011111)                                                  , 0         , 0                         , 19 ), // #421
+  INST(Wfi              , BaseOp             , (0b11010101000000110010000001111111)                                                  , 0         , 0                         , 20 ), // #422
+  INST(Xaflag           , BaseOp             , (0b11010101000000000100000000111111)                                                  , 0         , 0                         , 21 ), // #423
+  INST(Xpacd            , BaseR              , (0b11011010110000010100011111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 8  ), // #424
+  INST(Xpaci            , BaseR              , (0b11011010110000010100001111100000, kX, kZR, 0)                                      , kRWI_X    , 0                         , 9  ), // #425
+  INST(Xpaclri          , BaseOp             , (0b11010101000000110010000011111111)                                                  , kRWI_X    , 0                         , 22 ), // #426
+  INST(Yield            , BaseOp             , (0b11010101000000110010000000111111)                                                  , 0         , 0                         , 23 ), // #427
+  INST(Abs_v            , ISimdVV            , (0b0000111000100000101110, kVO_V_Any)                                                 , kRWI_W    , 0                         , 0  ), // #428
+  INST(Add_v            , ISimdVVV           , (0b0000111000100000100001, kVO_V_Any)                                                 , kRWI_W    , 0                         , 0  ), // #429
+  INST(Addhn_v          , ISimdVVV           , (0b0000111000100000010000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 1  ), // #430
+  INST(Addhn2_v         , ISimdVVV           , (0b0100111000100000010000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Narrow)                 , 2  ), // #431
+  INST(Addp_v           , ISimdPair          , (0b0101111000110001101110, 0b0000111000100000101111, kVO_V_Any)                       , kRWI_W    , F(Pair)                   , 0  ), // #432
+  INST(Addv_v           , ISimdSV            , (0b0000111000110001101110, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 0  ), // #433
+  INST(Aesd_v           , ISimdVVx           , (0b0100111000101000010110, kOp_V16B, kOp_V16B)                                        , kRWI_X    , 0                         , 0  ), // #434
+  INST(Aese_v           , ISimdVVx           , (0b0100111000101000010010, kOp_V16B, kOp_V16B)                                        , kRWI_X    , 0                         , 1  ), // #435
+  INST(Aesimc_v         , ISimdVVx           , (0b0100111000101000011110, kOp_V16B, kOp_V16B)                                        , kRWI_W    , 0                         , 2  ), // #436
+  INST(Aesmc_v          , ISimdVVx           , (0b0100111000101000011010, kOp_V16B, kOp_V16B)                                        , kRWI_W    , 0                         , 3  ), // #437
+  INST(And_v            , ISimdVVV           , (0b0000111000100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 3  ), // #438
+  INST(Bcax_v           , ISimdVVVV          , (0b1100111000100000000000, kVO_V_B16)                                                 , kRWI_W    , 0                         , 0  ), // #439
+  INST(Bfcvt_v          , ISimdVVx           , (0b0001111001100011010000, kOp_H, kOp_S)                                              , kRWI_W    , 0                         , 4  ), // #440
+  INST(Bfcvtn_v         , ISimdVVx           , (0b0000111010100001011010, kOp_V4H, kOp_V4S)                                          , kRWI_W    , F(Narrow)                 , 5  ), // #441
+  INST(Bfcvtn2_v        , ISimdVVx           , (0b0100111010100001011010, kOp_V8H, kOp_V4S)                                          , kRWI_W    , F(Narrow)                 , 6  ), // #442
+  INST(Bfdot_v          , SimdDot            , (0b0010111001000000111111, 0b0000111101000000111100, kET_S, kET_H, kET_2H)            , kRWI_X    , 0                         , 0  ), // #443
+  INST(Bfmlalb_v        , SimdFmlal          , (0b0010111011000000111111, 0b0000111111000000111100, 0, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 0  ), // #444
+  INST(Bfmlalt_v        , SimdFmlal          , (0b0110111011000000111111, 0b0100111111000000111100, 0, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 1  ), // #445
+  INST(Bfmmla_v         , ISimdVVVx          , (0b0110111001000000111011, kOp_V4S, kOp_V8H, kOp_V8H)                                 , kRWI_X    , F(Long)                   , 0  ), // #446
+  INST(Bic_v            , SimdBicOrr         , (0b0000111001100000000111, 0b0010111100000000000001)                                  , kRWI_W    , 0                         , 0  ), // #447
+  INST(Bif_v            , ISimdVVV           , (0b0010111011100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 4  ), // #448
+  INST(Bit_v            , ISimdVVV           , (0b0010111010100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 5  ), // #449
+  INST(Bsl_v            , ISimdVVV           , (0b0010111001100000000111, kVO_V_B)                                                   , kRWI_X    , 0                         , 6  ), // #450
+  INST(Cls_v            , ISimdVV            , (0b0000111000100000010010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 1  ), // #451
+  INST(Clz_v            , ISimdVV            , (0b0010111000100000010010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 2  ), // #452
+  INST(Cmeq_v           , SimdCmp            , (0b0010111000100000100011, 0b0000111000100000100110, kVO_V_Any)                       , kRWI_W    , 0                         , 0  ), // #453
+  INST(Cmge_v           , SimdCmp            , (0b0000111000100000001111, 0b0010111000100000100010, kVO_V_Any)                       , kRWI_W    , 0                         , 1  ), // #454
+  INST(Cmgt_v           , SimdCmp            , (0b0000111000100000001101, 0b0000111000100000100010, kVO_V_Any)                       , kRWI_W    , 0                         , 2  ), // #455
+  INST(Cmhi_v           , SimdCmp            , (0b0010111000100000001101, 0b0000000000000000000000, kVO_V_Any)                       , kRWI_W    , 0                         , 3  ), // #456
+  INST(Cmhs_v           , SimdCmp            , (0b0010111000100000001111, 0b0000000000000000000000, kVO_V_Any)                       , kRWI_W    , 0                         , 4  ), // #457
+  INST(Cmle_v           , SimdCmp            , (0b0000000000000000000000, 0b0010111000100000100110, kVO_V_Any)                       , kRWI_W    , 0                         , 5  ), // #458
+  INST(Cmlt_v           , SimdCmp            , (0b0000000000000000000000, 0b0000111000100000101010, kVO_V_Any)                       , kRWI_W    , 0                         , 6  ), // #459
+  INST(Cmtst_v          , ISimdVVV           , (0b0000111000100000100011, kVO_V_Any)                                                 , kRWI_W    , 0                         , 7  ), // #460
+  INST(Cnt_v            , ISimdVV            , (0b0000111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 3  ), // #461
+  INST(Dup_v            , SimdDup            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #462
+  INST(Eor_v            , ISimdVVV           , (0b0010111000100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 8  ), // #463
+  INST(Eor3_v           , ISimdVVVV          , (0b1100111000000000000000, kVO_V_B16)                                                 , kRWI_W    , 0                         , 1  ), // #464
+  INST(Ext_v            , ISimdVVVI          , (0b0010111000000000000000, kVO_V_B, 4, 11, 1)                                         , kRWI_W    , 0                         , 0  ), // #465
+  INST(Fabd_v           , FSimdVVV           , (0b0111111010100000110101, kHF_C, 0b0010111010100000110101, kHF_C)                    , kRWI_W    , 0                         , 0  ), // #466
+  INST(Fabs_v           , FSimdVV            , (0b0001111000100000110000, kHF_A, 0b0000111010100000111110, kHF_B)                    , kRWI_W    , 0                         , 0  ), // #467
+  INST(Facge_v          , FSimdVVV           , (0b0111111000100000111011, kHF_C, 0b0010111000100000111011, kHF_C)                    , kRWI_W    , 0                         , 1  ), // #468
+  INST(Facgt_v          , FSimdVVV           , (0b0111111010100000111011, kHF_C, 0b0010111010100000111011, kHF_C)                    , kRWI_W    , 0                         , 2  ), // #469
+  INST(Fadd_v           , FSimdVVV           , (0b0001111000100000001010, kHF_A, 0b0000111000100000110101, kHF_C)                    , kRWI_W    , 0                         , 3  ), // #470
+  INST(Faddp_v          , FSimdPair          , (0b0111111000110000110110, 0b0010111000100000110101)                                  , kRWI_W    , 0                         , 0  ), // #471
+  INST(Fcadd_v          , SimdFcadd          , (0b0010111000000000111001)                                                            , kRWI_W    , 0                         , 0  ), // #472
+  INST(Fccmp_v          , SimdFccmpFccmpe    , (0b00011110001000000000010000000000)                                                  , kRWI_R    , 0                         , 0  ), // #473
+  INST(Fccmpe_v         , SimdFccmpFccmpe    , (0b00011110001000000000010000010000)                                                  , kRWI_R    , 0                         , 1  ), // #474
+  INST(Fcmeq_v          , SimdFcm            , (0b0000111000100000111001, kHF_C, 0b0000111010100000110110)                           , kRWI_W    , 0                         , 0  ), // #475
+  INST(Fcmge_v          , SimdFcm            , (0b0010111000100000111001, kHF_C, 0b0010111010100000110010)                           , kRWI_W    , 0                         , 1  ), // #476
+  INST(Fcmgt_v          , SimdFcm            , (0b0010111010100000111001, kHF_C, 0b0000111010100000110010)                           , kRWI_W    , 0                         , 2  ), // #477
+  INST(Fcmla_v          , SimdFcmla          , (0b0010111000000000110001, 0b0010111100000000000100)                                  , kRWI_X    , 0                         , 0  ), // #478
+  INST(Fcmle_v          , SimdFcm            , (0b0000000000000000000000, kHF_C, 0b0010111010100000110110)                           , kRWI_W    , 0                         , 3  ), // #479
+  INST(Fcmlt_v          , SimdFcm            , (0b0000000000000000000000, kHF_C, 0b0000111010100000111010)                           , kRWI_W    , 0                         , 4  ), // #480
+  INST(Fcmp_v           , SimdFcmpFcmpe      , (0b00011110001000000010000000000000)                                                  , kRWI_R    , 0                         , 0  ), // #481
+  INST(Fcmpe_v          , SimdFcmpFcmpe      , (0b00011110001000000010000000010000)                                                  , kRWI_R    , 0                         , 1  ), // #482
+  INST(Fcsel_v          , SimdFcsel          , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #483
+  INST(Fcvt_v           , SimdFcvt           , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #484
+  INST(Fcvtas_v         , SimdFcvtSV         , (0b0000111000100001110010, 0b0000000000000000000000, 0b0001111000100100000000, 1)     , kRWI_W    , 0                         , 0  ), // #485
+  INST(Fcvtau_v         , SimdFcvtSV         , (0b0010111000100001110010, 0b0000000000000000000000, 0b0001111000100101000000, 1)     , kRWI_W    , 0                         , 1  ), // #486
+  INST(Fcvtl_v          , SimdFcvtLN         , (0b0000111000100001011110, 0, 0)                                                      , kRWI_W    , F(Long)                   , 0  ), // #487
+  INST(Fcvtl2_v         , SimdFcvtLN         , (0b0100111000100001011110, 0, 0)                                                      , kRWI_W    , F(Long)                   , 1  ), // #488
+  INST(Fcvtms_v         , SimdFcvtSV         , (0b0000111000100001101110, 0b0000000000000000000000, 0b0001111000110000000000, 1)     , kRWI_W    , 0                         , 2  ), // #489
+  INST(Fcvtmu_v         , SimdFcvtSV         , (0b0010111000100001101110, 0b0000000000000000000000, 0b0001111000110001000000, 1)     , kRWI_W    , 0                         , 3  ), // #490
+  INST(Fcvtn_v          , SimdFcvtLN         , (0b0000111000100001011010, 0, 0)                                                      , kRWI_W    , F(Narrow)                 , 2  ), // #491
+  INST(Fcvtn2_v         , SimdFcvtLN         , (0b0100111000100001011010, 0, 0)                                                      , kRWI_X    , F(Narrow)                 , 3  ), // #492
+  INST(Fcvtns_v         , SimdFcvtSV         , (0b0000111000100001101010, 0b0000000000000000000000, 0b0001111000100000000000, 1)     , kRWI_W    , 0                         , 4  ), // #493
+  INST(Fcvtnu_v         , SimdFcvtSV         , (0b0010111000100001101010, 0b0000000000000000000000, 0b0001111000100001000000, 1)     , kRWI_W    , 0                         , 5  ), // #494
+  INST(Fcvtps_v         , SimdFcvtSV         , (0b0000111010100001101010, 0b0000000000000000000000, 0b0001111000101000000000, 1)     , kRWI_W    , 0                         , 6  ), // #495
+  INST(Fcvtpu_v         , SimdFcvtSV         , (0b0010111010100001101010, 0b0000000000000000000000, 0b0001111000101001000000, 1)     , kRWI_W    , 0                         , 7  ), // #496
+  INST(Fcvtxn_v         , SimdFcvtLN         , (0b0010111000100001011010, 1, 1)                                                      , kRWI_W    , F(Narrow)                 , 4  ), // #497
+  INST(Fcvtxn2_v        , SimdFcvtLN         , (0b0110111000100001011010, 1, 0)                                                      , kRWI_X    , F(Narrow)                 , 5  ), // #498
+  INST(Fcvtzs_v         , SimdFcvtSV         , (0b0000111010100001101110, 0b0000111100000000111111, 0b0001111000111000000000, 1)     , kRWI_W    , 0                         , 8  ), // #499
+  INST(Fcvtzu_v         , SimdFcvtSV         , (0b0010111010100001101110, 0b0010111100000000111111, 0b0001111000111001000000, 1)     , kRWI_W    , 0                         , 9  ), // #500
+  INST(Fdiv_v           , FSimdVVV           , (0b0001111000100000000110, kHF_A, 0b0010111000100000111111, kHF_C)                    , kRWI_W    , 0                         , 4  ), // #501
+  INST(Fjcvtzs_v        , ISimdVVx           , (0b0001111001111110000000, kOp_GpW, kOp_D)                                            , kRWI_W    , 0                         , 7  ), // #502
+  INST(Fmadd_v          , FSimdVVVV          , (0b0001111100000000000000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 0  ), // #503
+  INST(Fmax_v           , FSimdVVV           , (0b0001111000100000010010, kHF_A, 0b0000111000100000111101, kHF_C)                    , kRWI_W    , 0                         , 5  ), // #504
+  INST(Fmaxnm_v         , FSimdVVV           , (0b0001111000100000011010, kHF_A, 0b0000111000100000110001, kHF_C)                    , kRWI_W    , 0                         , 6  ), // #505
+  INST(Fmaxnmp_v        , FSimdPair          , (0b0111111000110000110010, 0b0010111000100000110001)                                  , kRWI_W    , 0                         , 1  ), // #506
+  INST(Fmaxnmv_v        , FSimdSV            , (0b0010111000110000110010)                                                            , kRWI_W    , 0                         , 0  ), // #507
+  INST(Fmaxp_v          , FSimdPair          , (0b0111111000110000111110, 0b0010111000100000111101)                                  , kRWI_W    , 0                         , 2  ), // #508
+  INST(Fmaxv_v          , FSimdSV            , (0b0010111000110000111110)                                                            , kRWI_W    , 0                         , 1  ), // #509
+  INST(Fmin_v           , FSimdVVV           , (0b0001111000100000010110, kHF_A, 0b0000111010100000111101, kHF_C)                    , kRWI_W    , 0                         , 7  ), // #510
+  INST(Fminnm_v         , FSimdVVV           , (0b0001111000100000011110, kHF_A, 0b0000111010100000110001, kHF_C)                    , kRWI_W    , 0                         , 8  ), // #511
+  INST(Fminnmp_v        , FSimdPair          , (0b0111111010110000110010, 0b0010111010100000110001)                                  , kRWI_W    , 0                         , 3  ), // #512
+  INST(Fminnmv_v        , FSimdSV            , (0b0010111010110000110010)                                                            , kRWI_W    , 0                         , 2  ), // #513
+  INST(Fminp_v          , FSimdPair          , (0b0111111010110000111110, 0b0010111010100000111101)                                  , kRWI_W    , 0                         , 4  ), // #514
+  INST(Fminv_v          , FSimdSV            , (0b0010111010110000111110)                                                            , kRWI_W    , 0                         , 3  ), // #515
+  INST(Fmla_v           , FSimdVVVe          , (0b0000000000000000000000, kHF_N, 0b0000111000100000110011, 0b0000111110000000000100) , kRWI_X    , F(VH0_15)                 , 0  ), // #516
+  INST(Fmlal_v          , SimdFmlal          , (0b0000111000100000111011, 0b0000111110000000000000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 2  ), // #517
+  INST(Fmlal2_v         , SimdFmlal          , (0b0010111000100000110011, 0b0010111110000000100000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 3  ), // #518
+  INST(Fmls_v           , FSimdVVVe          , (0b0000000000000000000000, kHF_N, 0b0000111010100000110011, 0b0000111110000000010100) , kRWI_X    , F(VH0_15)                 , 1  ), // #519
+  INST(Fmlsl_v          , SimdFmlal          , (0b0000111010100000111011, 0b0000111110000000010000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 4  ), // #520
+  INST(Fmlsl2_v         , SimdFmlal          , (0b0010111010100000110011, 0b0010111110000000110000, 1, kET_S, kET_H, kET_H)          , kRWI_X    , F(VH0_15)                 , 5  ), // #521
+  INST(Fmov_v           , SimdFmov           , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #522
+  INST(Fmsub_v          , FSimdVVVV          , (0b0001111100000000100000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 1  ), // #523
+  INST(Fmul_v           , FSimdVVVe          , (0b0001111000100000000010, kHF_A, 0b0010111000100000110111, 0b0000111110000000100100) , kRWI_W    , F(VH0_15)                 , 2  ), // #524
+  INST(Fmulx_v          , FSimdVVVe          , (0b0101111000100000110111, kHF_C, 0b0000111000100000110111, 0b0010111110000000100100) , kRWI_W    , F(VH0_15)                 , 3  ), // #525
+  INST(Fneg_v           , FSimdVV            , (0b0001111000100001010000, kHF_A, 0b0010111010100000111110, kHF_B)                    , kRWI_W    , 0                         , 1  ), // #526
+  INST(Fnmadd_v         , FSimdVVVV          , (0b0001111100100000000000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 2  ), // #527
+  INST(Fnmsub_v         , FSimdVVVV          , (0b0001111100100000100000, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 3  ), // #528
+  INST(Fnmul_v          , FSimdVVV           , (0b0001111000100000100010, kHF_A, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 9  ), // #529
+  INST(Frecpe_v         , FSimdVV            , (0b0101111010100001110110, kHF_B, 0b0000111010100001110110, kHF_B)                    , kRWI_W    , 0                         , 2  ), // #530
+  INST(Frecps_v         , FSimdVVV           , (0b0101111000100000111111, kHF_C, 0b0000111000100000111111, kHF_C)                    , kRWI_W    , 0                         , 10 ), // #531
+  INST(Frecpx_v         , FSimdVV            , (0b0101111010100001111110, kHF_B, 0b0000000000000000000000, kHF_N)                    , kRWI_W    , 0                         , 3  ), // #532
+  INST(Frint32x_v       , FSimdVV            , (0b0001111000101000110000, kHF_N, 0b0010111000100001111010, kHF_N)                    , kRWI_W    , 0                         , 4  ), // #533
+  INST(Frint32z_v       , FSimdVV            , (0b0001111000101000010000, kHF_N, 0b0000111000100001111010, kHF_N)                    , kRWI_W    , 0                         , 5  ), // #534
+  INST(Frint64x_v       , FSimdVV            , (0b0001111000101001110000, kHF_N, 0b0010111000100001111110, kHF_N)                    , kRWI_W    , 0                         , 6  ), // #535
+  INST(Frint64z_v       , FSimdVV            , (0b0001111000101001010000, kHF_N, 0b0000111000100001111110, kHF_N)                    , kRWI_W    , 0                         , 7  ), // #536
+  INST(Frinta_v         , FSimdVV            , (0b0001111000100110010000, kHF_A, 0b0010111000100001100010, kHF_B)                    , kRWI_W    , 0                         , 8  ), // #537
+  INST(Frinti_v         , FSimdVV            , (0b0001111000100111110000, kHF_A, 0b0010111010100001100110, kHF_B)                    , kRWI_W    , 0                         , 9  ), // #538
+  INST(Frintm_v         , FSimdVV            , (0b0001111000100101010000, kHF_A, 0b0000111000100001100110, kHF_B)                    , kRWI_W    , 0                         , 10 ), // #539
+  INST(Frintn_v         , FSimdVV            , (0b0001111000100100010000, kHF_A, 0b0000111000100001100010, kHF_B)                    , kRWI_W    , 0                         , 11 ), // #540
+  INST(Frintp_v         , FSimdVV            , (0b0001111000100100110000, kHF_A, 0b0000111010100001100010, kHF_B)                    , kRWI_W    , 0                         , 12 ), // #541
+  INST(Frintx_v         , FSimdVV            , (0b0001111000100111010000, kHF_A, 0b0010111000100001100110, kHF_B)                    , kRWI_W    , 0                         , 13 ), // #542
+  INST(Frintz_v         , FSimdVV            , (0b0001111000100101110000, kHF_A, 0b0000111010100001100110, kHF_B)                    , kRWI_W    , 0                         , 14 ), // #543
+  INST(Frsqrte_v        , FSimdVV            , (0b0111111010100001110110, kHF_B, 0b0010111010100001110110, kHF_B)                    , kRWI_W    , 0                         , 15 ), // #544
+  INST(Frsqrts_v        , FSimdVVV           , (0b0101111010100000111111, kHF_C, 0b0000111010100000111111, kHF_C)                    , kRWI_W    , 0                         , 11 ), // #545
+  INST(Fsqrt_v          , FSimdVV            , (0b0001111000100001110000, kHF_A, 0b0010111010100001111110, kHF_B)                    , kRWI_W    , 0                         , 16 ), // #546
+  INST(Fsub_v           , FSimdVVV           , (0b0001111000100000001110, kHF_A, 0b0000111010100000110101, kHF_C)                    , kRWI_W    , 0                         , 12 ), // #547
+  INST(Ins_v            , SimdIns            , (_)                                                                                   , kRWI_X    , 0                         , 0  ), // #548
+  INST(Ld1_v            , SimdLdNStN         , (0b0000110101000000000000, 0b0000110001000000001000, 1, 0)                            , kRWI_LDn  , F(Consecutive)            , 0  ), // #549
+  INST(Ld1r_v           , SimdLdNStN         , (0b0000110101000000110000, 0b0000000000000000000000, 1, 1)                            , kRWI_LDn  , F(Consecutive)            , 1  ), // #550
+  INST(Ld2_v            , SimdLdNStN         , (0b0000110101100000000000, 0b0000110001000000100000, 2, 0)                            , kRWI_LDn  , F(Consecutive)            , 2  ), // #551
+  INST(Ld2r_v           , SimdLdNStN         , (0b0000110101100000110000, 0b0000000000000000000000, 2, 1)                            , kRWI_LDn  , F(Consecutive)            , 3  ), // #552
+  INST(Ld3_v            , SimdLdNStN         , (0b0000110101000000001000, 0b0000110001000000010000, 3, 0)                            , kRWI_LDn  , F(Consecutive)            , 4  ), // #553
+  INST(Ld3r_v           , SimdLdNStN         , (0b0000110101000000111000, 0b0000000000000000000000, 3, 1)                            , kRWI_LDn  , F(Consecutive)            , 5  ), // #554
+  INST(Ld4_v            , SimdLdNStN         , (0b0000110101100000001000, 0b0000110001000000000000, 4, 0)                            , kRWI_LDn  , F(Consecutive)            , 6  ), // #555
+  INST(Ld4r_v           , SimdLdNStN         , (0b0000110101100000111000, 0b0000000000000000000000, 4, 1)                            , kRWI_LDn  , F(Consecutive)            , 7  ), // #556
+  INST(Ldnp_v           , SimdLdpStp         , (0b0010110001, 0b0000000000)                                                          , kRWI_WW   , 0                         , 0  ), // #557
+  INST(Ldp_v            , SimdLdpStp         , (0b0010110101, 0b0010110011)                                                          , kRWI_WW   , 0                         , 1  ), // #558
+  INST(Ldr_v            , SimdLdSt           , (0b0011110101, 0b00111100010, 0b00111100011, 0b00011100, Inst::kIdLdur_v)             , kRWI_W    , 0                         , 0  ), // #559
+  INST(Ldur_v           , SimdLdurStur       , (0b0011110001000000000000)                                                            , kRWI_W    , 0                         , 0  ), // #560
+  INST(Mla_v            , ISimdVVVe          , (0b0000111000100000100101, kVO_V_BHS, 0b0010111100000000000000, kVO_V_HS)             , kRWI_X    , F(VH0_15)                 , 0  ), // #561
+  INST(Mls_v            , ISimdVVVe          , (0b0010111000100000100101, kVO_V_BHS, 0b0010111100000000010000, kVO_V_HS)             , kRWI_X    , F(VH0_15)                 , 1  ), // #562
+  INST(Mov_v            , SimdMov            , (_)                                                                                   , kRWI_W    , 0                         , 0  ), // #563
+  INST(Movi_v           , SimdMoviMvni       , (0b0000111100000000000001, 0)                                                         , kRWI_W    , 0                         , 0  ), // #564
+  INST(Mul_v            , ISimdVVVe          , (0b0000111000100000100111, kVO_V_BHS, 0b0000111100000000100000, kVO_V_HS)             , kRWI_W    , F(VH0_15)                 , 2  ), // #565
+  INST(Mvn_v            , ISimdVV            , (0b0010111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 4  ), // #566
+  INST(Mvni_v           , SimdMoviMvni       , (0b0000111100000000000001, 1)                                                         , kRWI_W    , 0                         , 1  ), // #567
+  INST(Neg_v            , ISimdVV            , (0b0010111000100000101110, kVO_V_Any)                                                 , kRWI_W    , 0                         , 5  ), // #568
+  INST(Not_v            , ISimdVV            , (0b0010111000100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 6  ), // #569
+  INST(Orn_v            , ISimdVVV           , (0b0000111011100000000111, kVO_V_B)                                                   , kRWI_W    , 0                         , 9  ), // #570
+  INST(Orr_v            , SimdBicOrr         , (0b0000111010100000000111, 0b0000111100000000000001)                                  , kRWI_W    , 0                         , 1  ), // #571
+  INST(Pmul_v           , ISimdVVV           , (0b0010111000100000100111, kVO_V_B)                                                   , kRWI_W    , 0                         , 10 ), // #572
+  INST(Pmull_v          , ISimdVVV           , (0b0000111000100000111000, kVO_V_B8D1)                                                , kRWI_W    , F(Long)                   , 11 ), // #573
+  INST(Pmull2_v         , ISimdVVV           , (0b0100111000100000111000, kVO_V_B16D2)                                               , kRWI_W    , F(Long)                   , 12 ), // #574
+  INST(Raddhn_v         , ISimdVVV           , (0b0010111000100000010000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 13 ), // #575
+  INST(Raddhn2_v        , ISimdVVV           , (0b0110111000100000010000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 14 ), // #576
+  INST(Rax1_v           , ISimdVVV           , (0b1100111001100000100011, kVO_V_D2)                                                  , kRWI_W    , 0                         , 15 ), // #577
+  INST(Rbit_v           , ISimdVV            , (0b0010111001100000010110, kVO_V_B)                                                   , kRWI_W    , 0                         , 7  ), // #578
+  INST(Rev16_v          , ISimdVV            , (0b0000111000100000000110, kVO_V_B)                                                   , kRWI_W    , 0                         , 8  ), // #579
+  INST(Rev32_v          , ISimdVV            , (0b0010111000100000000010, kVO_V_BH)                                                  , kRWI_W    , 0                         , 9  ), // #580
+  INST(Rev64_v          , ISimdVV            , (0b0000111000100000000010, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 10 ), // #581
+  INST(Rshrn_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100011, 1, kVO_V_B8H4S2)                 , kRWI_W    , F(Narrow)                 , 0  ), // #582
+  INST(Rshrn2_v         , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100011, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 1  ), // #583
+  INST(Rsubhn_v         , ISimdVVV           , (0b0010111000100000011000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 16 ), // #584
+  INST(Rsubhn2_v        , ISimdVVV           , (0b0110111000100000011000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 17 ), // #585
+  INST(Saba_v           , ISimdVVV           , (0b0000111000100000011111, kVO_V_BHS)                                                 , kRWI_X    , 0                         , 18 ), // #586
+  INST(Sabal_v          , ISimdVVV           , (0b0000111000100000010100, kVO_V_B8H4S2)                                              , kRWI_X    , F(Long)                   , 19 ), // #587
+  INST(Sabal2_v         , ISimdVVV           , (0b0100111000100000010100, kVO_V_B16H8S4)                                             , kRWI_X    , F(Long)                   , 20 ), // #588
+  INST(Sabd_v           , ISimdVVV           , (0b0000111000100000011101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 21 ), // #589
+  INST(Sabdl_v          , ISimdVVV           , (0b0000111000100000011100, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 22 ), // #590
+  INST(Sabdl2_v         , ISimdVVV           , (0b0100111000100000011100, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 23 ), // #591
+  INST(Sadalp_v         , ISimdVV            , (0b0000111000100000011010, kVO_V_BHS)                                                 , kRWI_X    , F(Long) | F(Pair)         , 11 ), // #592
+  INST(Saddl_v          , ISimdVVV           , (0b0000111000100000000000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 24 ), // #593
+  INST(Saddl2_v         , ISimdVVV           , (0b0100111000100000000000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 25 ), // #594
+  INST(Saddlp_v         , ISimdVV            , (0b0000111000100000001010, kVO_V_BHS)                                                 , kRWI_W    , F(Long) | F(Pair)         , 12 ), // #595
+  INST(Saddlv_v         , ISimdSV            , (0b0000111000110000001110, kVO_V_BH_4S)                                               , kRWI_W    , F(Long)                   , 1  ), // #596
+  INST(Saddw_v          , ISimdWWV           , (0b0000111000100000000100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 0  ), // #597
+  INST(Saddw2_v         , ISimdWWV           , (0b0000111000100000000100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 1  ), // #598
+  INST(Scvtf_v          , SimdFcvtSV         , (0b0000111000100001110110, 0b0000111100000000111001, 0b0001111000100010000000, 0)     , kRWI_W    , 0                         , 10 ), // #599
+  INST(Sdot_v           , SimdDot            , (0b0000111010000000100101, 0b0000111110000000111000, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 1  ), // #600
+  INST(Sha1c_v          , ISimdVVVx          , (0b0101111000000000000000, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 1  ), // #601
+  INST(Sha1h_v          , ISimdVVx           , (0b0101111000101000000010, kOp_S, kOp_S)                                              , kRWI_W    , 0                         , 8  ), // #602
+  INST(Sha1m_v          , ISimdVVVx          , (0b0101111000000000001000, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 2  ), // #603
+  INST(Sha1p_v          , ISimdVVVx          , (0b0101111000000000000100, kOp_Q, kOp_S, kOp_V4S)                                     , kRWI_X    , 0                         , 3  ), // #604
+  INST(Sha1su0_v        , ISimdVVVx          , (0b0101111000000000001100, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 4  ), // #605
+  INST(Sha1su1_v        , ISimdVVx           , (0b0101111000101000000110, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 9  ), // #606
+  INST(Sha256h_v        , ISimdVVVx          , (0b0101111000000000010000, kOp_Q, kOp_Q, kOp_V4S)                                     , kRWI_X    , 0                         , 5  ), // #607
+  INST(Sha256h2_v       , ISimdVVVx          , (0b0101111000000000010100, kOp_Q, kOp_Q, kOp_V4S)                                     , kRWI_X    , 0                         , 6  ), // #608
+  INST(Sha256su0_v      , ISimdVVx           , (0b0101111000101000001010, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 10 ), // #609
+  INST(Sha256su1_v      , ISimdVVVx          , (0b0101111000000000011000, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 7  ), // #610
+  INST(Sha512h_v        , ISimdVVVx          , (0b1100111001100000100000, kOp_Q, kOp_Q, kOp_V2D)                                     , kRWI_X    , 0                         , 8  ), // #611
+  INST(Sha512h2_v       , ISimdVVVx          , (0b1100111001100000100001, kOp_Q, kOp_Q, kOp_V2D)                                     , kRWI_X    , 0                         , 9  ), // #612
+  INST(Sha512su0_v      , ISimdVVx           , (0b1100111011000000100000, kOp_V2D, kOp_V2D)                                          , kRWI_X    , 0                         , 11 ), // #613
+  INST(Sha512su1_v      , ISimdVVVx          , (0b1100111001100000100010, kOp_V2D, kOp_V2D, kOp_V2D)                                 , kRWI_X    , 0                         , 10 ), // #614
+  INST(Shadd_v          , ISimdVVV           , (0b0000111000100000000001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 26 ), // #615
+  INST(Shl_v            , SimdShift          , (0b0000000000000000000000, 0b0000111100000000010101, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 2  ), // #616
+  INST(Shll_v           , SimdShiftES        , (0b0010111000100001001110, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 0  ), // #617
+  INST(Shll2_v          , SimdShiftES        , (0b0110111000100001001110, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 1  ), // #618
+  INST(Shrn_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100001, 1, kVO_V_B8H4S2)                 , kRWI_W    , F(Narrow)                 , 3  ), // #619
+  INST(Shrn2_v          , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100001, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 4  ), // #620
+  INST(Shsub_v          , ISimdVVV           , (0b0000111000100000001001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 27 ), // #621
+  INST(Sli_v            , SimdShift          , (0b0000000000000000000000, 0b0010111100000000010101, 0, kVO_V_Any)                    , kRWI_X    , 0                         , 5  ), // #622
+  INST(Sm3partw1_v      , ISimdVVVx          , (0b1100111001100000110000, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 11 ), // #623
+  INST(Sm3partw2_v      , ISimdVVVx          , (0b1100111001100000110001, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 12 ), // #624
+  INST(Sm3ss1_v         , ISimdVVVVx         , (0b1100111001000000000000, kOp_V4S, kOp_V4S, kOp_V4S, kOp_V4S)                        , kRWI_W    , 0                         , 0  ), // #625
+  INST(Sm3tt1a_v        , SimdSm3tt          , (0b1100111001000000100000)                                                            , kRWI_X    , 0                         , 0  ), // #626
+  INST(Sm3tt1b_v        , SimdSm3tt          , (0b1100111001000000100001)                                                            , kRWI_X    , 0                         , 1  ), // #627
+  INST(Sm3tt2a_v        , SimdSm3tt          , (0b1100111001000000100010)                                                            , kRWI_X    , 0                         , 2  ), // #628
+  INST(Sm3tt2b_v        , SimdSm3tt          , (0b1100111001000000100011)                                                            , kRWI_X    , 0                         , 3  ), // #629
+  INST(Sm4e_v           , ISimdVVx           , (0b1100111011000000100001, kOp_V4S, kOp_V4S)                                          , kRWI_X    , 0                         , 12 ), // #630
+  INST(Sm4ekey_v        , ISimdVVVx          , (0b1100111001100000110010, kOp_V4S, kOp_V4S, kOp_V4S)                                 , kRWI_X    , 0                         , 13 ), // #631
+  INST(Smax_v           , ISimdVVV           , (0b0000111000100000011001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 28 ), // #632
+  INST(Smaxp_v          , ISimdVVV           , (0b0000111000100000101001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 29 ), // #633
+  INST(Smaxv_v          , ISimdSV            , (0b0000111000110000101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 2  ), // #634
+  INST(Smin_v           , ISimdVVV           , (0b0000111000100000011011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 30 ), // #635
+  INST(Sminp_v          , ISimdVVV           , (0b0000111000100000101011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 31 ), // #636
+  INST(Sminv_v          , ISimdSV            , (0b0000111000110001101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 3  ), // #637
+  INST(Smlal_v          , ISimdVVVe          , (0b0000111000100000100000, kVO_V_B8H4S2, 0b0000111100000000001000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 3  ), // #638
+  INST(Smlal2_v         , ISimdVVVe          , (0b0100111000100000100000, kVO_V_B16H8S4, 0b0100111100000000001000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 4  ), // #639
+  INST(Smlsl_v          , ISimdVVVe          , (0b0000111000100000101000, kVO_V_B8H4S2, 0b0000111100000000011000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 5  ), // #640
+  INST(Smlsl2_v         , ISimdVVVe          , (0b0100111000100000101000, kVO_V_B16H8S4, 0b0100111100000000011000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 6  ), // #641
+  INST(Smmla_v          , ISimdVVVx          , (0b0100111010000000101001, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 14 ), // #642
+  INST(Smov_v           , SimdSmovUmov       , (0b0000111000000000001011, kVO_V_BHS, 1)                                              , kRWI_W    , 0                         , 0  ), // #643
+  INST(Smull_v          , ISimdVVVe          , (0b0000111000100000110000, kVO_V_B8H4S2, 0b0000111100000000101000, kVO_V_H4S2)        , kRWI_W    , F(Long) | F(VH0_15)       , 7  ), // #644
+  INST(Smull2_v         , ISimdVVVe          , (0b0100111000100000110000, kVO_V_B16H8S4, 0b0100111100000000101000, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 8  ), // #645
+  INST(Sqabs_v          , ISimdVV            , (0b0000111000100000011110, kVO_SV_Any)                                                , kRWI_W    , 0                         , 13 ), // #646
+  INST(Sqadd_v          , ISimdVVV           , (0b0000111000100000000011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 32 ), // #647
+  INST(Sqdmlal_v        , ISimdVVVe          , (0b0000111000100000100100, kVO_SV_BHS, 0b0000111100000000001100, kVO_V_H4S2)          , kRWI_X    , F(Long) | F(VH0_15)       , 9  ), // #648
+  INST(Sqdmlal2_v       , ISimdVVVe          , (0b0100111000100000100100, kVO_V_B16H8S4, 0b0100111100000000001100, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 10 ), // #649
+  INST(Sqdmlsl_v        , ISimdVVVe          , (0b0000111000100000101100, kVO_SV_BHS, 0b0000111100000000011100, kVO_V_H4S2)          , kRWI_X    , F(Long) | F(VH0_15)       , 11 ), // #650
+  INST(Sqdmlsl2_v       , ISimdVVVe          , (0b0100111000100000101100, kVO_V_B16H8S4, 0b0100111100000000011100, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 12 ), // #651
+  INST(Sqdmulh_v        , ISimdVVVe          , (0b0000111000100000101101, kVO_SV_HS, 0b0000111100000000110000, kVO_SV_HS)            , kRWI_W    , F(VH0_15)                 , 13 ), // #652
+  INST(Sqdmull_v        , ISimdVVVe          , (0b0000111000100000110100, kVO_SV_BHS, 0b0000111100000000101100, kVO_V_H4S2)          , kRWI_W    , F(Long) | F(VH0_15)       , 14 ), // #653
+  INST(Sqdmull2_v       , ISimdVVVe          , (0b0100111000100000110100, kVO_V_B16H8S4, 0b0100111100000000101100, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 15 ), // #654
+  INST(Sqneg_v          , ISimdVV            , (0b0010111000100000011110, kVO_SV_Any)                                                , kRWI_W    , 0                         , 14 ), // #655
+  INST(Sqrdmlah_v       , ISimdVVVe          , (0b0010111000000000100001, kVO_SV_HS, 0b0010111100000000110100, kVO_SV_HS)            , kRWI_X    , F(VH0_15)                 , 16 ), // #656
+  INST(Sqrdmlsh_v       , ISimdVVVe          , (0b0010111000000000100011, kVO_SV_HS, 0b0010111100000000111100, kVO_SV_HS)            , kRWI_X    , F(VH0_15)                 , 17 ), // #657
+  INST(Sqrdmulh_v       , ISimdVVVe          , (0b0010111000100000101101, kVO_SV_HS, 0b0000111100000000110100, kVO_SV_HS)            , kRWI_W    , F(VH0_15)                 , 18 ), // #658
+  INST(Sqrshl_v         , SimdShift          , (0b0000111000100000010111, 0b0000000000000000000000, 1, kVO_SV_Any)                   , kRWI_W    , 0                         , 6  ), // #659
+  INST(Sqrshrn_v        , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100111, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 7  ), // #660
+  INST(Sqrshrn2_v       , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100111, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 8  ), // #661
+  INST(Sqrshrun_v       , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100011, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 9  ), // #662
+  INST(Sqrshrun2_v      , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100011, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 10 ), // #663
+  INST(Sqshl_v          , SimdShift          , (0b0000111000100000010011, 0b0000111100000000011101, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 11 ), // #664
+  INST(Sqshlu_v         , SimdShift          , (0b0000000000000000000000, 0b0010111100000000011001, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 12 ), // #665
+  INST(Sqshrn_v         , SimdShift          , (0b0000000000000000000000, 0b0000111100000000100101, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 13 ), // #666
+  INST(Sqshrn2_v        , SimdShift          , (0b0000000000000000000000, 0b0100111100000000100101, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 14 ), // #667
+  INST(Sqshrun_v        , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100001, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 15 ), // #668
+  INST(Sqshrun2_v       , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100001, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 16 ), // #669
+  INST(Sqsub_v          , ISimdVVV           , (0b0000111000100000001011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 33 ), // #670
+  INST(Sqxtn_v          , ISimdVV            , (0b0000111000100001010010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 15 ), // #671
+  INST(Sqxtn2_v         , ISimdVV            , (0b0100111000100001010010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 16 ), // #672
+  INST(Sqxtun_v         , ISimdVV            , (0b0010111000100001001010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 17 ), // #673
+  INST(Sqxtun2_v        , ISimdVV            , (0b0110111000100001001010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 18 ), // #674
+  INST(Srhadd_v         , ISimdVVV           , (0b0000111000100000000101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 34 ), // #675
+  INST(Sri_v            , SimdShift          , (0b0000000000000000000000, 0b0010111100000000010001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 17 ), // #676
+  INST(Srshl_v          , SimdShift          , (0b0000111000100000010101, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 18 ), // #677
+  INST(Srshr_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000001001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 19 ), // #678
+  INST(Srsra_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000001101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 20 ), // #679
+  INST(Sshl_v           , SimdShift          , (0b0000111000100000010001, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 21 ), // #680
+  INST(Sshll_v          , SimdShift          , (0b0000000000000000000000, 0b0000111100000000101001, 0, kVO_V_B8H4S2)                 , kRWI_W    , F(Long)                   , 22 ), // #681
+  INST(Sshll2_v         , SimdShift          , (0b0000000000000000000000, 0b0100111100000000101001, 0, kVO_V_B16H8S4)                , kRWI_W    , F(Long)                   , 23 ), // #682
+  INST(Sshr_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000000001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 24 ), // #683
+  INST(Ssra_v           , SimdShift          , (0b0000000000000000000000, 0b0000111100000000000101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 25 ), // #684
+  INST(Ssubl_v          , ISimdVVV           , (0b0000111000100000001000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 35 ), // #685
+  INST(Ssubl2_v         , ISimdVVV           , (0b0100111000100000001000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 36 ), // #686
+  INST(Ssubw_v          , ISimdWWV           , (0b0000111000100000001100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 2  ), // #687
+  INST(Ssubw2_v         , ISimdWWV           , (0b0000111000100000001100, kVO_V_B16H8S4)                                             , kRWI_X    , 0                         , 3  ), // #688
+  INST(St1_v            , SimdLdNStN         , (0b0000110100000000000000, 0b0000110000000000001000, 1, 0)                            , kRWI_STn  , F(Consecutive)            , 8  ), // #689
+  INST(St2_v            , SimdLdNStN         , (0b0000110100100000000000, 0b0000110000000000100000, 2, 0)                            , kRWI_STn  , F(Consecutive)            , 9  ), // #690
+  INST(St3_v            , SimdLdNStN         , (0b0000110100000000001000, 0b0000110000000000010000, 3, 0)                            , kRWI_STn  , F(Consecutive)            , 10 ), // #691
+  INST(St4_v            , SimdLdNStN         , (0b0000110100100000001000, 0b0000110000000000000000, 4, 0)                            , kRWI_STn  , F(Consecutive)            , 11 ), // #692
+  INST(Stnp_v           , SimdLdpStp         , (0b0010110000, 0b0000000000)                                                          , kRWI_RRW  , 0                         , 2  ), // #693
+  INST(Stp_v            , SimdLdpStp         , (0b0010110100, 0b0010110010)                                                          , kRWI_RRW  , 0                         , 3  ), // #694
+  INST(Str_v            , SimdLdSt           , (0b0011110100, 0b00111100000, 0b00111100001, 0b00000000, Inst::kIdStur_v)             , kRWI_RW   , 0                         , 1  ), // #695
+  INST(Stur_v           , SimdLdurStur       , (0b0011110000000000000000)                                                            , kRWI_RW   , 0                         , 1  ), // #696
+  INST(Sub_v            , ISimdVVV           , (0b0010111000100000100001, kVO_V_Any)                                                 , kRWI_W    , 0                         , 37 ), // #697
+  INST(Subhn_v          , ISimdVVV           , (0b0000111000100000011000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 38 ), // #698
+  INST(Subhn2_v         , ISimdVVV           , (0b0000111000100000011000, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 39 ), // #699
+  INST(Sudot_v          , SimdDot            , (0b0000000000000000000000, 0b0000111100000000111100, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 2  ), // #700
+  INST(Suqadd_v         , ISimdVV            , (0b0000111000100000001110, kVO_SV_Any)                                                , kRWI_X    , 0                         , 19 ), // #701
+  INST(Sxtl_v           , SimdSxtlUxtl       , (0b0000111100000000101001, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 0  ), // #702
+  INST(Sxtl2_v          , SimdSxtlUxtl       , (0b0100111100000000101001, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 1  ), // #703
+  INST(Tbl_v            , SimdTblTbx         , (0b0000111000000000000000)                                                            , kRWI_W    , 0                         , 0  ), // #704
+  INST(Tbx_v            , SimdTblTbx         , (0b0000111000000000000100)                                                            , kRWI_W    , 0                         , 1  ), // #705
+  INST(Trn1_v           , ISimdVVV           , (0b0000111000000000001010, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 40 ), // #706
+  INST(Trn2_v           , ISimdVVV           , (0b0000111000000000011010, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 41 ), // #707
+  INST(Uaba_v           , ISimdVVV           , (0b0010111000100000011111, kVO_V_BHS)                                                 , kRWI_X    , 0                         , 42 ), // #708
+  INST(Uabal_v          , ISimdVVV           , (0b0010111000100000010100, kVO_V_B8H4S2)                                              , kRWI_X    , F(Long)                   , 43 ), // #709
+  INST(Uabal2_v         , ISimdVVV           , (0b0110111000100000010100, kVO_V_B16H8S4)                                             , kRWI_X    , F(Long)                   , 44 ), // #710
+  INST(Uabd_v           , ISimdVVV           , (0b0010111000100000011101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 45 ), // #711
+  INST(Uabdl_v          , ISimdVVV           , (0b0010111000100000011100, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 46 ), // #712
+  INST(Uabdl2_v         , ISimdVVV           , (0b0110111000100000011100, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 47 ), // #713
+  INST(Uadalp_v         , ISimdVV            , (0b0010111000100000011010, kVO_V_BHS)                                                 , kRWI_X    , F(Long) | F(Pair)         , 20 ), // #714
+  INST(Uaddl_v          , ISimdVVV           , (0b0010111000100000000000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 48 ), // #715
+  INST(Uaddl2_v         , ISimdVVV           , (0b0110111000100000000000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 49 ), // #716
+  INST(Uaddlp_v         , ISimdVV            , (0b0010111000100000001010, kVO_V_BHS)                                                 , kRWI_W    , F(Long) | F(Pair)         , 21 ), // #717
+  INST(Uaddlv_v         , ISimdSV            , (0b0010111000110000001110, kVO_V_BH_4S)                                               , kRWI_W    , F(Long)                   , 4  ), // #718
+  INST(Uaddw_v          , ISimdWWV           , (0b0010111000100000000100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 4  ), // #719
+  INST(Uaddw2_v         , ISimdWWV           , (0b0010111000100000000100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 5  ), // #720
+  INST(Ucvtf_v          , SimdFcvtSV         , (0b0010111000100001110110, 0b0010111100000000111001, 0b0001111000100011000000, 0)     , kRWI_W    , 0                         , 11 ), // #721
+  INST(Udot_v           , SimdDot            , (0b0010111010000000100101, 0b0010111110000000111000, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 3  ), // #722
+  INST(Uhadd_v          , ISimdVVV           , (0b0010111000100000000001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 50 ), // #723
+  INST(Uhsub_v          , ISimdVVV           , (0b0010111000100000001001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 51 ), // #724
+  INST(Umax_v           , ISimdVVV           , (0b0010111000100000011001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 52 ), // #725
+  INST(Umaxp_v          , ISimdVVV           , (0b0010111000100000101001, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 53 ), // #726
+  INST(Umaxv_v          , ISimdSV            , (0b0010111000110000101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 5  ), // #727
+  INST(Umin_v           , ISimdVVV           , (0b0010111000100000011011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 54 ), // #728
+  INST(Uminp_v          , ISimdVVV           , (0b0010111000100000101011, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 55 ), // #729
+  INST(Uminv_v          , ISimdSV            , (0b0010111000110001101010, kVO_V_BH_4S)                                               , kRWI_W    , 0                         , 6  ), // #730
+  INST(Umlal_v          , ISimdVVVe          , (0b0010111000100000100000, kVO_V_B8H4S2, 0b0010111100000000001000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 19 ), // #731
+  INST(Umlal2_v         , ISimdVVVe          , (0b0110111000100000100000, kVO_V_B16H8S4, 0b0010111100000000001000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 20 ), // #732
+  INST(Umlsl_v          , ISimdVVVe          , (0b0010111000100000101000, kVO_V_B8H4S2, 0b0010111100000000011000, kVO_V_H4S2)        , kRWI_X    , F(Long) | F(VH0_15)       , 21 ), // #733
+  INST(Umlsl2_v         , ISimdVVVe          , (0b0110111000100000101000, kVO_V_B16H8S4, 0b0110111100000000011000, kVO_V_H8S4)       , kRWI_X    , F(Long) | F(VH0_15)       , 22 ), // #734
+  INST(Ummla_v          , ISimdVVVx          , (0b0110111010000000101001, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 15 ), // #735
+  INST(Umov_v           , SimdSmovUmov       , (0b0000111000000000001111, kVO_V_Any, 0)                                              , kRWI_W    , 0                         , 1  ), // #736
+  INST(Umull_v          , ISimdVVVe          , (0b0010111000100000110000, kVO_V_B8H4S2, 0b0010111100000000101000, kVO_V_H4S2)        , kRWI_W    , F(Long) | F(VH0_15)       , 23 ), // #737
+  INST(Umull2_v         , ISimdVVVe          , (0b0110111000100000110000, kVO_V_B16H8S4, 0b0110111100000000101000, kVO_V_H8S4)       , kRWI_W    , F(Long) | F(VH0_15)       , 24 ), // #738
+  INST(Uqadd_v          , ISimdVVV           , (0b0010111000100000000011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 56 ), // #739
+  INST(Uqrshl_v         , SimdShift          , (0b0010111000100000010111, 0b0000000000000000000000, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 26 ), // #740
+  INST(Uqrshrn_v        , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100111, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 27 ), // #741
+  INST(Uqrshrn2_v       , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100111, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 28 ), // #742
+  INST(Uqshl_v          , SimdShift          , (0b0010111000100000010011, 0b0010111100000000011101, 0, kVO_SV_Any)                   , kRWI_W    , 0                         , 29 ), // #743
+  INST(Uqshrn_v         , SimdShift          , (0b0000000000000000000000, 0b0010111100000000100101, 1, kVO_SV_B8H4S2)                , kRWI_W    , F(Narrow)                 , 30 ), // #744
+  INST(Uqshrn2_v        , SimdShift          , (0b0000000000000000000000, 0b0110111100000000100101, 1, kVO_V_B16H8S4)                , kRWI_X    , F(Narrow)                 , 31 ), // #745
+  INST(Uqsub_v          , ISimdVVV           , (0b0010111000100000001011, kVO_SV_Any)                                                , kRWI_W    , 0                         , 57 ), // #746
+  INST(Uqxtn_v          , ISimdVV            , (0b0010111000100001010010, kVO_SV_B8H4S2)                                             , kRWI_W    , F(Narrow)                 , 22 ), // #747
+  INST(Uqxtn2_v         , ISimdVV            , (0b0110111000100001010010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 23 ), // #748
+  INST(Urecpe_v         , ISimdVV            , (0b0000111010100001110010, kVO_V_S)                                                   , kRWI_W    , 0                         , 24 ), // #749
+  INST(Urhadd_v         , ISimdVVV           , (0b0010111000100000000101, kVO_V_BHS)                                                 , kRWI_W    , 0                         , 58 ), // #750
+  INST(Urshl_v          , SimdShift          , (0b0010111000100000010101, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 32 ), // #751
+  INST(Urshr_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000001001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 33 ), // #752
+  INST(Ursqrte_v        , ISimdVV            , (0b0010111010100001110010, kVO_V_S)                                                   , kRWI_W    , 0                         , 25 ), // #753
+  INST(Ursra_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000001101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 34 ), // #754
+  INST(Usdot_v          , SimdDot            , (0b0000111010000000100111, 0b0000111110000000111100, kET_S, kET_B, kET_4B)            , kRWI_X    , 0                         , 4  ), // #755
+  INST(Ushl_v           , SimdShift          , (0b0010111000100000010001, 0b0000000000000000000000, 0, kVO_V_Any)                    , kRWI_W    , 0                         , 35 ), // #756
+  INST(Ushll_v          , SimdShift          , (0b0000000000000000000000, 0b0010111100000000101001, 0, kVO_V_B8H4S2)                 , kRWI_W    , F(Long)                   , 36 ), // #757
+  INST(Ushll2_v         , SimdShift          , (0b0000000000000000000000, 0b0110111100000000101001, 0, kVO_V_B16H8S4)                , kRWI_W    , F(Long)                   , 37 ), // #758
+  INST(Ushr_v           , SimdShift          , (0b0000000000000000000000, 0b0010111100000000000001, 1, kVO_V_Any)                    , kRWI_W    , 0                         , 38 ), // #759
+  INST(Usmmla_v         , ISimdVVVx          , (0b0100111010000000101011, kOp_V4S, kOp_V16B, kOp_V16B)                               , kRWI_X    , 0                         , 16 ), // #760
+  INST(Usqadd_v         , ISimdVV            , (0b0010111000100000001110, kVO_SV_Any)                                                , kRWI_X    , 0                         , 26 ), // #761
+  INST(Usra_v           , SimdShift          , (0b0000000000000000000000, 0b0010111100000000000101, 1, kVO_V_Any)                    , kRWI_X    , 0                         , 39 ), // #762
+  INST(Usubl_v          , ISimdVVV           , (0b0010111000100000001000, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 59 ), // #763
+  INST(Usubl2_v         , ISimdVVV           , (0b0110111000100000001000, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 60 ), // #764
+  INST(Usubw_v          , ISimdWWV           , (0b0010111000100000001100, kVO_V_B8H4S2)                                              , kRWI_W    , 0                         , 6  ), // #765
+  INST(Usubw2_v         , ISimdWWV           , (0b0010111000100000001100, kVO_V_B16H8S4)                                             , kRWI_W    , 0                         , 7  ), // #766
+  INST(Uxtl_v           , SimdSxtlUxtl       , (0b0010111100000000101001, kVO_V_B8H4S2)                                              , kRWI_W    , F(Long)                   , 2  ), // #767
+  INST(Uxtl2_v          , SimdSxtlUxtl       , (0b0110111100000000101001, kVO_V_B16H8S4)                                             , kRWI_W    , F(Long)                   , 3  ), // #768
+  INST(Uzp1_v           , ISimdVVV           , (0b0000111000000000000110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 61 ), // #769
+  INST(Uzp2_v           , ISimdVVV           , (0b0000111000000000010110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 62 ), // #770
+  INST(Xar_v            , ISimdVVVI          , (0b1100111001100000100011, kVO_V_D2, 6, 10, 0)                                        , kRWI_W    , 0                         , 1  ), // #771
+  INST(Xtn_v            , ISimdVV            , (0b0000111000100001001010, kVO_V_B8H4S2)                                              , kRWI_W    , F(Narrow)                 , 27 ), // #772
+  INST(Xtn2_v           , ISimdVV            , (0b0100111000100001001010, kVO_V_B16H8S4)                                             , kRWI_X    , F(Narrow)                 , 28 ), // #773
+  INST(Zip1_v           , ISimdVVV           , (0b0000111000000000001110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 63 ), // #774
+  INST(Zip2_v           , ISimdVVV           , (0b0000111000000000011110, kVO_V_BHS_D2)                                              , kRWI_W    , 0                         , 64 )  // #775
   // ${InstInfo:End}
 };
 
@@ -1069,8 +1078,9 @@ const BaseBranchReg baseBranchReg[3] = {
   { 0b11010110010111110000000000000000 }  // ret
 };
 
-const BaseBranchRel baseBranchRel[2] = {
+const BaseBranchRel baseBranchRel[3] = {
   { 0b00010100000000000000000000000000 }, // b
+  { 0b00010100000000000000000000010000 }, // bc
   { 0b10010100000000000000000000000000 }  // bl
 };
 
@@ -1156,6 +1166,13 @@ const BaseLogical baseLogical[8] = {
   { 0b0101010000, 0b01100100, 0 }  // orr
 };
 
+const BaseMinMax baseMinMax[4] = {
+  { 0b00011010110000000110000000000000, 0b00010001110000000000000000000000 }, // smax
+  { 0b00011010110000000110100000000000, 0b00010001110010000000000000000000 }, // smin
+  { 0b00011010110000000110010000000000, 0b00010001110001000000000000000000 }, // umax
+  { 0b00011010110000000110110000000000, 0b00010001110011000000000000000000 }  // umin
+};
+
 const BaseMovKNZ baseMovKNZ[3] = {
   { 0b01110010100000000000000000000000 }, // movk
   { 0b00010010100000000000000000000000 }, // movn
@@ -1168,7 +1185,7 @@ const BaseMvnNeg baseMvnNeg[3] = {
   { 0b01101011000000000000001111100000 }  // negs
 };
 
-const BaseOp baseOp[23] = {
+const BaseOp baseOp[24] = {
   { 0b11010101000000110010000110011111 }, // autia1716
   { 0b11010101000000110010001110111111 }, // autiasp
   { 0b11010101000000110010001110011111 }, // autiaz
@@ -1177,6 +1194,7 @@ const BaseOp baseOp[23] = {
   { 0b11010101000000110010001111011111 }, // autibz
   { 0b11010101000000000100000001011111 }, // axflag
   { 0b11010101000000000100000000011111 }, // cfinv
+  { 0b11010101000000110010001011011111 }, // clrbhb
   { 0b11010101000000110010001010011111 }, // csdb
   { 0b11010101000000110010000011011111 }, // dgh
   { 0b11010110101111110000001111100000 }, // drps
@@ -1194,8 +1212,9 @@ const BaseOp baseOp[23] = {
   { 0b11010101000000110010000000111111 }  // yield
 };
 
-const BaseOpImm baseOpImm[14] = {
+const BaseOpImm baseOpImm[15] = {
   { 0b11010100001000000000000000000000, 16, 5 }, // brk
+  { 0b11010101000000110010010000011111, 2, 6 }, // bti
   { 0b11010101000000110011000001011111, 4, 8 }, // clrex
   { 0b11010100101000000000000000000001, 16, 5 }, // dcps1
   { 0b11010100101000000000000000000010, 16, 5 }, // dcps2
@@ -1209,6 +1228,14 @@ const BaseOpImm baseOpImm[14] = {
   { 0b11010100000000000000000000000011, 16, 5 }, // smc
   { 0b11010100000000000000000000000001, 16, 5 }, // svc
   { 0b00000000000000000000000000000000, 16, 0 }  // udf
+};
+
+const BaseOpX16 baseOpX16[1] = {
+  { 0b11010101000000110010010100011111 }  // chkfeat
+};
+
+const BasePrfm basePrfm[1] = {
+  { 0b11111000101, 0b1111100110, 0b11111000100, 0b11011000 }  // prfm
 };
 
 const BaseR baseR[10] = {
@@ -1266,7 +1293,7 @@ const BaseRM_SImm9 baseRM_SImm9[23] = {
   { 0b0111100001000000000000, 0b0000000000000000000000, kW , kZR, 0 , 0 }, // ldurh
   { 0b0011100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0 }, // ldursb
   { 0b0111100011000000000000, 0b0000000000000000000000, kWX, kZR, 22, 0 }, // ldursh
-  { 0b1011100010000000000000, 0b0000000000000000000000, kX,  kZR, 0 , 0 }, // ldursw
+  { 0b1011100010000000000000, 0b0000000000000000000000, kX , kZR, 0 , 0 }, // ldursw
   { 0b1101100110100000000010, 0b1101100110100000000001, kX, kSP, 0, 4 }, // st2g
   { 0b1101100100100000000010, 0b1101100100100000000001, kX, kSP, 0, 4 }, // stg
   { 0b1011100000000000000010, 0b0000000000000000000000, kWX, kZR, 30, 0 }, // sttr
@@ -1279,7 +1306,8 @@ const BaseRM_SImm9 baseRM_SImm9[23] = {
   { 0b1101100101100000000010, 0b1101100101100000000001, kX , kSP, 0, 4 }  // stzg
 };
 
-const BaseRR baseRR[15] = {
+const BaseRR baseRR[18] = {
+  { 0b01011010110000000010000000000000, kWX, kZR, 0, kWX, kZR, 5, true }, // abs
   { 0b11011010110000010001100000000000, kX, kZR, 0, kX, kSP, 5, true }, // autda
   { 0b11011010110000010001110000000000, kX, kZR, 0, kX, kSP, 5, true }, // autdb
   { 0b11011010110000010001000000000000, kX, kZR, 0, kX, kSP, 5, true }, // autia
@@ -1287,6 +1315,8 @@ const BaseRR baseRR[15] = {
   { 0b01011010110000000001010000000000, kWX, kZR, 0, kWX, kZR, 5, true }, // cls
   { 0b01011010110000000001000000000000, kWX, kZR, 0, kWX, kZR, 5, true }, // clz
   { 0b10111010110000000000000000011111, kX, kSP, 5, kX, kSP, 16, true }, // cmpp
+  { 0b01011010110000000001110000000000, kWX, kZR, 0, kWX, kZR, 5, true }, // cnt
+  { 0b01011010110000000001100000000000, kWX, kZR, 0, kWX, kZR, 5, true }, // ctz
   { 0b01011010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true }, // ngc
   { 0b01111010000000000000001111100000, kWX, kZR, 0, kWX, kZR, 16, true }, // ngcs
   { 0b11011010110000010000100000000000, kX, kZR, 0, kX, kSP, 5, true }, // pacda
@@ -1846,8 +1876,53 @@ const InstDB::CommonInfo InstDB::commonData[] = {
 #ifndef ASMJIT_NO_TEXT
 // ${NameData:Begin}
 // ------------------- Automatically generated, do not edit -------------------
+const InstNameIndex InstDB::instNameIndex = {{
+  { Inst::kIdAbs          , Inst::kIdAnd_v         + 1 },
+  { Inst::kIdB            , Inst::kIdBsl_v         + 1 },
+  { Inst::kIdCas          , Inst::kIdCnt_v         + 1 },
+  { Inst::kIdDc           , Inst::kIdDup_v         + 1 },
+  { Inst::kIdEon          , Inst::kIdExt_v         + 1 },
+  { Inst::kIdFabd_v       , Inst::kIdFsub_v        + 1 },
+  { Inst::kIdGmi          , Inst::kIdGmi           + 1 },
+  { Inst::kIdHint         , Inst::kIdHvc           + 1 },
+  { Inst::kIdIc           , Inst::kIdIns_v         + 1 },
+  { Inst::kIdNone         , Inst::kIdNone          + 1 },
+  { Inst::kIdNone         , Inst::kIdNone          + 1 },
+  { Inst::kIdLdadd        , Inst::kIdLdur_v        + 1 },
+  { Inst::kIdMadd         , Inst::kIdMvni_v        + 1 },
+  { Inst::kIdNeg          , Inst::kIdNot_v         + 1 },
+  { Inst::kIdOrn          , Inst::kIdOrr_v         + 1 },
+  { Inst::kIdPacda        , Inst::kIdPmull2_v      + 1 },
+  { Inst::kIdNone         , Inst::kIdNone          + 1 },
+  { Inst::kIdRbit         , Inst::kIdRsubhn2_v     + 1 },
+  { Inst::kIdSbc          , Inst::kIdSxtl2_v       + 1 },
+  { Inst::kIdTlbi         , Inst::kIdTrn2_v        + 1 },
+  { Inst::kIdUbfiz        , Inst::kIdUzp2_v        + 1 },
+  { Inst::kIdNone         , Inst::kIdNone          + 1 },
+  { Inst::kIdWfe          , Inst::kIdWfi           + 1 },
+  { Inst::kIdXaflag       , Inst::kIdXtn2_v        + 1 },
+  { Inst::kIdYield        , Inst::kIdYield         + 1 },
+  { Inst::kIdZip1_v       , Inst::kIdZip2_v        + 1 }
+}, uint16_t(9)};
+
+const char InstDB::_instNameStringTable[] =
+  "\x61\x75\x74\x69\x61\x31\x37\x31\x36\x61\x75\x74\x69\x62\x6C\x64\x73\x6D\x61\x78\x61\x6C\x68\x6C\x64\x73\x6D\x69\x6E"
+  "\x61\x6C\x6C\x64\x75\x6D\x61\x78\x61\x6C\x6C\x64\x75\x6D\x69\x6E\x61\x6C\x73\x68\x61\x32\x35\x36\x73\x75\x30\x73\x68"
+  "\x61\x35\x31\x32\x73\x75\x31\x73\x6D\x33\x70\x61\x72\x74\x77\x73\x71\x72\x73\x68\x72\x75\x6E\x6C\x64\x61\x64\x64\x61"
+  "\x6C\x6C\x64\x63\x6C\x72\x61\x6C\x6C\x64\x65\x6F\x72\x61\x6C\x6C\x64\x73\x65\x74\x61\x6C\x6C\x62\x73\x74\x73\x6D\x61"
+  "\x78\x73\x74\x73\x6D\x69\x6E\x73\x74\x75\x6D\x61\x78\x73\x74\x75\x6D\x69\x6E\x66\x72\x69\x6E\x74\x33\x32\x7A\x36\x34"
+  "\x78\x36\x34\x7A\x68\x32\x73\x71\x64\x6D\x6C\x61\x6C\x73\x6C\x32\x73\x71\x64\x6D\x75\x6C\x73\x71\x72\x64\x6D\x6C\x61"
+  "\x75\x6C\x68\x6E\x32\x73\x71\x73\x68\x72\x75\x75\x71\x72\x73\x68\x72\x73\x70\x63\x68\x6B\x66\x65\x61\x63\x72\x63\x33"
+  "\x32\x63\x73\x74\x61\x64\x64\x73\x74\x63\x6C\x72\x73\x74\x65\x6F\x72\x73\x74\x73\x65\x74\x78\x70\x61\x63\x6C\x62\x66"
+  "\x63\x76\x74\x62\x66\x6D\x6C\x61\x6C\x74\x66\x63\x76\x74\x78\x66\x6A\x63\x76\x74\x7A\x66\x6D\x61\x78\x6E\x6D\x66\x6D"
+  "\x69\x6E\x6E\x6D\x66\x72\x73\x71\x72\x72\x61\x64\x64\x72\x73\x75\x62\x73\x68\x61\x31\x73\x6D\x33\x74\x74\x31\x32\x61"
+  "\x32\x62\x73\x6D\x34\x65\x6B\x65\x79\x73\x71\x78\x74\x75\x75\x71\x73\x68\x72\x75\x72\x73\x71\x72\x73\x65\x74\x66\x72"
+  "\x65\x76\x38";
+
+
 const uint32_t InstDB::_instNameIndexTable[] = {
   0x80000000, // Small ''.
+  0x80004C41, // Small 'abs'.
   0x80000C81, // Small 'adc'.
   0x80098C81, // Small 'adcs'.
   0x80001081, // Small 'add'.
@@ -1876,6 +1951,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x85A4D2A1, // Small 'autizb'.
   0x8E161B01, // Small 'axflag'.
   0x80000002, // Small 'b'.
+  0x80000062, // Small 'bc'.
   0x80000CC2, // Small 'bfc'.
   0x800024C2, // Small 'bfi'.
   0x800034C2, // Small 'bfm'.
@@ -1886,6 +1962,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80004982, // Small 'blr'.
   0x80000242, // Small 'br'.
   0x80002E42, // Small 'brk'.
+  0x80002682, // Small 'bti'.
   0x80004C23, // Small 'cas'.
   0x8000CC23, // Small 'casa'.
   0x8020CC23, // Small 'casab'.
@@ -1907,8 +1984,10 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80073463, // Small 'ccmn'.
   0x80083463, // Small 'ccmp'.
   0x816724C3, // Small 'cfinv'.
+  0x100260C1, // Large 'chkfea|t'.
   0x8001B923, // Small 'cinc'.
   0x800B3923, // Small 'cinv'.
+  0x84814983, // Small 'clrbhb'.
   0x8182C983, // Small 'clrex'.
   0x80004D83, // Small 'cls'.
   0x80006983, // Small 'clz'.
@@ -1916,11 +1995,12 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x800041A3, // Small 'cmp'.
   0x800841A3, // Small 'cmpp'.
   0x800395C3, // Small 'cneg'.
+  0x800051C3, // Small 'cnt'.
   0x85DF0E43, // Small 'crc32b'.
-  0x100D60C1, // Large 'crc32c|b'.
-  0x101660C1, // Large 'crc32c|h'.
-  0x104860C1, // Large 'crc32c|w'.
-  0x101360C1, // Large 'crc32c|x'.
+  0x100D60C7, // Large 'crc32c|b'.
+  0x101660C7, // Large 'crc32c|h'.
+  0x104860C7, // Large 'crc32c|w'.
+  0x101360C7, // Large 'crc32c|x'.
   0x91DF0E43, // Small 'crc32h'.
   0xAFDF0E43, // Small 'crc32w'.
   0xB1DF0E43, // Small 'crc32x'.
@@ -1931,6 +2011,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80372663, // Small 'csinc'.
   0x81672663, // Small 'csinv'.
   0x8072BA63, // Small 'csneg'.
+  0x80006A83, // Small 'ctz'.
   0x80000064, // Small 'dc'.
   0x81C9C064, // Small 'dcps1'.
   0x81D9C064, // Small 'dcps2'.
@@ -2112,13 +2193,14 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x83A20C30, // Small 'pacdza'.
   0x85A20C30, // Small 'pacdzb'.
   0x80138C30, // Small 'pacga'.
+  0x80069A50, // Small 'prfm'.
   0x80214E70, // Small 'pssbb'.
   0x800A2452, // Small 'rbit'.
   0x800050B2, // Small 'ret'.
   0x800058B2, // Small 'rev'.
-  0x20073138, // Large 'rev|16'.
+  0x2007313E, // Large 'rev|16'.
   0x81DF58B2, // Small 'rev32'.
-  0x208F3138, // Large 'rev|64'.
+  0x208F313E, // Large 'rev|64'.
   0x800049F2, // Small 'ror'.
   0x800B49F2, // Small 'rorv'.
   0x80000C53, // Small 'sbc'.
@@ -2127,12 +2209,14 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80069853, // Small 'sbfm'.
   0x800C1853, // Small 'sbfx'.
   0x800B2493, // Small 'sdiv'.
-  0x113B4134, // Large 'setf|8'.
-  0x20074134, // Large 'setf|16'.
+  0x1141413A, // Large 'setf|8'.
+  0x2007413A, // Large 'setf|16'.
   0x800058B3, // Small 'sev'.
   0x800658B3, // Small 'sevl'.
   0x984205B3, // Small 'smaddl'.
+  0x800C05B3, // Small 'smax'.
   0x80000DB3, // Small 'smc'.
+  0x800725B3, // Small 'smin'.
   0x9872B9B3, // Small 'smnegl'.
   0x982ACDB3, // Small 'smsubl'.
   0x808655B3, // Small 'smulh'.
@@ -2142,21 +2226,21 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80420693, // Small 'stadd'.
   0x98420693, // Small 'staddl'.
   0x84420693, // Small 'staddb'.
-  0x206D50C7, // Large 'stadd|lb'.
+  0x206D50CD, // Large 'stadd|lb'.
   0x90420693, // Small 'staddh'.
-  0x201550C7, // Large 'stadd|lh'.
+  0x201550CD, // Large 'stadd|lh'.
   0x81260E93, // Small 'stclr'.
   0x99260E93, // Small 'stclrl'.
   0x85260E93, // Small 'stclrb'.
-  0x206D50CC, // Large 'stclr|lb'.
+  0x206D50D2, // Large 'stclr|lb'.
   0x91260E93, // Small 'stclrh'.
-  0x201550CC, // Large 'stclr|lh'.
+  0x201550D2, // Large 'stclr|lh'.
   0x81279693, // Small 'steor'.
   0x99279693, // Small 'steorl'.
   0x85279693, // Small 'steorb'.
-  0x206D50D1, // Large 'steor|lb'.
+  0x206D50D7, // Large 'steor|lb'.
   0x91279693, // Small 'steorh'.
-  0x201550D1, // Large 'steor|lh'.
+  0x201550D7, // Large 'steor|lh'.
   0x80001E93, // Small 'stg'.
   0x80069E93, // Small 'stgm'.
   0x80081E93, // Small 'stgp'.
@@ -2178,9 +2262,9 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x8142CE93, // Small 'stset'.
   0x9942CE93, // Small 'stsetl'.
   0x8542CE93, // Small 'stsetb'.
-  0x206D50D6, // Large 'stset|lb'.
+  0x206D50DC, // Large 'stset|lb'.
   0x9142CE93, // Small 'stseth'.
-  0x201550D6, // Large 'stset|lh'.
+  0x201550DC, // Large 'stset|lh'.
   0xB016CE93, // Small 'stsmax'.
   0x100E606F, // Large 'stsmax|l'.
   0x100D606F, // Large 'stsmax|b'.
@@ -2250,6 +2334,8 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80001895, // Small 'udf'.
   0x800B2495, // Small 'udiv'.
   0x984205B5, // Small 'umaddl'.
+  0x800C05B5, // Small 'umax'.
+  0x800725B5, // Small 'umin'.
   0x9872B9B5, // Small 'umnegl'.
   0x80C655B5, // Small 'umull'.
   0x808655B5, // Small 'umulh'.
@@ -2261,7 +2347,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x8E161838, // Small 'xaflag'.
   0x80418618, // Small 'xpacd'.
   0x80918618, // Small 'xpaci'.
-  0x208850DB, // Large 'xpacl|ri'.
+  0x208850E1, // Large 'xpacl|ri'.
   0x80461539, // Small 'yield'.
   0x80004C41, // Small 'abs'.
   0x80001081, // Small 'add'.
@@ -2277,10 +2363,10 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x800C0462, // Small 'bcax'.
   0x814B0CC2, // Small 'bfcvt'.
   0x9D4B0CC2, // Small 'bfcvtn'.
-  0x20B150E0, // Large 'bfcvt|n2'.
+  0x20B150E6, // Large 'bfcvt|n2'.
   0x814790C2, // Small 'bfdot'.
-  0x206D50E5, // Large 'bfmla|lb'.
-  0x20EA50E5, // Large 'bfmla|lt'.
+  0x206D50EB, // Large 'bfmla|lb'.
+  0x20F050EB, // Large 'bfmla|lt'.
   0x82C6B4C2, // Small 'bfmmla'.
   0x80000D22, // Small 'bic'.
   0x80001922, // Small 'bif'.
@@ -2333,22 +2419,22 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0xA70A5866, // Small 'fcvtps'.
   0xAB0A5866, // Small 'fcvtpu'.
   0x9D8A5866, // Small 'fcvtxn'.
-  0x20B150EC, // Large 'fcvtx|n2'.
+  0x20B150F2, // Large 'fcvtx|n2'.
   0xA7AA5866, // Small 'fcvtzs'.
   0xABAA5866, // Small 'fcvtzu'.
   0x800B2486, // Small 'fdiv'.
-  0x101060F1, // Large 'fjcvtz|s'.
+  0x101060F7, // Large 'fjcvtz|s'.
   0x804205A6, // Small 'fmadd'.
   0x800C05A6, // Small 'fmax'.
   0x9AEC05A6, // Small 'fmaxnm'.
-  0x104460F7, // Large 'fmaxnm|p'.
-  0x10E360F7, // Large 'fmaxnm|v'.
+  0x104460FD, // Large 'fmaxnm|p'.
+  0x10E960FD, // Large 'fmaxnm|v'.
   0x810C05A6, // Small 'fmaxp'.
   0x816C05A6, // Small 'fmaxv'.
   0x800725A6, // Small 'fmin'.
   0x9AE725A6, // Small 'fminnm'.
-  0x104460FD, // Large 'fminnm|p'.
-  0x10E360FD, // Large 'fminnm|v'.
+  0x10446103, // Large 'fminnm|p'.
+  0x10E96103, // Large 'fminnm|v'.
   0x810725A6, // Small 'fminp'.
   0x816725A6, // Small 'fminv'.
   0x8000B1A6, // Small 'fmla'.
@@ -2379,8 +2465,8 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0xA1472646, // Small 'frintp'.
   0xB1472646, // Small 'frintx'.
   0xB5472646, // Small 'frintz'.
-  0x20D25103, // Large 'frsqr|te'.
-  0x20705103, // Large 'frsqr|ts'.
+  0x20D85109, // Large 'frsqr|te'.
+  0x20705109, // Large 'frsqr|ts'.
   0x81494666, // Small 'fsqrt'.
   0x80015666, // Small 'fsub'.
   0x80004DC9, // Small 'ins'.
@@ -2411,16 +2497,16 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80C655B0, // Small 'pmull'.
   0xBAC655B0, // Small 'pmull2'.
   0x9C821032, // Small 'raddhn'.
-  0x30B04108, // Large 'radd|hn2'.
+  0x30B0410E, // Large 'radd|hn2'.
   0x800E6032, // Small 'rax1'.
   0x800A2452, // Small 'rbit'.
-  0x20073138, // Large 'rev|16'.
+  0x2007313E, // Large 'rev|16'.
   0x81DF58B2, // Small 'rev32'.
-  0x208F3138, // Large 'rev|64'.
+  0x208F313E, // Large 'rev|64'.
   0x80E92272, // Small 'rshrn'.
   0xBAE92272, // Small 'rshrn2'.
   0x9C815672, // Small 'rsubhn'.
-  0x30B0410C, // Large 'rsub|hn2'.
+  0x30B04112, // Large 'rsub|hn2'.
   0x80008833, // Small 'saba'.
   0x80C08833, // Small 'sabal'.
   0xBAC08833, // Small 'sabal2'.
@@ -2440,8 +2526,8 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x808E0513, // Small 'sha1h'.
   0x80DE0513, // Small 'sha1m'.
   0x810E0513, // Small 'sha1p'.
-  0x30354110, // Large 'sha1|su0'.
-  0x303E4110, // Large 'sha1|su1'.
+  0x30354116, // Large 'sha1|su0'.
+  0x303E4116, // Large 'sha1|su1'.
   0x1016602F, // Large 'sha256|h'.
   0x2095602F, // Large 'sha256|h2'.
   0x0000902F, // Large 'sha256su0'.
@@ -2461,12 +2547,12 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x10058041, // Large 'sm3partw|1'.
   0x10328041, // Large 'sm3partw|2'.
   0xB939F9B3, // Small 'sm3ss1'.
-  0x10006114, // Large 'sm3tt1|a'.
-  0x100D6114, // Large 'sm3tt1|b'.
-  0x211A5114, // Large 'sm3tt|2a'.
-  0x211C5114, // Large 'sm3tt|2b'.
+  0x1000611A, // Large 'sm3tt1|a'.
+  0x100D611A, // Large 'sm3tt1|b'.
+  0x2120511A, // Large 'sm3tt|2a'.
+  0x2122511A, // Large 'sm3tt|2b'.
   0x8002FDB3, // Small 'sm4e'.
-  0x0000711E, // Large 'sm4ekey'.
+  0x00007124, // Large 'sm4ekey'.
   0x800C05B3, // Small 'smax'.
   0x810C05B3, // Small 'smaxp'.
   0x816C05B3, // Small 'smaxv'.
@@ -2509,7 +2595,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x80EA6233, // Small 'sqxtn'.
   0xBAEA6233, // Small 'sqxtn2'.
   0x9D5A6233, // Small 'sqxtun'.
-  0x20B15125, // Large 'sqxtu|n2'.
+  0x20B1512B, // Large 'sqxtu|n2'.
   0x8840A253, // Small 'srhadd'.
   0x80002653, // Small 'sri'.
   0x80C44E53, // Small 'srshl'.
@@ -2580,7 +2666,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x20B160B9, // Large 'uqrshr|n2'.
   0x80C44E35, // Small 'uqshl'.
   0x9D244E35, // Small 'uqshrn'.
-  0x20B1512A, // Large 'uqshr|n2'.
+  0x20B15130, // Large 'uqshr|n2'.
   0x802ACE35, // Small 'uqsub'.
   0x80EA6235, // Small 'uqxtn'.
   0xBAEA6235, // Small 'uqxtn2'.
@@ -2588,7 +2674,7 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x8840A255, // Small 'urhadd'.
   0x80C44E55, // Small 'urshl'.
   0x81244E55, // Small 'urshr'.
-  0x20D2512F, // Large 'ursqr|te'.
+  0x20D85135, // Large 'ursqr|te'.
   0x80194E55, // Small 'ursra'.
   0x81479275, // Small 'usdot'.
   0x80062275, // Small 'ushl'.
@@ -2611,42 +2697,6 @@ const uint32_t InstDB::_instNameIndexTable[] = {
   0x800EBA98, // Small 'xtn2'.
   0x800E413A, // Small 'zip1'.
   0x800EC13A  // Small 'zip2'.
-};
-
-const char InstDB::_instNameStringTable[] =
-  "autia1716autibldsmaxalhldsminalldumaxallduminalsha256su0sha512su1sm3partwsqrshru"
-  "nldaddalldclralldeoralldsetallbstsmaxstsminstumaxstuminfrint32z64x64zh2sqdmlalsl"
-  "2sqdmulsqrdmlaulhn2sqshruuqrshrspcrc32cstaddstclrsteorstsetxpaclbfcvtbfmlaltfcvt"
-  "xfjcvtzfmaxnmfminnmfrsqrraddrsubsha1sm3tt12a2bsm4ekeysqxtuuqshrursqrsetfrev8";
-
-
-const InstDB::InstNameIndex InstDB::instNameIndex[26] = {
-  { Inst::kIdAdc          , Inst::kIdAnd_v         + 1 },
-  { Inst::kIdB            , Inst::kIdBsl_v         + 1 },
-  { Inst::kIdCas          , Inst::kIdCnt_v         + 1 },
-  { Inst::kIdDc           , Inst::kIdDup_v         + 1 },
-  { Inst::kIdEon          , Inst::kIdExt_v         + 1 },
-  { Inst::kIdFabd_v       , Inst::kIdFsub_v        + 1 },
-  { Inst::kIdGmi          , Inst::kIdGmi           + 1 },
-  { Inst::kIdHint         , Inst::kIdHvc           + 1 },
-  { Inst::kIdIc           , Inst::kIdIns_v         + 1 },
-  { Inst::kIdNone         , Inst::kIdNone          + 1 },
-  { Inst::kIdNone         , Inst::kIdNone          + 1 },
-  { Inst::kIdLdadd        , Inst::kIdLdur_v        + 1 },
-  { Inst::kIdMadd         , Inst::kIdMvni_v        + 1 },
-  { Inst::kIdNeg          , Inst::kIdNot_v         + 1 },
-  { Inst::kIdOrn          , Inst::kIdOrr_v         + 1 },
-  { Inst::kIdPacda        , Inst::kIdPmull2_v      + 1 },
-  { Inst::kIdNone         , Inst::kIdNone          + 1 },
-  { Inst::kIdRbit         , Inst::kIdRsubhn2_v     + 1 },
-  { Inst::kIdSbc          , Inst::kIdSxtl2_v       + 1 },
-  { Inst::kIdTlbi         , Inst::kIdTrn2_v        + 1 },
-  { Inst::kIdUbfiz        , Inst::kIdUzp2_v        + 1 },
-  { Inst::kIdNone         , Inst::kIdNone          + 1 },
-  { Inst::kIdWfe          , Inst::kIdWfi           + 1 },
-  { Inst::kIdXaflag       , Inst::kIdXtn2_v        + 1 },
-  { Inst::kIdYield        , Inst::kIdYield         + 1 },
-  { Inst::kIdZip1_v       , Inst::kIdZip2_v        + 1 }
 };
 // ----------------------------------------------------------------------------
 // ${NameData:End}

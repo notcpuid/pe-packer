@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -23,7 +23,7 @@
 
 ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 
-typedef Support::FastUInt8 FastUInt8;
+using FastUInt8 = Support::FastUInt8;
 
 // x86::Assembler - Constants
 // ==========================
@@ -168,34 +168,35 @@ enum X86MemInfo_Enum {
 
 template<uint32_t X>
 struct X86MemInfo_T {
-  enum : uint32_t {
-    B = (X     ) & 0x1F,
-    I = (X >> 5) & 0x1F,
+  static inline constexpr uint32_t B = (X     ) & 0x1F;
+  static inline constexpr uint32_t I = (X >> 5) & 0x1F;
 
-    kBase  = (B >= uint32_t(RegType::kX86_Gpw)  && B <= uint32_t(RegType::kX86_Gpq)) ? kX86MemInfo_BaseGp    :
-             (B == uint32_t(RegType::kX86_Rip)                                     ) ? kX86MemInfo_BaseRip   :
-             (B == uint32_t(RegType::kLabelTag)                                    ) ? kX86MemInfo_BaseLabel : 0,
+  static inline constexpr uint32_t kBase =
+    (B >= uint32_t(RegType::kGp16)     && B <= uint32_t(RegType::kGp64)   ) ? kX86MemInfo_BaseGp    :
+    (B == uint32_t(RegType::kPC)                                          ) ? kX86MemInfo_BaseRip   :
+    (B == uint32_t(RegType::kLabelTag)                                    ) ? kX86MemInfo_BaseLabel : 0;
 
-    kIndex = (I >= uint32_t(RegType::kX86_Gpw)  && I <= uint32_t(RegType::kX86_Gpq)) ? kX86MemInfo_Index     :
-             (I >= uint32_t(RegType::kX86_Xmm)  && I <= uint32_t(RegType::kX86_Zmm)) ? kX86MemInfo_Index     : 0,
+  static inline constexpr uint32_t kIndex =
+    (I >= uint32_t(RegType::kGp16)     && I <= uint32_t(RegType::kGp64)   ) ? kX86MemInfo_Index     :
+    (I >= uint32_t(RegType::kVec128)   && I <= uint32_t(RegType::kVec512) ) ? kX86MemInfo_Index     : 0;
 
-    k67H   = (B == uint32_t(RegType::kX86_Gpw)  && I == uint32_t(RegType::kNone)   ) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kX86_Gpd)  && I == uint32_t(RegType::kNone)   ) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kNone)     && I == uint32_t(RegType::kX86_Gpw)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kNone)     && I == uint32_t(RegType::kX86_Gpd)) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kX86_Gpw)  && I == uint32_t(RegType::kX86_Gpw)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kX86_Gpd)  && I == uint32_t(RegType::kX86_Gpd)) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kX86_Gpw)  && I == uint32_t(RegType::kX86_Xmm)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kX86_Gpd)  && I == uint32_t(RegType::kX86_Xmm)) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kX86_Gpw)  && I == uint32_t(RegType::kX86_Ymm)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kX86_Gpd)  && I == uint32_t(RegType::kX86_Ymm)) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kX86_Gpw)  && I == uint32_t(RegType::kX86_Zmm)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kX86_Gpd)  && I == uint32_t(RegType::kX86_Zmm)) ? kX86MemInfo_67H_X64   :
-             (B == uint32_t(RegType::kLabelTag) && I == uint32_t(RegType::kX86_Gpw)) ? kX86MemInfo_67H_X86   :
-             (B == uint32_t(RegType::kLabelTag) && I == uint32_t(RegType::kX86_Gpd)) ? kX86MemInfo_67H_X64   : 0,
+  static inline constexpr uint32_t k67H =
+    (B == uint32_t(RegType::kGp16)     && I == uint32_t(RegType::kNone)   ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kGp32)     && I == uint32_t(RegType::kNone)   ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kNone)     && I == uint32_t(RegType::kGp16)   ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kNone)     && I == uint32_t(RegType::kGp32)   ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kGp16)     && I == uint32_t(RegType::kGp16)   ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kGp32)     && I == uint32_t(RegType::kGp32)   ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kGp16)     && I == uint32_t(RegType::kVec128) ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kGp32)     && I == uint32_t(RegType::kVec128) ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kGp16)     && I == uint32_t(RegType::kVec256) ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kGp32)     && I == uint32_t(RegType::kVec256) ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kGp16)     && I == uint32_t(RegType::kVec512) ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kGp32)     && I == uint32_t(RegType::kVec512) ) ? kX86MemInfo_67H_X64   :
+    (B == uint32_t(RegType::kLabelTag) && I == uint32_t(RegType::kGp16)   ) ? kX86MemInfo_67H_X86   :
+    (B == uint32_t(RegType::kLabelTag) && I == uint32_t(RegType::kGp32)   ) ? kX86MemInfo_67H_X64   : 0;
 
-    kValue = kBase | kIndex | k67H | 0x04 | 0x08
-  };
+  static inline constexpr uint32_t kValue = kBase | kIndex | k67H | 0x04u | 0x08u;
 };
 
 // The result stored in the LUT is a combination of
@@ -226,8 +227,8 @@ static const uint32_t x86LLBySizeDiv16[] = { ASMJIT_LOOKUP_TABLE_16(VALUE, 0) };
 
 // Table that contains LL opcode field addressed by a register size / 16. It's used to propagate L.256 or L.512 when
 // YMM or ZMM registers are used, respectively.
-#define VALUE(x) x == uint32_t(RegType::kX86_Zmm) ? Opcode::kLL_2 : \
-                 x == uint32_t(RegType::kX86_Ymm) ? Opcode::kLL_1 : Opcode::kLL_0
+#define VALUE(x) x == uint32_t(RegType::kVec512) ? Opcode::kLL_2 : \
+                 x == uint32_t(RegType::kVec256) ? Opcode::kLL_1 : Opcode::kLL_0
 static const uint32_t x86LLByRegType[] = { ASMJIT_LOOKUP_TABLE_16(VALUE, 0) };
 #undef VALUE
 
@@ -236,16 +237,15 @@ static const uint32_t x86LLByRegType[] = { ASMJIT_LOOKUP_TABLE_16(VALUE, 0) };
 // all EVEX encoded instructions.
 template<uint32_t X>
 struct X86CDisp8SHL_T {
-  enum {
-    TT = (X >> 3) << Opcode::kCDTT_Shift,
-    LL = (X >> 0) & 0x3,
-    W  = (X >> 2) & 0x1,
+  static inline constexpr uint32_t TT = (X >> 3) << Opcode::kCDTT_Shift;
+  static inline constexpr uint32_t LL = (X >> 0) & 0x3;
+  static inline constexpr uint32_t W  = (X >> 2) & 0x1;
 
-    kValue = (TT == Opcode::kCDTT_None ? ((LL==0) ? 0 : (LL==1) ? 0   : 0  ) :
-              TT == Opcode::kCDTT_ByLL ? ((LL==0) ? 0 : (LL==1) ? 1   : 2  ) :
-              TT == Opcode::kCDTT_T1W  ? ((LL==0) ? W : (LL==1) ? 1+W : 2+W) :
-              TT == Opcode::kCDTT_DUP  ? ((LL==0) ? 0 : (LL==1) ? 2   : 3  ) : 0) << Opcode::kCDSHL_Shift
-  };
+  static inline constexpr uint32_t kValue = (
+    TT == Opcode::kCDTT_None ? ((LL==0) ? 0 : (LL==1) ? 0   : 0  ) :
+    TT == Opcode::kCDTT_ByLL ? ((LL==0) ? 0 : (LL==1) ? 1   : 2  ) :
+    TT == Opcode::kCDTT_T1W  ? ((LL==0) ? W : (LL==1) ? 1+W : 2+W) :
+    TT == Opcode::kCDTT_DUP  ? ((LL==0) ? 0 : (LL==1) ? 2   : 3  ) : 0) << Opcode::kCDSHL_Shift;
 };
 
 #define VALUE(x) X86CDisp8SHL_T<x>::kValue
@@ -269,15 +269,14 @@ static const uint8_t x86Mod16BaseTable[8] = {
 //   0xFF == Invalid.
 template<uint32_t X>
 struct X86Mod16BaseIndexTable_T {
-  enum {
-    B = X >> 3,
-    I = X & 0x7,
+  static inline constexpr uint32_t B = X >> 3;
+  static inline constexpr uint32_t I = X & 0x7u;
 
-    kValue = ((B == Gp::kIdBx && I == Gp::kIdSi) || (B == Gp::kIdSi && I == Gp::kIdBx)) ? 0x00 :
-             ((B == Gp::kIdBx && I == Gp::kIdDi) || (B == Gp::kIdDi && I == Gp::kIdBx)) ? 0x01 :
-             ((B == Gp::kIdBp && I == Gp::kIdSi) || (B == Gp::kIdSi && I == Gp::kIdBp)) ? 0x02 :
-             ((B == Gp::kIdBp && I == Gp::kIdDi) || (B == Gp::kIdDi && I == Gp::kIdBp)) ? 0x03 : 0xFF
-  };
+  static inline constexpr uint32_t kValue =
+    ((B == Gp::kIdBx && I == Gp::kIdSi) || (B == Gp::kIdSi && I == Gp::kIdBx)) ? 0x00u :
+    ((B == Gp::kIdBx && I == Gp::kIdDi) || (B == Gp::kIdDi && I == Gp::kIdBx)) ? 0x01u :
+    ((B == Gp::kIdBp && I == Gp::kIdSi) || (B == Gp::kIdSi && I == Gp::kIdBp)) ? 0x02u :
+    ((B == Gp::kIdBp && I == Gp::kIdDi) || (B == Gp::kIdDi && I == Gp::kIdBp)) ? 0x03u : 0xFFu;
 };
 
 #define VALUE(x) X86Mod16BaseIndexTable_T<x>::kValue
@@ -287,29 +286,29 @@ static const uint8_t x86Mod16BaseIndexTable[] = { ASMJIT_LOOKUP_TABLE_64(VALUE, 
 // x86::Assembler - Helpers
 // ========================
 
-static ASMJIT_FORCE_INLINE bool x86IsJmpOrCall(InstId instId) noexcept {
+static ASMJIT_INLINE bool x86IsJmpOrCall(InstId instId) noexcept {
   return instId == Inst::kIdJmp || instId == Inst::kIdCall;
 }
 
-static ASMJIT_FORCE_INLINE bool x86IsImplicitMem(const Operand_& op, uint32_t base) noexcept {
+static ASMJIT_INLINE bool x86IsImplicitMem(const Operand_& op, uint32_t base) noexcept {
   return op.isMem() && op.as<Mem>().baseId() == base && !op.as<Mem>().hasOffset();
 }
 
 //! Combine `regId` and `vvvvvId` into a single value (used by AVX and AVX-512).
-static ASMJIT_FORCE_INLINE uint32_t x86PackRegAndVvvvv(uint32_t regId, uint32_t vvvvvId) noexcept {
+static ASMJIT_INLINE uint32_t x86PackRegAndVvvvv(uint32_t regId, uint32_t vvvvvId) noexcept {
   return regId + (vvvvvId << kVexVVVVVShift);
 }
 
-static ASMJIT_FORCE_INLINE uint32_t x86OpcodeLByVMem(const Operand_& op) noexcept {
+static ASMJIT_INLINE uint32_t x86OpcodeLByVMem(const Operand_& op) noexcept {
   return x86LLByRegType[size_t(op.as<Mem>().indexType())];
 }
 
-static ASMJIT_FORCE_INLINE uint32_t x86OpcodeLBySize(uint32_t size) noexcept {
+static ASMJIT_INLINE uint32_t x86OpcodeLBySize(uint32_t size) noexcept {
   return x86LLBySizeDiv16[size / 16];
 }
 
 //! Encode MOD byte.
-static ASMJIT_FORCE_INLINE uint32_t x86EncodeMod(uint32_t m, uint32_t o, uint32_t rm) noexcept {
+static ASMJIT_INLINE uint32_t x86EncodeMod(uint32_t m, uint32_t o, uint32_t rm) noexcept {
   ASMJIT_ASSERT(m <= 3);
   ASMJIT_ASSERT(o <= 7);
   ASMJIT_ASSERT(rm <= 7);
@@ -317,14 +316,14 @@ static ASMJIT_FORCE_INLINE uint32_t x86EncodeMod(uint32_t m, uint32_t o, uint32_
 }
 
 //! Encode SIB byte.
-static ASMJIT_FORCE_INLINE uint32_t x86EncodeSib(uint32_t s, uint32_t i, uint32_t b) noexcept {
+static ASMJIT_INLINE uint32_t x86EncodeSib(uint32_t s, uint32_t i, uint32_t b) noexcept {
   ASMJIT_ASSERT(s <= 3);
   ASMJIT_ASSERT(i <= 7);
   ASMJIT_ASSERT(b <= 7);
   return (s << 6) + (i << 3) + b;
 }
 
-static ASMJIT_FORCE_INLINE bool x86IsRexInvalid(uint32_t rex) noexcept {
+static ASMJIT_INLINE bool x86IsRexInvalid(uint32_t rex) noexcept {
   // Validates the following possibilities:
   //   REX == 0x00      -> OKAY (X86_32 / X86_64).
   //   REX == 0x40-0x4F -> OKAY (X86_64).
@@ -333,16 +332,20 @@ static ASMJIT_FORCE_INLINE bool x86IsRexInvalid(uint32_t rex) noexcept {
   return rex > kX86ByteInvalidRex;
 }
 
-static ASMJIT_FORCE_INLINE uint32_t x86GetForceEvex3MaskInLastBit(InstOptions options) noexcept {
+static ASMJIT_INLINE uint32_t x86GetForceEvex3MaskInLastBit(InstOptions options) noexcept {
   constexpr uint32_t kVex3Bit = Support::ConstCTZ<uint32_t(InstOptions::kX86_Vex3)>::value;
   return uint32_t(options & InstOptions::kX86_Vex3) << (31 - kVex3Bit);
 }
 
 template<typename T>
-static ASMJIT_FORCE_INLINE constexpr T x86SignExtendI32(T imm) noexcept { return T(int64_t(int32_t(imm & T(0xFFFFFFFF)))); }
+static ASMJIT_INLINE_CONSTEXPR T x86SignExtendI32(T imm) noexcept { return T(int64_t(int32_t(imm & T(0xFFFFFFFF)))); }
 
-static ASMJIT_FORCE_INLINE uint32_t x86AltOpcodeOf(const InstDB::InstInfo* info) noexcept {
+static ASMJIT_INLINE uint32_t x86AltOpcodeOf(const InstDB::InstInfo* info) noexcept {
   return InstDB::_altOpcodeTable[info->_altOpcodeIndex];
+}
+
+static ASMJIT_INLINE bool x86IsMmxOrXmm(const Reg& reg) noexcept {
+  return reg.regType() == RegType::kX86_Mm || reg.regType() == RegType::kVec128;
 }
 
 // x86::Assembler - X86BufferWriter
@@ -350,16 +353,16 @@ static ASMJIT_FORCE_INLINE uint32_t x86AltOpcodeOf(const InstDB::InstInfo* info)
 
 class X86BufferWriter : public CodeWriter {
 public:
-  ASMJIT_FORCE_INLINE explicit X86BufferWriter(Assembler* a) noexcept
+  ASMJIT_INLINE explicit X86BufferWriter(Assembler* a) noexcept
     : CodeWriter(a) {}
 
-  ASMJIT_FORCE_INLINE void emitPP(uint32_t opcode) noexcept {
+  ASMJIT_INLINE void emitPP(uint32_t opcode) noexcept {
     uint32_t ppIndex = (opcode              >> Opcode::kPP_Shift) &
                        (Opcode::kPP_FPUMask >> Opcode::kPP_Shift) ;
     emit8If(x86OpcodePP[ppIndex], ppIndex != 0);
   }
 
-  ASMJIT_FORCE_INLINE void emitMMAndOpcode(uint32_t opcode) noexcept {
+  ASMJIT_INLINE void emitMMAndOpcode(uint32_t opcode) noexcept {
     uint32_t mmIndex = (opcode & Opcode::kMM_Mask) >> Opcode::kMM_Shift;
     const X86OpcodeMM& mmCode = x86OpcodeMM[mmIndex];
 
@@ -368,7 +371,7 @@ public:
     emit8(opcode);
   }
 
-  ASMJIT_FORCE_INLINE void emitSegmentOverride(uint32_t segmentId) noexcept {
+  ASMJIT_INLINE void emitSegmentOverride(uint32_t segmentId) noexcept {
     ASMJIT_ASSERT(segmentId < ASMJIT_ARRAY_SIZE(x86SegmentPrefix));
 
     FastUInt8 prefix = x86SegmentPrefix[segmentId];
@@ -376,13 +379,14 @@ public:
   }
 
   template<typename CondT>
-  ASMJIT_FORCE_INLINE void emitAddressOverride(CondT condition) noexcept {
+  ASMJIT_INLINE void emitAddressOverride(CondT condition) noexcept {
     emit8If(0x67, condition);
   }
 
-  ASMJIT_FORCE_INLINE void emitImmByteOrDWord(uint64_t immValue, FastUInt8 immSize) noexcept {
-    if (!immSize)
+  ASMJIT_INLINE void emitImmByteOrDWord(uint64_t immValue, FastUInt8 immSize) noexcept {
+    if (!immSize) {
       return;
+    }
 
     ASMJIT_ASSERT(immSize == 1 || immSize == 4);
 
@@ -404,7 +408,7 @@ public:
     emit8(imm & 0xFFu);
   }
 
-  ASMJIT_FORCE_INLINE void emitImmediate(uint64_t immValue, FastUInt8 immSize) noexcept {
+  ASMJIT_INLINE void emitImmediate(uint64_t immValue, FastUInt8 immSize) noexcept {
 #if ASMJIT_ARCH_BITS >= 64
     uint64_t imm = immValue;
     if (immSize >= 4) {
@@ -421,23 +425,27 @@ public:
     }
 #endif
 
-    if (!immSize)
+    if (!immSize) {
       return;
+    }
     emit8(imm & 0xFFu);
     imm >>= 8;
 
-    if (--immSize == 0)
+    if (--immSize == 0) {
       return;
+    }
     emit8(imm & 0xFFu);
     imm >>= 8;
 
-    if (--immSize == 0)
+    if (--immSize == 0) {
       return;
+    }
     emit8(imm & 0xFFu);
     imm >>= 8;
 
-    if (--immSize == 0)
+    if (--immSize == 0) {
       return;
+    }
     emit8(imm & 0xFFu);
   }
 };
@@ -449,7 +457,7 @@ public:
 //   - Disallow REX prefix.
 #define FIXUP_GPB(REG_OP, REG_ID)                                \
   do {                                                           \
-    if (!static_cast<const Gp&>(REG_OP).isGpbHi()) {             \
+    if (!static_cast<const Gp&>(REG_OP).isGp8Hi()) {             \
       options |= (REG_ID) >= 4 ? InstOptions::kX86_Rex           \
                                : InstOptions::kNone;             \
     }                                                            \
@@ -480,7 +488,7 @@ public:
 // x86::Assembler - Movabs Heuristics
 // ==================================
 
-static ASMJIT_FORCE_INLINE uint32_t x86GetMovAbsInstSize64Bit(uint32_t regSize, InstOptions options, const Mem& rmRel) noexcept {
+static ASMJIT_INLINE uint32_t x86GetMovAbsInstSize64Bit(uint32_t regSize, InstOptions options, const Mem& rmRel) noexcept {
   uint32_t segmentPrefixSize = rmRel.segmentId() != 0;
   uint32_t _66hPrefixSize = regSize == 2;
   uint32_t rexPrefixSize = regSize == 8 || Support::test(options, InstOptions::kX86_Rex);
@@ -490,15 +498,16 @@ static ASMJIT_FORCE_INLINE uint32_t x86GetMovAbsInstSize64Bit(uint32_t regSize, 
   return segmentPrefixSize + _66hPrefixSize + rexPrefixSize + opCodeByteSize + immediateSize;
 }
 
-static ASMJIT_FORCE_INLINE bool x86ShouldUseMovabs(Assembler* self, X86BufferWriter& writer, uint32_t regSize, InstOptions options, const Mem& rmRel) noexcept {
+static ASMJIT_INLINE bool x86ShouldUseMovabs(Assembler* self, X86BufferWriter& writer, uint32_t regSize, InstOptions options, const Mem& rmRel) noexcept {
   if (self->is32Bit()) {
     // There is no relative addressing, just decide whether to use MOV encoded with MOD R/M or absolute.
     return !Support::test(options, InstOptions::kX86_ModMR | InstOptions::kX86_ModRM);
   }
   else {
     // If the addressing type is REL or MOD R/M was specified then absolute mov won't be used.
-    if (rmRel.addrType() == Mem::AddrType::kRel || Support::test(options, InstOptions::kX86_ModMR | InstOptions::kX86_ModRM))
+    if (rmRel.addrType() == Mem::AddrType::kRel || Support::test(options, InstOptions::kX86_ModMR | InstOptions::kX86_ModRM)) {
       return false;
+    }
 
     int64_t addrValue = rmRel.offset();
     uint64_t baseAddress = self->code()->baseAddress();
@@ -511,12 +520,14 @@ static ASMJIT_FORCE_INLINE bool x86ShouldUseMovabs(Assembler* self, X86BufferWri
       uint64_t rip64 = baseAddress + self->_section->offset() + virtualOffset + instructionSize;
       uint64_t rel64 = uint64_t(addrValue) - rip64;
 
-      if (Support::isInt32(int64_t(rel64)))
+      if (Support::isInt32(int64_t(rel64))) {
         return false;
+      }
     }
     else {
-      if (Support::isInt32(addrValue))
+      if (Support::isInt32(addrValue)) {
         return false;
+      }
     }
 
     return uint64_t(addrValue) > 0xFFFFFFFFu;
@@ -529,10 +540,11 @@ static ASMJIT_FORCE_INLINE bool x86ShouldUseMovabs(Assembler* self, X86BufferWri
 Assembler::Assembler(CodeHolder* code) noexcept : BaseAssembler() {
   _archMask = (uint64_t(1) << uint32_t(Arch::kX86)) |
               (uint64_t(1) << uint32_t(Arch::kX64)) ;
-  assignEmitterFuncs(this);
+  initEmitterFuncs(this);
 
-  if (code)
+  if (code) {
     code->attach(this);
+  }
 }
 Assembler::~Assembler() noexcept {}
 
@@ -560,7 +572,7 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
   const Operand_* rmRel;           // Memory operand or operand that holds Label|Imm.
   uint32_t rmInfo;                 // Memory operand's info based on x86MemInfo.
-  uint32_t rbReg;                  // Memory base or modRM register.
+  uint32_t rbReg = 0;              // Memory base or modRM register.
   uint32_t rxReg;                  // Memory index register.
   uint32_t opReg;                  // ModR/M opcode or register id.
 
@@ -575,8 +587,9 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
   X86BufferWriter writer(this);
 
-  if (instId >= Inst::_kIdCount)
+  if (instId >= Inst::_kIdCount) {
     instId = 0;
+  }
 
   const InstDB::InstInfo* instInfo = &InstDB::_instInfoTable[instId];
   const InstDB::CommonInfo* commonInfo = &instInfo->commonInfo();
@@ -592,17 +605,20 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
   // Handle failure and rare cases first.
   if (ASMJIT_UNLIKELY(Support::test(options, kRequiresSpecialHandling))) {
-    if (ASMJIT_UNLIKELY(!_code))
+    if (ASMJIT_UNLIKELY(!_code)) {
       return reportError(DebugUtils::errored(kErrorNotInitialized));
+    }
 
     // Unknown instruction.
-    if (ASMJIT_UNLIKELY(instId == 0))
+    if (ASMJIT_UNLIKELY(instId == 0)) {
       goto InvalidInstruction;
+    }
 
     // Grow request, happens rarely.
     err = writer.ensureSpace(this, 16);
-    if (ASMJIT_UNLIKELY(err))
+    if (ASMJIT_UNLIKELY(err)) {
       goto Failed;
+    }
 
 #ifndef ASMJIT_NO_VALIDATION
     // Strict validation.
@@ -610,9 +626,10 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
       Operand_ opArray[Globals::kMaxOpCount];
       EmitterUtils::opArrayFromEmitArgs(opArray, o0, o1, o2, opExt);
 
-      err = _funcs.validate(arch(), BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
-      if (ASMJIT_UNLIKELY(err))
+      err = _funcs.validate(BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
+      if (ASMJIT_UNLIKELY(err)) {
         goto Failed;
+      }
     }
 #endif
 
@@ -622,15 +639,18 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
     if (Support::test(options, InstOptions::kX86_Lock)) {
       bool xAcqRel = Support::test(options, InstOptions::kX86_XAcquire | InstOptions::kX86_XRelease);
 
-      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kLock) && !xAcqRel))
+      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kLock) && !xAcqRel)) {
         goto InvalidLockPrefix;
+      }
 
       if (xAcqRel) {
-        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XAcquire) && !Support::test(iFlags, InstDB::InstFlags::kXAcquire)))
+        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XAcquire) && !Support::test(iFlags, InstDB::InstFlags::kXAcquire))) {
           goto InvalidXAcquirePrefix;
+        }
 
-        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XRelease) && !Support::test(iFlags, InstDB::InstFlags::kXRelease)))
+        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XRelease) && !Support::test(iFlags, InstDB::InstFlags::kXRelease))) {
           goto InvalidXReleasePrefix;
+        }
 
         writer.emit8(Support::test(options, InstOptions::kX86_XAcquire) ? 0xF2 : 0xF3);
       }
@@ -640,11 +660,13 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
     // REP and REPNE prefixes.
     if (Support::test(options, InstOptions::kX86_Rep | InstOptions::kX86_Repne)) {
-      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kRep)))
+      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kRep))) {
         goto InvalidRepPrefix;
+      }
 
-      if (ASMJIT_UNLIKELY(_extraReg.isReg() && (_extraReg.group() != RegGroup::kGp || _extraReg.id() != Gp::kIdCx)))
+      if (ASMJIT_UNLIKELY(_extraReg.isReg() && (_extraReg.group() != RegGroup::kGp || _extraReg.id() != Gp::kIdCx))) {
         goto InvalidRepPrefix;
+      }
 
       writer.emit8(Support::test(options, InstOptions::kX86_Repne) ? 0xF2 : 0xF3);
     }
@@ -653,7 +675,6 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
   // This sequence seems to be the fastest.
   opcode = InstDB::_mainOpcodeTable[instInfo->_mainOpcodeIndex];
   opReg = opcode.extractModO();
-  rbReg = 0;
   opcode |= instInfo->_mainOpcodeValue;
 
   // Encoding Scope
@@ -692,7 +713,7 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
       if (ASMJIT_UNLIKELY(!o0.isReg()))
         goto InvalidInstruction;
 
-      rmInfo = x86MemInfo[size_t(o0.as<Reg>().type())];
+      rmInfo = x86MemInfo[size_t(o0.as<Reg>().regType())];
       writer.emitAddressOverride((rmInfo & _addressOverrideMask()) != 0);
       goto EmitX86Op;
 
@@ -745,7 +766,7 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
     case InstDB::kEncodingX86M:
       opcode.addPrefixBySize(o0.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86M_NoSize:
 CaseX86M_NoSize:
@@ -764,7 +785,7 @@ CaseX86M_GPB_MulDiv:
       if (isign3 > 0x7) {
         // [AX] <- [AX] div|mul r8.
         if (isign3 == ENC_OPS2(Reg, Reg)) {
-          if (ASMJIT_UNLIKELY(!Reg::isGpw(o0, Gp::kIdAx) || !Reg::isGpb(o1)))
+          if (ASMJIT_UNLIKELY(!o0.isGp16(Gp::kIdAx) || !o1.isGp8()))
             goto InvalidInstruction;
 
           rbReg = o1.id();
@@ -774,7 +795,7 @@ CaseX86M_GPB_MulDiv:
 
         // [AX] <- [AX] div|mul m8.
         if (isign3 == ENC_OPS2(Reg, Mem)) {
-          if (ASMJIT_UNLIKELY(!Reg::isGpw(o0, Gp::kIdAx)))
+          if (ASMJIT_UNLIKELY(!o0.isGp16(Gp::kIdAx)))
             goto InvalidInstruction;
 
           rmRel = &o1;
@@ -804,7 +825,7 @@ CaseX86M_GPB_MulDiv:
         goto InvalidInstruction;
       }
 
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86M_GPB:
       if (isign3 == ENC_OPS1(Reg)) {
@@ -829,11 +850,11 @@ CaseX86M_GPB_MulDiv:
       break;
 
     case InstDB::kEncodingX86M_Only_EDX_EAX:
-      if (isign3 == ENC_OPS3(Mem, Reg, Reg) && Reg::isGpd(o1, Gp::kIdDx) && Reg::isGpd(o2, Gp::kIdAx)) {
+      if (isign3 == ENC_OPS3(Mem, Reg, Reg) && o1.isGp32(Gp::kIdDx) && o2.isGp32(Gp::kIdAx)) {
         rmRel = &o0;
         goto EmitX86M;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86M_Only:
       if (isign3 == ENC_OPS1(Mem)) {
@@ -888,7 +909,7 @@ CaseX86M_GPB_MulDiv:
     case InstDB::kEncodingX86R32_EDX_EAX:
       // Explicit form: R32, EDX, EAX.
       if (isign3 == ENC_OPS3(Reg, Reg, Reg)) {
-        if (!Reg::isGpd(o1, Gp::kIdDx) || !Reg::isGpd(o2, Gp::kIdAx))
+        if (!o1.isGp32(Gp::kIdDx) || !o2.isGp32(Gp::kIdAx))
           goto InvalidInstruction;
         rbReg = o0.id();
         goto EmitX86R;
@@ -896,7 +917,7 @@ CaseX86M_GPB_MulDiv:
 
       // Implicit form: R32.
       if (isign3 == ENC_OPS1(Reg)) {
-        if (!Reg::isGpd(o0))
+        if (!o0.isGp32())
           goto InvalidInstruction;
         rbReg = o0.id();
         goto EmitX86R;
@@ -912,7 +933,7 @@ CaseX86M_GPB_MulDiv:
 
     case InstDB::kEncodingX86Rm:
       opcode.addPrefixBySize(o0.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86Rm_NoSize:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
@@ -955,7 +976,7 @@ CaseX86M_GPB_MulDiv:
 
     case InstDB::kEncodingX86Mr:
       opcode.addPrefixBySize(o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86Mr_NoSize:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
@@ -1170,8 +1191,9 @@ CaseX86M_GPB_MulDiv:
     case InstDB::kEncodingX86Cmpxchg: {
       // Convert explicit to implicit.
       if (isign3 & (0x7 << 6)) {
-        if (!Reg::isGp(o2) || o2.id() != Gp::kIdAx)
+        if (!o2.isGp() || o2.id() != Gp::kIdAx) {
           goto InvalidInstruction;
+        }
         isign3 &= 0x3F;
       }
 
@@ -1454,8 +1476,9 @@ CaseX86M_GPB_MulDiv:
       rmRel = &o0;
       // Explicit jecxz|loop [r|e]cx, dst
       if (o0.isReg()) {
-        if (ASMJIT_UNLIKELY(!Reg::isGp(o0, Gp::kIdCx)))
+        if (ASMJIT_UNLIKELY(!o0.isGp(Gp::kIdCx))) {
           goto InvalidInstruction;
+        }
 
         writer.emitAddressOverride((is32Bit() && o0.x86RmSize() == 2) || (is64Bit() && o0.x86RmSize() == 4));
         rmRel = &o1;
@@ -1534,12 +1557,12 @@ CaseX86M_GPB_MulDiv:
         // register. The segment register is always `opReg`, because the MOV instruction uses either RM or MR encoding.
 
         // GP <- ??
-        if (Reg::isGp(o0)) {
+        if (o0.as<Reg>().isGp()) {
           rbReg = o0.id();
           opReg = o1.id();
 
           // GP <- GP
-          if (Reg::isGp(o1)) {
+          if (o1.as<Reg>().isGp()) {
             uint32_t opSize = o0.x86RmSize();
             if (opSize != o1.x86RmSize())
               goto InvalidInstruction;
@@ -1570,7 +1593,7 @@ CaseX86M_GPB_MulDiv:
           }
 
           // GP <- SReg
-          if (Reg::isSReg(o1)) {
+          if (o1.isSegmentReg()) {
             opcode = 0x8C;
             opcode.addPrefixBySize(o0.x86RmSize());
             opReg--;
@@ -1578,7 +1601,7 @@ CaseX86M_GPB_MulDiv:
           }
 
           // GP <- CReg
-          if (Reg::isCReg(o1)) {
+          if (o1.isControlReg()) {
             opcode = Opcode::k000F00 | 0x20;
 
             // Use `LOCK MOV` in 32-bit mode if CR8+ register is accessed (AMD extension).
@@ -1590,7 +1613,7 @@ CaseX86M_GPB_MulDiv:
           }
 
           // GP <- DReg
-          if (Reg::isDReg(o1)) {
+          if (o1.isDebugReg()) {
             opcode = Opcode::k000F00 | 0x21;
             goto EmitX86R;
           }
@@ -1600,11 +1623,11 @@ CaseX86M_GPB_MulDiv:
           rbReg = o1.id();
 
           // ?? <- GP
-          if (!Reg::isGp(o1))
+          if (!o1.as<Reg>().isGp())
             goto InvalidInstruction;
 
           // SReg <- GP
-          if (Reg::isSReg(o0)) {
+          if (o0.isSegmentReg()) {
             opcode = 0x8E;
             opcode.addPrefixBySize(o1.x86RmSize());
             opReg--;
@@ -1612,7 +1635,7 @@ CaseX86M_GPB_MulDiv:
           }
 
           // CReg <- GP
-          if (Reg::isCReg(o0)) {
+          if (o0.isControlReg()) {
             opcode = Opcode::k000F00 | 0x22;
 
             // Use `LOCK MOV` in 32-bit mode if CR8+ register is accessed (AMD extension).
@@ -1624,7 +1647,7 @@ CaseX86M_GPB_MulDiv:
           }
 
           // DReg <- GP
-          if (Reg::isDReg(o0)) {
+          if (o0.isDebugReg()) {
             opcode = Opcode::k000F00 | 0x23;
             goto EmitX86R;
           }
@@ -1638,7 +1661,7 @@ CaseX86M_GPB_MulDiv:
         rmRel = &o1;
 
         // SReg <- Mem
-        if (Reg::isSReg(o0)) {
+        if (o0.isSegmentReg()) {
           opcode = 0x8E;
           opcode.addPrefixBySize(o1.x86RmSize());
           opReg--;
@@ -1671,7 +1694,7 @@ CaseX86M_GPB_MulDiv:
         rmRel = &o0;
 
         // Mem <- SReg
-        if (Reg::isSReg(o1)) {
+        if (o1.isSegmentReg()) {
           opcode = 0x8C;
           opcode.addPrefixBySize(o0.x86RmSize());
           opReg--;
@@ -1796,7 +1819,7 @@ CaseX86M_GPB_MulDiv:
 
       // Reg <- Imm.
       if (isign3 == ENC_OPS2(Reg, Imm)) {
-        if (ASMJIT_UNLIKELY(!o0.as<Reg>().isGpq()))
+        if (ASMJIT_UNLIKELY(!o0.isGp64()))
           goto InvalidInstruction;
 
         opReg = o0.id();
@@ -1834,7 +1857,7 @@ CaseX86M_GPB_MulDiv:
 
     case InstDB::kEncodingX86MovntiMovdiri:
       if (isign3 == ENC_OPS2(Mem, Reg)) {
-        opcode.addWIf(Reg::isGpq(o1));
+        opcode.addWIf(o1.isGp64());
 
         opReg = o1.id();
         rmRel = &o0;
@@ -1898,9 +1921,18 @@ CaseX86M_GPB_MulDiv:
       }
       break;
 
+    case InstDB::kEncodingX86Pushw:
+      if (isign3 == ENC_OPS1(Imm)) {
+        immValue = o0.as<Imm>().value();
+        immSize = 2;
+        opcode = 0x68u | Opcode::kPP_66;
+        goto EmitX86Op;
+      }
+      break;
+
     case InstDB::kEncodingX86Push:
       if (isign3 == ENC_OPS1(Reg)) {
-        if (Reg::isSReg(o0)) {
+        if (o0.isSegmentReg()) {
           uint32_t segment = o0.id();
           if (ASMJIT_UNLIKELY(segment >= SReg::kIdCount))
             goto InvalidSegment;
@@ -1923,11 +1955,11 @@ CaseX86M_GPB_MulDiv:
         opcode = immSize == 1 ? 0x6A : 0x68;
         goto EmitX86Op;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86Pop:
       if (isign3 == ENC_OPS1(Reg)) {
-        if (Reg::isSReg(o0)) {
+        if (o0.isSegmentReg()) {
           uint32_t segment = o0.id();
           if (ASMJIT_UNLIKELY(segment == SReg::kIdCs || segment >= SReg::kIdCount))
             goto InvalidSegment;
@@ -2101,7 +2133,7 @@ CaseX86PushPop_Gp:
     case InstDB::kEncodingX86StrRm:
       if (isign3 == ENC_OPS2(Reg, Mem)) {
         rmRel = &o1;
-        if (ASMJIT_UNLIKELY(rmRel->as<Mem>().offsetLo32() || !Reg::isGp(o0.as<Reg>(), Gp::kIdAx)))
+        if (ASMJIT_UNLIKELY(rmRel->as<Mem>().offsetLo32() || !o0.as<Reg>().isGp(Gp::kIdAx)))
           goto InvalidInstruction;
 
         uint32_t size = o0.x86RmSize();
@@ -2116,7 +2148,7 @@ CaseX86PushPop_Gp:
     case InstDB::kEncodingX86StrMr:
       if (isign3 == ENC_OPS2(Mem, Reg)) {
         rmRel = &o0;
-        if (ASMJIT_UNLIKELY(rmRel->as<Mem>().offsetLo32() || !Reg::isGp(o1.as<Reg>(), Gp::kIdAx)))
+        if (ASMJIT_UNLIKELY(rmRel->as<Mem>().offsetLo32() || !o1.isGp(Gp::kIdAx)))
           goto InvalidInstruction;
 
         uint32_t size = o1.x86RmSize();
@@ -2232,7 +2264,7 @@ CaseX86PushPop_Gp:
         FIXUP_GPB(o0, opReg);
         goto EmitX86M;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingX86Xadd:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
@@ -2436,7 +2468,7 @@ CaseFpuArith_Mem:
         opcode += 1u;
         goto EmitFpuOp;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingFpuR:
       if (isign3 == ENC_OPS1(Reg)) {
@@ -2468,7 +2500,7 @@ CaseFpuArith_Mem:
 
     case InstDB::kEncodingExtPextrw:
       if (isign3 == ENC_OPS3(Reg, Reg, Imm)) {
-        opcode.add66hIf(Reg::isXmm(o1));
+        opcode.add66hIf(o1.isVec128());
 
         immValue = o2.as<Imm>().value();
         immSize = 1;
@@ -2481,7 +2513,7 @@ CaseFpuArith_Mem:
       if (isign3 == ENC_OPS3(Mem, Reg, Imm)) {
         // Secondary opcode of 'pextrw' instruction (SSE4.1).
         opcode = x86AltOpcodeOf(instInfo);
-        opcode.add66hIf(Reg::isXmm(o1));
+        opcode.add66hIf(o1.isVec128());
 
         immValue = o2.as<Imm>().value();
         immSize = 1;
@@ -2494,7 +2526,7 @@ CaseFpuArith_Mem:
 
     case InstDB::kEncodingExtExtract:
       if (isign3 == ENC_OPS3(Reg, Reg, Imm)) {
-        opcode.add66hIf(Reg::isXmm(o1));
+        opcode.add66hIf(o1.isVec128());
 
         immValue = o2.as<Imm>().value();
         immSize = 1;
@@ -2505,7 +2537,7 @@ CaseFpuArith_Mem:
       }
 
       if (isign3 == ENC_OPS3(Mem, Reg, Imm)) {
-        opcode.add66hIf(Reg::isXmm(o1));
+        opcode.add66hIf(o1.isVec128());
 
         immValue = o2.as<Imm>().value();
         immSize = 1;
@@ -2575,37 +2607,41 @@ CaseFpuArith_Mem:
 
     case InstDB::kEncodingExtMovd:
 CaseExtMovd:
-      opReg = o0.id();
-      opcode.add66hIf(Reg::isXmm(o0));
+      if (x86IsMmxOrXmm(o0.as<Reg>())) {
+        opReg = o0.id();
+        opcode.add66hIf(o0.isVec128());
 
-      // MM/XMM <- Gp
-      if (isign3 == ENC_OPS2(Reg, Reg) && Reg::isGp(o1)) {
-        rbReg = o1.id();
-        goto EmitX86R;
-      }
+        // MM/XMM <- Gp
+        if (isign3 == ENC_OPS2(Reg, Reg) && o1.as<Reg>().isGp()) {
+          rbReg = o1.id();
+          goto EmitX86R;
+        }
 
-      // MM/XMM <- Mem
-      if (isign3 == ENC_OPS2(Reg, Mem)) {
-        rmRel = &o1;
-        goto EmitX86M;
+        // MM/XMM <- Mem
+        if (isign3 == ENC_OPS2(Reg, Mem)) {
+          rmRel = &o1;
+          goto EmitX86M;
+        }
       }
 
       // The following instructions use the secondary opcode.
-      opcode &= Opcode::kW;
-      opcode |= x86AltOpcodeOf(instInfo);
-      opReg = o1.id();
-      opcode.add66hIf(Reg::isXmm(o1));
+      if (x86IsMmxOrXmm(o1.as<Reg>())) {
+        opcode &= Opcode::kW;
+        opcode |= x86AltOpcodeOf(instInfo);
+        opReg = o1.id();
+        opcode.add66hIf(o1.isVec128());
 
-      // GP <- MM/XMM
-      if (isign3 == ENC_OPS2(Reg, Reg) && Reg::isGp(o0)) {
-        rbReg = o0.id();
-        goto EmitX86R;
-      }
+        // GP <- MM/XMM
+        if (isign3 == ENC_OPS2(Reg, Reg) && o0.as<Reg>().isGp()) {
+          rbReg = o0.id();
+          goto EmitX86R;
+        }
 
-      // Mem <- MM/XMM
-      if (isign3 == ENC_OPS2(Mem, Reg)) {
-        rmRel = &o0;
-        goto EmitX86M;
+        // Mem <- MM/XMM
+        if (isign3 == ENC_OPS2(Mem, Reg)) {
+          rmRel = &o0;
+          goto EmitX86M;
+        }
       }
       break;
 
@@ -2615,7 +2651,7 @@ CaseExtMovd:
         rbReg = o1.id();
 
         // MM <- MM
-        if (Reg::isMm(o0) && Reg::isMm(o1)) {
+        if (o0.isMmReg() && o1.isMmReg()) {
           opcode = Opcode::k000F00 | 0x6F;
 
           if (!Support::test(options, InstOptions::kX86_ModMR))
@@ -2627,7 +2663,7 @@ CaseExtMovd:
         }
 
         // XMM <- XMM
-        if (Reg::isXmm(o0) && Reg::isXmm(o1)) {
+        if (o0.isVec128() && o1.isVec128()) {
           opcode = Opcode::kF30F00 | 0x7E;
 
           if (!Support::test(options, InstOptions::kX86_ModMR))
@@ -2644,13 +2680,13 @@ CaseExtMovd:
         rmRel = &o1;
 
         // MM <- Mem
-        if (Reg::isMm(o0)) {
+        if (o0.isMmReg()) {
           opcode = Opcode::k000F00 | 0x6F;
           goto EmitX86M;
         }
 
         // XMM <- Mem
-        if (Reg::isXmm(o0)) {
+        if (o0.isVec128()) {
           opcode = Opcode::kF30F00 | 0x7E;
           goto EmitX86M;
         }
@@ -2661,13 +2697,13 @@ CaseExtMovd:
         rmRel = &o0;
 
         // Mem <- MM
-        if (Reg::isMm(o1)) {
+        if (o1.isMmReg()) {
           opcode = Opcode::k000F00 | 0x7F;
           goto EmitX86M;
         }
 
         // Mem <- XMM
-        if (Reg::isXmm(o1)) {
+        if (o1.isVec128()) {
           opcode = Opcode::k660F00 | 0xD6;
           goto EmitX86M;
         }
@@ -2678,7 +2714,7 @@ CaseExtMovd:
       goto CaseExtMovd;
 
     case InstDB::kEncodingExtRm_XMM0:
-      if (ASMJIT_UNLIKELY(!o2.isNone() && !Reg::isXmm(o2, 0)))
+      if (ASMJIT_UNLIKELY(!o2.isNone() && !o2.isVec128(0)))
         goto InvalidInstruction;
 
       isign3 &= 0x3F;
@@ -2693,11 +2729,11 @@ CaseExtMovd:
 
     case InstDB::kEncodingExtRm_Wx:
       opcode.addWIf(o1.x86RmSize() == 8);
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingExtRm_Wx_GpqOnly:
-      opcode.addWIf(Reg::isGpq(o0));
-      ASMJIT_FALLTHROUGH;
+      opcode.addWIf(o0.isGp64());
+      [[fallthrough]];
 
     case InstDB::kEncodingExtRm:
 CaseExtRm:
@@ -2716,7 +2752,7 @@ CaseExtRm:
 
     case InstDB::kEncodingExtRm_P:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
-        opcode.add66hIf(unsigned(Reg::isXmm(o0)) | unsigned(Reg::isXmm(o1)));
+        opcode.add66hIf(Support::bool_or(o0.isVec128(), o1.isVec128()));
 
         opReg = o0.id();
         rbReg = o1.id();
@@ -2724,7 +2760,7 @@ CaseExtRm:
       }
 
       if (isign3 == ENC_OPS2(Reg, Mem)) {
-        opcode.add66hIf(Reg::isXmm(o0));
+        opcode.add66hIf(o0.isVec128());
 
         opReg = o0.id();
         rmRel = &o1;
@@ -2760,7 +2796,7 @@ CaseExtRm:
 
     case InstDB::kEncodingExtRmRi_P:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
-        opcode.add66hIf(unsigned(Reg::isXmm(o0)) | unsigned(Reg::isXmm(o1)));
+        opcode.add66hIf(Support::bool_or(o0.isVec128(), o1.isVec128()));
 
         opReg = o0.id();
         rbReg = o1.id();
@@ -2768,7 +2804,7 @@ CaseExtRm:
       }
 
       if (isign3 == ENC_OPS2(Reg, Mem)) {
-        opcode.add66hIf(Reg::isXmm(o0));
+        opcode.add66hIf(o0.isVec128());
 
         opReg = o0.id();
         rmRel = &o1;
@@ -2780,7 +2816,7 @@ CaseExtRm:
       opReg  = opcode.extractModO();
 
       if (isign3 == ENC_OPS2(Reg, Imm)) {
-        opcode.add66hIf(Reg::isXmm(o0));
+        opcode.add66hIf(o0.isVec128());
 
         immValue = o1.as<Imm>().value();
         immSize = 1;
@@ -2812,7 +2848,7 @@ CaseExtRm:
       immSize = 1;
 
       if (isign3 == ENC_OPS3(Reg, Reg, Imm)) {
-        opcode.add66hIf(unsigned(Reg::isXmm(o0)) | unsigned(Reg::isXmm(o1)));
+        opcode.add66hIf(Support::bool_or(o0.isVec128(), o1.isVec128()));
 
         opReg = o0.id();
         rbReg = o1.id();
@@ -2820,7 +2856,7 @@ CaseExtRm:
       }
 
       if (isign3 == ENC_OPS3(Reg, Mem, Imm)) {
-        opcode.add66hIf(Reg::isXmm(o0));
+        opcode.add66hIf(o0.isVec128());
 
         opReg = o0.id();
         rmRel = &o1;
@@ -2912,13 +2948,13 @@ CaseExtRm:
         rbReg = o1.id();
 
         // Form 'k, reg'.
-        if (Reg::isGp(o1)) {
+        if (o1.as<Reg>().isGp()) {
           opcode = x86AltOpcodeOf(instInfo);
           goto EmitVexEvexR;
         }
 
         // Form 'reg, k'.
-        if (Reg::isGp(o0)) {
+        if (o0.as<Reg>().isGp()) {
           opcode = x86AltOpcodeOf(instInfo) + 1;
           goto EmitVexEvexR;
         }
@@ -2950,19 +2986,12 @@ CaseExtRm:
     case InstDB::kEncodingVexR_Wx:
       if (isign3 == ENC_OPS1(Reg)) {
         rbReg = o0.id();
-        opcode.addWIf(o0.as<Reg>().isGpq());
+        opcode.addWIf(o0.isGp64());
         goto EmitVexEvexR;
       }
       break;
 
     case InstDB::kEncodingVexM:
-      if (isign3 == ENC_OPS1(Mem)) {
-        rmRel = &o0;
-        goto EmitVexEvexM;
-      }
-      break;
-
-    case InstDB::kEncodingVexM_VM:
       if (isign3 == ENC_OPS1(Mem)) {
         rmRel = &o0;
         goto EmitVexEvexM;
@@ -3012,7 +3041,7 @@ CaseExtRm:
 
     case InstDB::kEncodingVexMvr_Wx:
       if (isign3 == ENC_OPS3(Mem, Reg, Reg)) {
-        opcode.addWIf(unsigned(Reg::isGpq(o1)));
+        opcode.addWIf(o1.isGp64());
         opReg = x86PackRegAndVvvvv(o1.id(), o2.id());
         rmRel = &o0;
         goto EmitVexEvexM;
@@ -3021,7 +3050,7 @@ CaseExtRm:
 
     case InstDB::kEncodingVexMri_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexMri:
 CaseVexMri:
@@ -3049,7 +3078,7 @@ CaseVexMri:
       goto CaseVexRm;
 
     case InstDB::kEncodingVexRm_Wx:
-      opcode.addWIf(unsigned(Reg::isGpq(o0)) | unsigned(Reg::isGpq(o1)));
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o1.isGp64()));
       goto CaseVexRm;
 
     case InstDB::kEncodingVexRm_Lx_Narrow:
@@ -3060,17 +3089,17 @@ CaseVexMri:
       goto CaseVexRm;
 
     case InstDB::kEncodingVexRm_Lx_Bcst:
-      if (isign3 == ENC_OPS2(Reg, Reg) && Reg::isGp(o1.as<Reg>())) {
+      if (isign3 == ENC_OPS2(Reg, Reg) && o1.as<Reg>().isGp()) {
         opcode = x86AltOpcodeOf(instInfo) | x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
         opReg = o0.id();
         rbReg = o1.id();
         goto EmitVexEvexR;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRm_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRm:
 CaseVexRm:
@@ -3096,35 +3125,13 @@ CaseVexRm:
       }
       break;
 
-    case InstDB::kEncodingVexRm_T1_4X: {
-      const Operand_& o3 = opExt[EmitterUtils::kOp3];
-      const Operand_& o4 = opExt[EmitterUtils::kOp4];
-      const Operand_& o5 = opExt[EmitterUtils::kOp5];
-
-      if (Reg::isVec(o0) && Reg::isVec(o1) && Reg::isVec(o2) && Reg::isVec(o3) && Reg::isVec(o4) && o5.isMem()) {
-        // Registers [o1, o2, o3, o4] must start aligned and must be consecutive.
-        uint32_t i1 = o1.id();
-        uint32_t i2 = o2.id();
-        uint32_t i3 = o3.id();
-        uint32_t i4 = o4.id();
-
-        if (ASMJIT_UNLIKELY((i1 & 0x3) != 0 || i2 != i1 + 1 || i3 != i1 + 2 || i4 != i1 + 3))
-          goto NotConsecutiveRegs;
-
-        opReg = x86PackRegAndVvvvv(o0.id(), i1);
-        rmRel = &o5;
-        goto EmitVexEvexM;
-      }
-      break;
-    }
-
     case InstDB::kEncodingVexRmi_Wx:
-      opcode.addWIf(unsigned(Reg::isGpq(o0)) | unsigned(Reg::isGpq(o1)));
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o1.isGp64()));
       goto CaseVexRmi;
 
     case InstDB::kEncodingVexRmi_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRmi:
 CaseVexRmi:
@@ -3162,19 +3169,19 @@ CaseVexRvm_R:
 
     case InstDB::kEncodingVexRvm_ZDX_Wx: {
       const Operand_& o3 = opExt[EmitterUtils::kOp3];
-      if (ASMJIT_UNLIKELY(!o3.isNone() && !Reg::isGp(o3, Gp::kIdDx)))
+      if (ASMJIT_UNLIKELY(!o3.isNone() && !o3.isGp(Gp::kIdDx)))
         goto InvalidInstruction;
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
     }
 
     case InstDB::kEncodingVexRvm_Wx: {
-      opcode.addWIf(unsigned(Reg::isGpq(o0)) | unsigned((o2.x86RmSize() == 8)));
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o2.x86RmSize() == 8));
       goto CaseVexRvm;
     }
 
     case InstDB::kEncodingVexRvm_Lx_KEvex: {
-      opcode.forceEvexIf(Reg::isKReg(o0));
-      ASMJIT_FALLTHROUGH;
+      opcode.forceEvexIf(o0.isMaskReg());
+      [[fallthrough]];
     }
 
     case InstDB::kEncodingVexRvm_Lx: {
@@ -3210,7 +3217,7 @@ CaseVexRvm_R:
 
     case InstDB::kEncodingVexRvmr_Lx: {
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
     }
 
     case InstDB::kEncodingVexRvmr: {
@@ -3235,16 +3242,16 @@ CaseVexRvm_R:
     }
 
     case InstDB::kEncodingVexRvmi_KEvex:
-      opcode.forceEvexIf(Reg::isKReg(o0));
+      opcode.forceEvexIf(o0.isMaskReg());
       goto VexRvmi;
 
     case InstDB::kEncodingVexRvmi_Lx_KEvex:
-      opcode.forceEvexIf(Reg::isKReg(o0));
-      ASMJIT_FALLTHROUGH;
+      opcode.forceEvexIf(o0.isMaskReg());
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmi_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmi:
 VexRvmi:
@@ -3270,8 +3277,8 @@ VexRvmi:
     }
 
     case InstDB::kEncodingVexRmv_Wx:
-      opcode.addWIf(unsigned(Reg::isGpq(o0)) | unsigned(Reg::isGpq(o2)));
-      ASMJIT_FALLTHROUGH;
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o2.isGp64()));
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRmv:
       if (isign3 == ENC_OPS3(Reg, Reg, Reg)) {
@@ -3296,7 +3303,7 @@ VexRvmi:
         rmRel = &o1;
         goto EmitVexEvexM;
       }
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRmv_VM:
       if (isign3 == ENC_OPS3(Reg, Mem, Reg)) {
@@ -3332,7 +3339,7 @@ VexRvmi:
 
     case InstDB::kEncodingVexMovdMovq:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
-        if (Reg::isGp(o0)) {
+        if (o0.as<Reg>().isGp()) {
           opcode = x86AltOpcodeOf(instInfo);
           opcode.addWBySize(o0.x86RmSize());
           opReg = o1.id();
@@ -3340,7 +3347,7 @@ VexRvmi:
           goto EmitVexEvexR;
         }
 
-        if (Reg::isGp(o1)) {
+        if (o1.as<Reg>().isGp()) {
           opcode.addWBySize(o1.x86RmSize());
           opReg = o0.id();
           rbReg = o1.id();
@@ -3386,7 +3393,7 @@ VexRvmi:
 
     case InstDB::kEncodingVexRmMr_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRmMr:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
@@ -3442,7 +3449,7 @@ VexRvmi:
 
     case InstDB::kEncodingVexRvmRmi_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmRmi:
       if (isign3 == ENC_OPS3(Reg, Reg, Reg)) {
@@ -3554,7 +3561,7 @@ VexRvmi:
 
     case InstDB::kEncodingVexRvmMvr_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmMvr:
       if (isign3 == ENC_OPS3(Reg, Reg, Reg)) {
@@ -3582,11 +3589,11 @@ VexRvmi:
 
     case InstDB::kEncodingVexRvmVmi_Lx_MEvex:
       opcode.forceEvexIf(o1.isMem());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmVmi_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvmVmi:
       if (isign3 == ENC_OPS3(Reg, Reg, Reg)) {
@@ -3623,8 +3630,8 @@ VexRvmi:
       break;
 
     case InstDB::kEncodingVexVm_Wx:
-      opcode.addWIf(unsigned(Reg::isGpq(o0)) | unsigned(Reg::isGpq(o1)));
-      ASMJIT_FALLTHROUGH;
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o1.isGp64()));
+      [[fallthrough]];
 
     case InstDB::kEncodingVexVm:
       if (isign3 == ENC_OPS2(Reg, Reg)) {
@@ -3643,11 +3650,11 @@ VexRvmi:
     case InstDB::kEncodingVexVmi_Lx_MEvex:
       if (isign3 == ENC_OPS3(Reg, Mem, Imm))
         opcode.forceEvex();
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexVmi_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexVmi:
       immValue = o2.as<Imm>().value();
@@ -3668,14 +3675,14 @@ CaseVexVmi_AfterImm:
       break;
 
     case InstDB::kEncodingVexVmi4_Wx:
-      opcode.addWIf(Reg::isGpq(o0) || o1.x86RmSize() == 8);
+      opcode.addWIf(Support::bool_or(o0.isGp64(), o1.x86RmSize() == 8));
       immValue = o2.as<Imm>().value();
       immSize = 4;
       goto CaseVexVmi_AfterImm;
 
     case InstDB::kEncodingVexRvrmRvmr_Lx:
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingVexRvrmRvmr: {
       const Operand_& o3 = opExt[EmitterUtils::kOp3];
@@ -3776,7 +3783,7 @@ CaseVexVmi_AfterImm:
     case InstDB::kEncodingFma4_Lx:
       // It's fine to just check the first operand, second is just for sanity.
       opcode |= x86OpcodeLBySize(o0.x86RmSize() | o1.x86RmSize());
-      ASMJIT_FALLTHROUGH;
+      [[fallthrough]];
 
     case InstDB::kEncodingFma4: {
       const Operand_& o3 = opExt[EmitterUtils::kOp3];
@@ -4164,7 +4171,7 @@ EmitModSib:
           uint32_t kModRel32Size = 5;
           uint64_t virtualOffset = uint64_t(writer.offsetFrom(_bufferData)) + immSize + kModRel32Size;
 
-          if (baseAddress == Globals::kNoBaseAddress || _section->id() != 0) {
+          if (baseAddress == Globals::kNoBaseAddress || _section->sectionId() != 0) {
             // Create a new RelocEntry as we cannot calculate the offset right now.
             err = _code->newRelocEntry(&re, RelocType::kAbsToRel);
             if (ASMJIT_UNLIKELY(err))
@@ -4172,7 +4179,7 @@ EmitModSib:
 
             writer.emit8(x86EncodeMod(0, opReg, 5));
 
-            re->_sourceSectionId = _section->id();
+            re->_sourceSectionId = _section->sectionId();
             re->_sourceOffset = offset();
             re->_format.resetToSimpleValue(OffsetType::kSignedOffset, 4);
             re->_format.setLeadingAndTrailingSize(writer.offsetFrom(_bufferPtr), immSize);
@@ -4261,15 +4268,18 @@ EmitModSib_LabelRip_X86:
         relOffset = rmRel->as<Mem>().offsetLo32();
         if (rmInfo & kX86MemInfo_BaseLabel) {
           // [LABEL->ABS].
-          label = _code->labelEntry(rmRel->as<Mem>().baseId());
-          if (ASMJIT_UNLIKELY(!label))
-            goto InvalidLabel;
+          uint32_t baseLabelId = rmRel->as<Mem>().baseId();
+          if (ASMJIT_UNLIKELY(!_code->isLabelValid(baseLabelId))) {
+          }
 
+          label = &_code->labelEntry(baseLabelId);
           err = _code->newRelocEntry(&re, RelocType::kRelToAbs);
-          if (ASMJIT_UNLIKELY(err))
-            goto Failed;
 
-          re->_sourceSectionId = _section->id();
+          if (ASMJIT_UNLIKELY(err)) {
+            goto Failed;
+          }
+
+          re->_sourceSectionId = _section->sectionId();
           re->_sourceOffset = offset();
           re->_format.resetToSimpleValue(OffsetType::kUnsignedOffset, 4);
           re->_format.setLeadingAndTrailingSize(writer.offsetFrom(_bufferPtr), immSize);
@@ -4278,7 +4288,7 @@ EmitModSib_LabelRip_X86:
           if (label->isBound()) {
             // Label bound to the current section.
             re->_payload += label->offset();
-            re->_targetSectionId = label->section()->id();
+            re->_targetSectionId = label->sectionId();
             writer.emit32uLE(0);
           }
           else {
@@ -4294,8 +4304,8 @@ EmitModSib_LabelRip_X86:
           if (ASMJIT_UNLIKELY(err))
             goto Failed;
 
-          re->_sourceSectionId = _section->id();
-          re->_targetSectionId = _section->id();
+          re->_sourceSectionId = _section->sectionId();
+          re->_targetSectionId = _section->sectionId();
           re->_format.resetToSimpleValue(OffsetType::kUnsignedOffset, 4);
           re->_format.setLeadingAndTrailingSize(writer.offsetFrom(_bufferPtr), immSize);
           re->_sourceOffset = offset();
@@ -4308,11 +4318,14 @@ EmitModSib_LabelRip_X86:
         relOffset = rmRel->as<Mem>().offsetLo32();
         if (rmInfo & kX86MemInfo_BaseLabel) {
           // [RIP].
-          label = _code->labelEntry(rmRel->as<Mem>().baseId());
-          if (ASMJIT_UNLIKELY(!label))
+          uint32_t baseLabelId = rmRel->as<Mem>().baseId();
+          if (ASMJIT_UNLIKELY(!_code->isLabelValid(baseLabelId))) {
             goto InvalidLabel;
+          }
 
+          label = &_code->labelEntry(baseLabelId);
           relOffset -= (4 + immSize);
+
           if (label->isBoundTo(_section)) {
             // Label bound to the current section.
             relOffset += int32_t(label->offset() - writer.offsetFrom(_bufferData));
@@ -4804,10 +4817,12 @@ EmitJmpCall:
     inst32Size += uint32_t((opcode & Opcode::kMM_Mask) == Opcode::kMM_0F);
 
     if (rmRel->isLabel()) {
-      label = _code->labelEntry(rmRel->as<Label>());
-      if (ASMJIT_UNLIKELY(!label))
+      uint32_t labelId = rmRel->as<Label>().id();
+      if (ASMJIT_UNLIKELY(!_code->isLabelValid(labelId))) {
         goto InvalidLabel;
+      }
 
+      label = &_code->labelEntry(labelId);
       if (label->isBoundTo(_section)) {
         // Label bound to the current section.
         rel32 = uint32_t((label->offset() - ip - inst32Size) & 0xFFFFFFFFu);
@@ -4865,7 +4880,7 @@ EmitJmpCall:
         goto Failed;
 
       re->_sourceOffset = offset();
-      re->_sourceSectionId = _section->id();
+      re->_sourceSectionId = _section->sectionId();
       re->_payload = jumpAddress;
 
       if (ASMJIT_LIKELY(opcode.v)) {
@@ -4936,12 +4951,14 @@ EmitRel:
     OffsetFormat of;
     of.resetToSimpleValue(OffsetType::kSignedOffset, relSize);
 
-    LabelLink* link = _code->newLabelLink(label, _section->id(), offset, relOffset, of);
-    if (ASMJIT_UNLIKELY(!link))
+    Fixup* fixup = _code->newFixup(*label, _section->sectionId(), offset, relOffset, of);
+    if (ASMJIT_UNLIKELY(!fixup)) {
       goto OutOfMemory;
+    }
 
-    if (re)
-      link->relocId = re->id();
+    if (re) {
+      fixup->labelOrRelocId = re->id();
+    }
 
     // Emit dummy zeros, must be patched later when the reference becomes known.
     writer.emitZeros(relSize);
@@ -4986,7 +5003,6 @@ EmitDone:
   ERROR_HANDLER(InvalidBroadcast)
   ERROR_HANDLER(OperandSizeMismatch)
   ERROR_HANDLER(AmbiguousOperandSize)
-  ERROR_HANDLER(NotConsecutiveRegs)
 #undef ERROR_HANDLER
 
 Failed:
@@ -5011,7 +5027,7 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
   if (alignment <= 1)
     return kErrorOk;
 
-  if (ASMJIT_UNLIKELY(!Support::isPowerOf2(alignment) || alignment > Globals::kMaxAlignment))
+  if (ASMJIT_UNLIKELY(!Support::isPowerOf2UpTo(alignment, Globals::kMaxAlignment)))
     return reportError(DebugUtils::errored(kErrorInvalidArgument));
 
   uint32_t i = uint32_t(Support::alignUpDiff<size_t>(offset(), alignment));
@@ -5024,7 +5040,7 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
       case AlignMode::kCode: {
         if (hasEncodingOption(EncodingOptions::kOptimizedAlign)) {
           // Intel 64 and IA-32 Architectures Software Developer's Manual - Volume 2B (NOP).
-          enum { kMaxNopSize = 9 };
+          static constexpr uint32_t kMaxNopSize = 9;
 
           static const uint8_t nopData[kMaxNopSize][kMaxNopSize] = {
             { 0x90 },
@@ -5085,9 +5101,12 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
 // x86::Assembler - Events
 // =======================
 
-Error Assembler::onAttach(CodeHolder* code) noexcept {
-  Arch arch = code->arch();
+Error Assembler::onAttach(CodeHolder& code) noexcept {
+  Arch arch = code.arch();
   ASMJIT_PROPAGATE(Base::onAttach(code));
+
+  _instructionAlignment = uint8_t(1);
+  updateEmitterFuncs(this);
 
   if (Environment::is32Bit(arch)) {
     // 32 bit architecture - X86.
@@ -5103,7 +5122,7 @@ Error Assembler::onAttach(CodeHolder* code) noexcept {
   return kErrorOk;
 }
 
-Error Assembler::onDetach(CodeHolder* code) noexcept {
+Error Assembler::onDetach(CodeHolder& code) noexcept {
   _forcedInstOptions &= ~InstOptions::kX86_InvalidRex;
   _setAddressOverrideMask(0);
   return Base::onDetach(code);

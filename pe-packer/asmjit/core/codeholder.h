@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_CODEHOLDER_H_INCLUDED
@@ -9,6 +9,7 @@
 #include "../core/archtraits.h"
 #include "../core/codebuffer.h"
 #include "../core/errorhandler.h"
+#include "../core/fixup.h"
 #include "../core/operand.h"
 #include "../core/string.h"
 #include "../core/support.h"
@@ -45,7 +46,7 @@ enum class ExpressionOpType : uint8_t {
   kSra = 5
 };
 
-//! Value tyoe that can be used within an \ref Expression.
+//! Value type that can be used within an \ref Expression.
 enum class ExpressionValueType : uint8_t {
   //! No value or invalid.
   kNone = 0,
@@ -65,8 +66,8 @@ struct Expression {
     uint64_t constant;
     //! Pointer to another expression.
     Expression* expression;
-    //! Pointer to \ref LabelEntry.
-    LabelEntry* label;
+    //! Label identifier
+    uint32_t labelId;
   };
 
   //! \name Members
@@ -98,9 +99,9 @@ struct Expression {
   }
 
   //! Sets the value type at `index` to \ref ExpressionValueType::kLabel and its content to `labelEntry`.
-  ASMJIT_INLINE_NODEBUG void setValueAsLabel(size_t index, LabelEntry* labelEntry) noexcept {
+  ASMJIT_INLINE_NODEBUG void setValueAsLabelId(size_t index, uint32_t labelId) noexcept {
     valueType[index] = ExpressionValueType::kLabel;
-    value[index].label = labelEntry;
+    value[index].labelId = labelId;
   }
 
   //! Sets the value type at `index` to \ref ExpressionValueType::kExpression and its content to `expression`.
@@ -112,20 +113,64 @@ struct Expression {
   //! \}
 };
 
+//! Relocation type.
+enum class RelocType : uint32_t {
+  //! None/deleted (no relocation).
+  kNone = 0,
+  //! Expression evaluation, `_payload` is pointer to `Expression`.
+  kExpression = 1,
+  //! Relative relocation from one section to another.
+  kSectionRelative = 2,
+  //! Relocate absolute to absolute.
+  kAbsToAbs = 3,
+  //! Relocate relative to absolute.
+  kRelToAbs = 4,
+  //! Relocate absolute to relative.
+  kAbsToRel = 5,
+  //! Relocate absolute to relative or use trampoline.
+  kX64AddressEntry = 6
+};
+
+//! Type of the \ref Label.
+enum class LabelType : uint8_t {
+  //! Anonymous label that can optionally have a name, which is only used for debugging purposes.
+  kAnonymous = 0u,
+  //! Local label (always has parentId).
+  kLocal = 1u,
+  //! Global label (never has parentId).
+  kGlobal = 2u,
+  //! External label (references an external symbol).
+  kExternal = 3u,
+
+  //! Maximum value of `LabelType`.
+  kMaxValue = kExternal
+};
+
+//! Label flags describe some details about labels, mostly for AsmJit's own use.
+enum class LabelFlags : uint8_t {
+  kNone = 0x00u,
+  kHasOwnExtraData = 0x01u,
+  kHasName = 0x02u,
+  kHasParent = 0x04u
+};
+ASMJIT_DEFINE_ENUM_FLAGS(LabelFlags)
+
 //! Section flags, used by \ref Section.
 enum class SectionFlags : uint32_t {
   //! No flags.
   kNone = 0,
   //! Executable (.text sections).
-  kExecutable = 0x00000001u,
+  kExecutable = 0x0001u,
   //! Read-only (.text and .data sections).
-  kReadOnly = 0x00000002u,
+  kReadOnly = 0x0002u,
   //! Zero initialized by the loader (BSS).
-  kZeroInitialized = 0x00000004u,
+  kZeroInitialized = 0x0004u,
   //! Info / comment flag.
-  kComment = 0x00000008u,
+  kComment = 0x0008u,
+  //! Section is built in and created by default (.text section).
+  kBuiltIn = 0x4000u,
   //! Section created implicitly, can be deleted by \ref Target.
-  kImplicit = 0x80000000u
+  kImplicit = 0x8000u
 };
 ASMJIT_DEFINE_ENUM_FLAGS(SectionFlags)
 
@@ -146,16 +191,36 @@ enum class CopySectionFlags : uint32_t {
 };
 ASMJIT_DEFINE_ENUM_FLAGS(CopySectionFlags)
 
-//! Section entry.
-class Section {
+//! Base class for both \ref Section and \ref LabelEntry::ExtraData.
+class SectionOrLabelEntryExtraHeader {
 public:
   //! \name Members
   //! \{
 
-  //! Section id.
-  uint32_t _id;
-  //! Section flags.
-  SectionFlags _flags;
+  //! Section id - describes either a section where a \ref Label is bound or it's a real section id of \ref Section.
+  uint32_t _sectionId;
+
+  //! Internal label type is only used by \ref LabelEntry::ExtraData. \ref Section always leaves this field zero,
+  //! which describes an anonymous label. Anonymous labels are default and always used when there is no
+  //! \ref LabelEntry::ExtraData
+  LabelType _internalLabelType;
+
+  //! Internal label flags, used by \ref LabelEntry::ExtraData. \ref Section doesn't use these flags and sets them
+  //! to zero.
+  LabelFlags _internalLabelFlags;
+
+  //! Internal data used freely by \ref Section and \ref LabelEntry::ExtraData.
+  uint16_t _internalUInt16Data;
+
+  //! \}
+};
+
+//! Section entry.
+class Section : public SectionOrLabelEntryExtraHeader {
+public:
+  //! \name Members
+  //! \{
+
   //! Section alignment requirements (0 if no requirements).
   uint32_t _alignment;
   //! Order (lower value means higher priority).
@@ -175,34 +240,53 @@ public:
   //! \{
 
   //! Returns the section id.
-  ASMJIT_INLINE_NODEBUG uint32_t id() const noexcept { return _id; }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG uint32_t sectionId() const noexcept { return _sectionId; }
+
   //! Returns the section name, as a null terminated string.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const char* name() const noexcept { return _name.str; }
 
   //! Returns the section data.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint8_t* data() noexcept { return _buffer.data(); }
+
   //! \overload
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const uint8_t* data() const noexcept { return _buffer.data(); }
 
   //! Returns the section flags.
-  ASMJIT_INLINE_NODEBUG SectionFlags flags() const noexcept { return _flags; }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG SectionFlags flags() const noexcept { return SectionFlags(_internalUInt16Data); }
+
   //! Tests whether the section has the given `flag`.
-  ASMJIT_INLINE_NODEBUG bool hasFlag(SectionFlags flag) const noexcept { return Support::test(_flags, flag); }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasFlag(SectionFlags flag) const noexcept { return Support::test(_internalUInt16Data, uint32_t(flag)); }
+
+  //! Assigns `flags` to the section (replaces all existing flags).
+  ASMJIT_INLINE_NODEBUG void assignFlags(SectionFlags flags) noexcept { _internalUInt16Data = uint16_t(flags); }
+
   //! Adds `flags` to the section flags.
-  ASMJIT_INLINE_NODEBUG void addFlags(SectionFlags flags) noexcept { _flags |= flags; }
+  ASMJIT_INLINE_NODEBUG void addFlags(SectionFlags flags) noexcept { _internalUInt16Data = uint16_t(_internalUInt16Data | uint32_t(flags)); }
+
   //! Removes `flags` from the section flags.
-  ASMJIT_INLINE_NODEBUG void clearFlags(SectionFlags flags) noexcept { _flags &= ~flags; }
+  ASMJIT_INLINE_NODEBUG void clearFlags(SectionFlags flags) noexcept { _internalUInt16Data = uint16_t(_internalUInt16Data | ~uint32_t(flags)); }
 
   //! Returns the minimum section alignment
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t alignment() const noexcept { return _alignment; }
+
   //! Sets the minimum section alignment
   ASMJIT_INLINE_NODEBUG void setAlignment(uint32_t alignment) noexcept { _alignment = alignment; }
 
   //! Returns the section order, which has a higher priority than section id.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG int32_t order() const noexcept { return _order; }
 
   //! Returns the section offset, relative to base.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t offset() const noexcept { return _offset; }
+
   //! Set the section offset.
   ASMJIT_INLINE_NODEBUG void setOffset(uint64_t offset) noexcept { _offset = offset; }
 
@@ -212,18 +296,26 @@ public:
   //! size returned by `bufferSize()` as the buffer stores real data emitted by assemblers or appended by users.
   //!
   //! Use `realSize()` to get the real and final size of this section.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t virtualSize() const noexcept { return _virtualSize; }
+
   //! Sets the virtual size of the section.
   ASMJIT_INLINE_NODEBUG void setVirtualSize(uint64_t virtualSize) noexcept { _virtualSize = virtualSize; }
 
   //! Returns the buffer size of the section.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG size_t bufferSize() const noexcept { return _buffer.size(); }
+
   //! Returns the real size of the section calculated from virtual and buffer sizes.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t realSize() const noexcept { return Support::max<uint64_t>(virtualSize(), bufferSize()); }
 
   //! Returns the `CodeBuffer` used by this section.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG CodeBuffer& buffer() noexcept { return _buffer; }
+
   //! Returns the `CodeBuffer` used by this section (const).
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const CodeBuffer& buffer() const noexcept { return _buffer; }
 
   //! \}
@@ -256,179 +348,28 @@ public:
   //! \name Accessors
   //! \{
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t address() const noexcept { return _address; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t slot() const noexcept { return _slot; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasAssignedSlot() const noexcept { return _slot != 0xFFFFFFFFu; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool operator<(const AddressTableEntry& other) const noexcept { return _address < other._address; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool operator>(const AddressTableEntry& other) const noexcept { return _address > other._address; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool operator<(uint64_t queryAddress) const noexcept { return _address < queryAddress; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool operator>(uint64_t queryAddress) const noexcept { return _address > queryAddress; }
 
   //! \}
-};
-
-//! Offset format type, used by \ref OffsetFormat.
-enum class OffsetType : uint8_t {
-  //! A value having `_immBitCount` bits and shifted by `_immBitShift`.
-  //!
-  //! This offset type is sufficient for many targets that store offset as a continuous set bits within an
-  //! instruction word / sequence of bytes.
-  kSignedOffset,
-
-  //! An unsigned value having `_immBitCount` bits and shifted by `_immBitShift`.
-  kUnsignedOffset,
-
-  // AArch64 Specific Offset Formats
-  // -------------------------------
-
-  //! AARCH64 ADR format of `[.|immlo:2|.....|immhi:19|.....]`.
-  kAArch64_ADR,
-
-  //! AARCH64 ADRP format of `[.|immlo:2|.....|immhi:19|.....]` (4kB pages).
-  kAArch64_ADRP,
-
-  //! Maximum value of `OffsetFormatType`.
-  kMaxValue = kAArch64_ADRP
-};
-
-//! Provides information about formatting offsets, absolute addresses, or their parts. Offset format is used by both
-//! \ref RelocEntry and \ref LabelLink. The illustration below describes the relation of region size and offset size.
-//! Region size is the size of the whole unit whereas offset size is the size of the unit that will be patched.
-//!
-//! ```
-//! +-> Code buffer |   The subject of the relocation (region)  |
-//! |               | (Word-Offset)  (Word-Size)                |
-//! |xxxxxxxxxxxxxxx|................|*PATCHED*|................|xxxxxxxxxxxx->
-//!                                  |         |
-//!     [Word Offset points here]----+         +--- [WordOffset + WordSize]
-//! ```
-//!
-//! Once the offset word has been located it can be patched like this:
-//!
-//! ```
-//!                               |ImmDiscardLSB (discard LSB bits).
-//!                               |..
-//! [0000000000000iiiiiiiiiiiiiiiiiDD] - Offset value (32-bit)
-//! [000000000000000iiiiiiiiiiiiiiiii] - Offset value after discard LSB.
-//! [00000000000iiiiiiiiiiiiiiiii0000] - Offset value shifted by ImmBitShift.
-//! [xxxxxxxxxxxiiiiiiiiiiiiiiiiixxxx] - Patched word (32-bit)
-//!             |...............|
-//!               (ImmBitCount) +- ImmBitShift
-//! ```
-struct OffsetFormat {
-  //! \name Members
-  //! \{
-
-  //! Type of the offset.
-  OffsetType _type;
-  //! Encoding flags.
-  uint8_t _flags;
-  //! Size of the region (in bytes) containing the offset value, if the offset value is part of an instruction,
-  //! otherwise it would be the same as `_valueSize`.
-  uint8_t _regionSize;
-  //! Size of the offset value, in bytes (1, 2, 4, or 8).
-  uint8_t _valueSize;
-  //! Offset of the offset value, in bytes, relative to the start of the region or data. Value offset would be
-  //! zero if both region size and value size are equal.
-  uint8_t _valueOffset;
-  //! Size of the offset immediate value in bits.
-  uint8_t _immBitCount;
-  //! Shift of the offset immediate value in bits in the target word.
-  uint8_t _immBitShift;
-  //! Number of least significant bits to discard before writing the immediate to the destination. All discarded
-  //! bits must be zero otherwise the value is invalid.
-  uint8_t _immDiscardLsb;
-
-  //! \}
-
-  //! \name Accessors
-  //! \{
-
-  //! Returns the type of the offset.
-  ASMJIT_INLINE_NODEBUG OffsetType type() const noexcept { return _type; }
-
-  //! Returns flags.
-  ASMJIT_INLINE_NODEBUG uint32_t flags() const noexcept { return _flags; }
-
-  //! Returns the size of the region/instruction where the offset is encoded.
-  ASMJIT_INLINE_NODEBUG uint32_t regionSize() const noexcept { return _regionSize; }
-
-  //! Returns the offset of the word relative to the start of the region where the offset is.
-  ASMJIT_INLINE_NODEBUG uint32_t valueOffset() const noexcept { return _valueOffset; }
-
-  //! Returns the size of the data-type (word) that contains the offset, in bytes.
-  ASMJIT_INLINE_NODEBUG uint32_t valueSize() const noexcept { return _valueSize; }
-  //! Returns the count of bits of the offset value in the data it's stored in.
-  ASMJIT_INLINE_NODEBUG uint32_t immBitCount() const noexcept { return _immBitCount; }
-  //! Returns the bit-shift of the offset value in the data it's stored in.
-  ASMJIT_INLINE_NODEBUG uint32_t immBitShift() const noexcept { return _immBitShift; }
-  //! Returns the number of least significant bits of the offset value, that must be zero and that are not part of
-  //! the encoded data.
-  ASMJIT_INLINE_NODEBUG uint32_t immDiscardLsb() const noexcept { return _immDiscardLsb; }
-
-  //! Resets this offset format to a simple data value of `dataSize` bytes.
-  //!
-  //! The region will be the same size as data and immediate bits would correspond to `dataSize * 8`. There will be
-  //! no immediate bit shift or discarded bits.
-  inline void resetToSimpleValue(OffsetType type, size_t valueSize) noexcept {
-    ASMJIT_ASSERT(valueSize <= 8u);
-
-    _type = type;
-    _flags = uint8_t(0);
-    _regionSize = uint8_t(valueSize);
-    _valueSize = uint8_t(valueSize);
-    _valueOffset = uint8_t(0);
-    _immBitCount = uint8_t(valueSize * 8u);
-    _immBitShift = uint8_t(0);
-    _immDiscardLsb = uint8_t(0);
-  }
-
-  inline void resetToImmValue(OffsetType type, size_t valueSize, uint32_t immBitShift, uint32_t immBitCount, uint32_t immDiscardLsb) noexcept {
-    ASMJIT_ASSERT(valueSize <= 8u);
-    ASMJIT_ASSERT(immBitShift < valueSize * 8u);
-    ASMJIT_ASSERT(immBitCount <= 64u);
-    ASMJIT_ASSERT(immDiscardLsb <= 64u);
-
-    _type = type;
-    _flags = uint8_t(0);
-    _regionSize = uint8_t(valueSize);
-    _valueSize = uint8_t(valueSize);
-    _valueOffset = uint8_t(0);
-    _immBitCount = uint8_t(immBitCount);
-    _immBitShift = uint8_t(immBitShift);
-    _immDiscardLsb = uint8_t(immDiscardLsb);
-  }
-
-  inline void setRegion(size_t regionSize, size_t valueOffset) noexcept {
-    _regionSize = uint8_t(regionSize);
-    _valueOffset = uint8_t(valueOffset);
-  }
-
-  inline void setLeadingAndTrailingSize(size_t leadingSize, size_t trailingSize) noexcept {
-    _regionSize = uint8_t(leadingSize + trailingSize + _valueSize);
-    _valueOffset = uint8_t(leadingSize);
-  }
-
-  //! \}
-};
-
-//! Relocation type.
-enum class RelocType : uint32_t {
-  //! None/deleted (no relocation).
-  kNone = 0,
-  //! Expression evaluation, `_payload` is pointer to `Expression`.
-  kExpression = 1,
-  //! Relocate absolute to absolute.
-  kAbsToAbs = 2,
-  //! Relocate relative to absolute.
-  kRelToAbs = 3,
-  //! Relocate absolute to relative.
-  kAbsToRel = 4,
-  //! Relocate absolute to relative or use trampoline.
-  kX64AddressEntry = 5
 };
 
 //! Relocation entry.
@@ -456,17 +397,28 @@ struct RelocEntry {
   //! \name Accessors
   //! \{
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t id() const noexcept { return _id; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG RelocType relocType() const noexcept { return _relocType; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const OffsetFormat& format() const noexcept { return _format; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t sourceSectionId() const noexcept { return _sourceSectionId; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t targetSectionId() const noexcept { return _targetSectionId; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t sourceOffset() const noexcept { return _sourceOffset; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t payload() const noexcept { return _payload; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Expression* payloadAsExpression() const noexcept {
     return reinterpret_cast<Expression*>(uintptr_t(_payload));
   }
@@ -474,141 +426,158 @@ struct RelocEntry {
   //! \}
 };
 
-//! Type of the \ref Label.
-enum class LabelType : uint8_t {
-  //! Anonymous label that can optionally have a name, which is only used for debugging purposes.
-  kAnonymous = 0,
-  //! Local label (always has parentId).
-  kLocal = 1,
-  //! Global label (never has parentId).
-  kGlobal = 2,
-  //! External label (references an external symbol).
-  kExternal = 3,
-
-  //! Maximum value of `LabelType`.
-  kMaxValue = kExternal
-};
-
-//! Data structure used to link either unbound labels or cross-section links.
-struct LabelLink {
-  //! Next link (single-linked list).
-  LabelLink* next;
-  //! Section id where the label is bound.
-  uint32_t sectionId;
-  //! Relocation id or Globals::kInvalidId.
-  uint32_t relocId;
-  //! Label offset relative to the start of the section.
-  size_t offset;
-  //! Inlined rel8/rel32.
-  intptr_t rel;
-  //! Offset format information.
-  OffsetFormat format;
-};
-
-//! Label entry.
+//! Label entry provides data stored by \ref CodeHolder for each \ref Label.
 //!
-//! Contains the following properties:
-//!   - Label id - This is the only thing that is set to the `Label` operand.
-//!   - Label name - Optional, used mostly to create executables and libraries.
-//!   - Label type - Type of the label, default `LabelType::kAnonymous`.
-//!   - Label parent id - Derived from many assemblers that allow to define a local label that falls under a global
-//!     label. This allows to define many labels of the same name that have different parent (global) label.
-//!   - Offset - offset of the label bound by `Assembler`.
-//!   - Links - single-linked list that contains locations of code that has to be patched when the label gets bound.
-//!     Every use of unbound label adds one link to `_links` list.
-//!   - HVal - Hash value of label's name and optionally parentId.
-//!   - HashNext - Hash-table implementation detail.
-class LabelEntry : public ZoneHashNode {
+//! Label entry is used mostly internall by AsmJit, but it's possibly to use it to query various information about
+//! a label. For example to get its type, flags, name, and fixups (if the label is not bound) or offset (if the label
+//! is bound).
+//!
+//! To make the entry small, it's currently split into two data structures - \ref LabelEntry, which is stored in an
+//! array as a value, and \ref LabelEntry::ExtraData, which can be pointed to via \ref LabelEntry::_objectData. Extra
+//! data of unnamed anonymous labels is shared (and immutable), thus all unnamed anonymous labels would only use
+//! \ref LabelEntry (16 bytes per label).
+class LabelEntry {
 public:
-  //! \name Constants
-  //! \{
+  //! Contains extra data that is only created when the label is not anonymous or has a name.
+  struct ExtraData : public SectionOrLabelEntryExtraHeader {
+    //! Label parent id or zero.
+    uint32_t _parentId;
+    //! Label name length.
+    uint32_t _nameSize;
 
-  enum : uint32_t {
-    //! SSO size of \ref _name.
-    //!
-    //! \cond INTERNAL
-    //! Let's round the size of `LabelEntry` to 64 bytes (as `ZoneAllocator` has granularity of 32 bytes anyway). This
-    //! gives `_name` the remaining space, which is should be 16 bytes on 64-bit and 28 bytes on 32-bit architectures.
-    //! \endcond
-    kStaticNameSize = 64 - (sizeof(ZoneHashNode) + 8 + sizeof(Section*) + sizeof(size_t) + sizeof(LabelLink*))
+    //! Returns a name associated with this extra data - a valid pointer is only returned when the label has a name, which
+    //! is marked by \ref LabelFlags::kHasName flag.
+    ASMJIT_INLINE_NODEBUG const char* name() const noexcept { return Support::offsetPtr<char>(this, sizeof(ExtraData)); }
   };
-
-  //! \}
 
   //! \name Members
   //! \{
 
-  //! Type of the label.
-  LabelType _type;
-  //! Must be zero.
-  uint8_t _reserved[3];
-  //! Label parent id or zero.
-  uint32_t _parentId;
-  //! Label offset relative to the start of the `_section`.
-  uint64_t _offset;
-  //! Section where the label was bound.
-  Section* _section;
-  //! Label links.
-  LabelLink* _links;
-  //! Label name.
-  ZoneString<kStaticNameSize> _name;
+  // Either references a \ref Section where the label is bound or \ref ExtraData.
+  SectionOrLabelEntryExtraHeader* _objectData;
+
+  //! Label entry payload.
+  //!
+  //! When a Label is bound, `_offsetOrFixups` is the relative offset from the start of the section where
+  //! the \ref Label has been bound, otherwise `_offsetOrFixups` is a pointer to the first \ref Fixup.
+  uint64_t _offsetOrFixups;
 
   //! \}
 
   //! \name Accessors
   //! \{
 
-  // NOTE: Label id is stored in `_customData`, which is provided by ZoneHashNode to fill a padding that a C++
-  // compiler targeting 64-bit CPU will add to align the structure to 64-bits.
+  //! Returns the type of the label.
+  //!
+  //! The type of the label depends on how it was created. Most JIT code uses unnamed anonymous labels created by
+  //! emitters, for example \ref BaseEmitter::newLabel() returns a \ref Label instance having id that was created
+  //! by \ref CodeHolder::newLabelId.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG LabelType labelType() const noexcept { return _objectData->_internalLabelType; }
 
-  //! Returns label id.
-  ASMJIT_INLINE_NODEBUG uint32_t id() const noexcept { return _customData; }
-  //! Sets label id (internal, used only by `CodeHolder`).
-  ASMJIT_INLINE_NODEBUG void _setId(uint32_t id) noexcept { _customData = id; }
+  //! Returns label flags.
+  //!
+  //! \note Label flags are mostly for internal use, there is probably no reason to use them in user code.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG LabelFlags labelFlags() const noexcept { return _objectData->_internalLabelFlags; }
 
-  //! Returns label type.
-  ASMJIT_INLINE_NODEBUG LabelType type() const noexcept { return _type; }
+  //! Tests whether the label has the given `flag` set.
+  //!
+  //! \note Using other getters instead is advised, for example using \ref hasName() and \ref hasParent() is better
+  //! (and shorter) than checking label flags.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasLabelFlag(LabelFlags flag) const noexcept { return Support::test(_objectData->_internalLabelFlags, flag); }
 
-  //! Tests whether the label has a parent label.
-  ASMJIT_INLINE_NODEBUG bool hasParent() const noexcept { return _parentId != Globals::kInvalidId; }
-  //! Returns label's parent id.
-  ASMJIT_INLINE_NODEBUG uint32_t parentId() const noexcept { return _parentId; }
+  //! Tests whether the LabelEntry has own extra data (see \ref LabelEntry::ExtraData).
+  //!
+  //! \note This should only be used by AsmJit for internal purposes. Own extra data means that the LabelEntry has
+  //! a mutable extra data separately allocated. This information should not be necessary to users as LabelEntry
+  //! getters should encapsulate label introspection.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool _hasOwnExtraData() const noexcept { return hasLabelFlag(LabelFlags::kHasOwnExtraData); }
+
+  //! Tests whether the Label represented by this LabelEntry has a name.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasName() const noexcept { return hasLabelFlag(LabelFlags::kHasName); }
+
+  //! Tests whether the Label represented by this LabelEntry has a parent label.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasParent() const noexcept { return hasLabelFlag(LabelFlags::kHasParent); }
+
+  //! Tests whether the label represented by this LabelEntry is bound.
+  //!
+  //! Bound label means that it has an associated \ref Section and a position in such section. Labels are bound by
+  //! calling \ref BaseEmitter::bind() method with \ref Label operand.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool isBound() const noexcept { return _objectData->_sectionId != Globals::kInvalidId; }
+
+  //! Tests whether the label is bound to a the given `section`.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool isBoundTo(const Section* section) const noexcept { return _objectData->_sectionId == section->sectionId(); }
+
+  //! Tests whether the label is bound to a the given `sectionId`.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool isBoundTo(uint32_t sectionId) const noexcept { return _objectData->_sectionId == sectionId; }
 
   //! Returns the section where the label was bound.
   //!
   //! If the label was not yet bound the return value is `nullptr`.
-  ASMJIT_INLINE_NODEBUG Section* section() const noexcept { return _section; }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG uint32_t sectionId() const noexcept { return _objectData->_sectionId; }
 
-  //! Tests whether the label has name.
-  ASMJIT_INLINE_NODEBUG bool hasName() const noexcept { return !_name.empty(); }
+  [[nodiscard]]
+  ASMJIT_INLINE ExtraData* _ownExtraData() const noexcept {
+    ASMJIT_ASSERT(_hasOwnExtraData());
+    return static_cast<ExtraData*>(_objectData);
+  }
+
+  //! Returns label's parent id or \ref Globals::kInvalidId if the label has no parent.
+  [[nodiscard]]
+  ASMJIT_INLINE uint32_t parentId() const noexcept {
+    return _hasOwnExtraData() ? _ownExtraData()->_parentId : Globals::kInvalidId;
+  }
 
   //! Returns the label's name.
   //!
   //! \note Local labels will return their local name without their parent part, for example ".L1".
-  ASMJIT_INLINE_NODEBUG const char* name() const noexcept { return _name.data(); }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const char* name() const noexcept {
+    return hasName() ? _ownExtraData()->name() : nullptr;
+  }
 
   //! Returns size of label's name.
   //!
   //! \note Label name is always null terminated, so you can use `strlen()` to get it, however, it's also cached in
   //! `LabelEntry` itself, so if you want to know the size the fastest way is to call `LabelEntry::nameSize()`.
-  ASMJIT_INLINE_NODEBUG uint32_t nameSize() const noexcept { return _name.size(); }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG uint32_t nameSize() const noexcept {
+    return hasName() ? _ownExtraData()->_nameSize : uint32_t(0);
+  }
 
-  //! Returns links associated with this label.
-  ASMJIT_INLINE_NODEBUG LabelLink* links() const noexcept { return _links; }
+  //! Returns unresolved fixups associated with this label.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasFixups() const noexcept {
+    return Support::bool_and(!isBound(), _offsetOrFixups != 0u);
+  }
 
-  //! Tests whether the label is bound.
-  ASMJIT_INLINE_NODEBUG bool isBound() const noexcept { return _section != nullptr; }
-  //! Tests whether the label is bound to a the given `sectionId`.
-  ASMJIT_INLINE_NODEBUG bool isBoundTo(Section* section) const noexcept { return _section == section; }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG Fixup* _getFixups() const noexcept { return reinterpret_cast<Fixup*>(uintptr_t(_offsetOrFixups)); }
 
-  //! Returns the label offset (only useful if the label is bound).
-  ASMJIT_INLINE_NODEBUG uint64_t offset() const noexcept { return _offset; }
+  ASMJIT_INLINE_NODEBUG void _setFixups(Fixup* first) noexcept { _offsetOrFixups = reinterpret_cast<uintptr_t>(first); }
 
-  //! Returns the hash-value of label's name and its parent label (if any).
+  //! Returns unresolved fixups associated with this label.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG Fixup* unresolvedLinks() const noexcept { return !isBound() ? _getFixups() : nullptr; }
+
+  //! Returns the label offset (can only be used after the label is bound).
   //!
-  //! Label hash is calculated as `HASH(Name) ^ ParentId`. The hash function is implemented in `Support::hashString()`
-  //! and `Support::hashRound()`.
-  ASMJIT_INLINE_NODEBUG uint32_t hashCode() const noexcept { return _hashCode; }
+  //! \note This would trigger an assertion failure in debug builds when called on an unbound label. When accessing
+  //! offsets, always check whether the label is bound. Unbound labels don't have offsets.
+  [[nodiscard]]
+  ASMJIT_INLINE uint64_t offset() const noexcept {
+    ASMJIT_ASSERT(isBound());
+    return _offsetOrFixups;
+  }
 
   //! \}
 };
@@ -629,11 +598,83 @@ public:
 //! emitters. After the end of code generation it can be used to query physical locations of labels and to relocate
 //! the assembled code into the right address.
 //!
+//! CodeHolder Reusability
+//! ----------------------
+//!
+//! If you intend to generate a lot of code, or tiny code, it's advised to reuse CodeHolder and emitter instances.
+//! There are currently two ways of reusing CodeHolder and emitters - one is using \ref CodeHolder::init() followed
+//! by \ref CodeHolder::reset(), and another is initializing once by \ref CodeHolder::init() and then reinitializing
+//! by \ref CodeHolder::reinit(). The first strategy is shown below:
+//!
+//! ```
+//! // All of them will be reused for code generation by using an 'init()/reset()' strategy.
+//! Environment env = ...; // Environment to use, for example from JitRuntime.
+//! CodeHolder code;       // CodeHolder to reuse (all allocated memory will be held by it until it's destroyed).
+//! x86::Compiler cc;      // Emitter to reuse (for example x86::Compiler).
+//!
+//! for (size_t i = 0; i < ...; i++) {
+//!   // Initialize the CodeHolder first.
+//!   code.init(env);
+//!   code.attach(&emitter);
+//!
+//!   [[code generation as usual]]
+//!
+//!   code.reset();
+//! }
+//! ```
+//!
+//! While this approach is good for many use-cases, there is even a faster strategy called reinitialization, which is
+//! provided by \ref CodeHolder::reinit(). The idea of reinit is to reinitialize the CodeHolder into a state, which
+//! was achieved by initializing it by \ref CodeHolder::init(), by optionally attaching \ref Logger, \ref ErrorHandler,
+//! and emitters of any kind. See an example below:
+//!
+//! ```
+//! // All of them will be reused for code generation by using a 'reinit()' strategy.
+//! Environment env = ...; // Environment to use, for example from JitRuntime.
+//! CodeHolder code;       // CodeHolder to reuse (all allocated memory will be held by it until it's destroyed).
+//! x86::Compiler cc;      // Emitter to reuse (for example x86::Compiler).
+//!
+//! // Initialize the CodeHolder and attach emitters to it (attaching ErrorHandler is advised!)
+//! code.init(env);
+//! code.attach(&emitter);
+//!
+//! for (size_t i = 0; i < ...; i++) {
+//!   [[code generation as usual]]
+//!
+//!   // Optionally you can start the loop with 'code.reinit()', but this is cleaner as it wipes out all intermediate
+//!   // states of CodeHolder and the attached emitters. It won't detach Logger, ErrorHandler, nor attached emitters.
+//!   code.reinit();
+//! }
+//! ```
+//!
 //! \note \ref CodeHolder has an ability to attach an \ref ErrorHandler, however, the error handler is not triggered
 //! by \ref CodeHolder itself, it's instead propagated to all emitters that attach to it.
 class CodeHolder {
 public:
   ASMJIT_NONCOPYABLE(CodeHolder)
+
+  //! \name Types
+  //! \{
+
+  //! \cond INTERNAL
+  struct NamedLabelExtraData : public ZoneHashNode {
+    LabelEntry::ExtraData extraData;
+
+    ASMJIT_INLINE_NODEBUG uint32_t labelId() const noexcept { return _customData; }
+  };
+  //! \endcond
+
+  //! An informative data structure that is filled with some details that happened during \ref relocateToBase().
+  struct RelocationSummary {
+    //! The number of bytes the final code has been reduced by.
+    //!
+    //! At the moment this is the same as the number of bytes that the address table was shrunk, because it was
+    //! possible to avoid certain entries during relocation - the functions that would be otherwise present were
+    //! close enough to avoid them in the .addrtab section.
+    size_t codeSizeReduction;
+  };
+
+  //! \}
 
   //! \name Members
   //! \{
@@ -655,21 +696,32 @@ public:
   //! Zone allocator, used to manage internal containers.
   ZoneAllocator _allocator;
 
-  //! Attached emitters.
-  ZoneVector<BaseEmitter*> _emitters;
+  //! First emitter attached to this CodeHolder (double-linked list).
+  BaseEmitter* _attachedFirst;
+  //! Last emitter attached to this CodeHolder (double-linked list).
+  BaseEmitter* _attachedLast;
+
   //! Section entries.
   ZoneVector<Section*> _sections;
   //! Section entries sorted by section order and then section id.
   ZoneVector<Section*> _sectionsByOrder;
+
   //! Label entries.
-  ZoneVector<LabelEntry*> _labelEntries;
+  ZoneVector<LabelEntry> _labelEntries;
   //! Relocation entries.
   ZoneVector<RelocEntry*> _relocations;
-  //! Label name -> LabelEntry (only named labels).
-  ZoneHash<LabelEntry> _namedLabels;
+  //! Label name -> LabelEntry::ExtraData (only used by labels that have a name and are not anonymous).
+  ZoneHash<NamedLabelExtraData> _namedLabels;
+  //! Unresolved fixups that are most likely references across sections.
+  Fixup* _fixups;
+  //! Pool containing \ref Fixup instances for quickly recycling them.
+  ZonePool<Fixup> _fixupDataPool;
+  //! Count of unresolved fixups of unbound labels (at the end of assembling this should be zero).
+  size_t _unresolvedFixupCount;
 
-  //! Count of label links, which are not resolved.
-  size_t _unresolvedLinkCount;
+  //! Text section - always one part of a CodeHolder itself.
+  Section _textSection;
+
   //! Pointer to an address table section (or null if this section doesn't exist).
   Section* _addressTableSection;
   //! Address table entries.
@@ -696,12 +748,29 @@ public:
   //! Tests whether the `CodeHolder` has been initialized.
   //!
   //! Emitters can be only attached to initialized `CodeHolder` instances.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isInitialized() const noexcept { return _environment.isInitialized(); }
 
   //! Initializes CodeHolder to hold code described by the given `environment` and `baseAddress`.
   ASMJIT_API Error init(const Environment& environment, uint64_t baseAddress = Globals::kNoBaseAddress) noexcept;
   //! Initializes CodeHolder to hold code described by the given `environment`, `cpuFeatures`, and `baseAddress`.
   ASMJIT_API Error init(const Environment& environment, const CpuFeatures& cpuFeatures, uint64_t baseAddress = Globals::kNoBaseAddress) noexcept;
+
+  //! Reinitializes CodeHolder with the same environment, cpu features, and base address as it had, and notifies
+  //! all attached emitters of reinitialization. If the \ref CodeHolder was not initialized, \ref kErrorNotInitialized
+  //! is returned.
+  //!
+  //! Reinitialization is designed to be a faster alternative compared to \ref reset() followed by \ref init() chain.
+  //! The purpose of reinitialization is a very quick reuse of \ref CodeHolder and all attached emitters (most likely
+  //! Assembler or Compiler) without paying the cost of complete initialization and then assignment of all the loggers,
+  //! error handlers, and emitters.
+  //!
+  //! \note Semantically reinit() is the same as using \ref reset(ResetPolicy::kSoft), followed by \ref init(), and
+  //! then by attaching loggers, error handlers, and emitters that were attached previously. This means that after
+  //! reinitialization you will get a clean and ready for use \ref CodeHolder, which was initialized the same way as
+  //! before.
+  ASMJIT_API Error reinit() noexcept;
+
   //! Detaches all code-generators attached and resets the `CodeHolder`.
   ASMJIT_API void reset(ResetPolicy resetPolicy = ResetPolicy::kSoft) noexcept;
 
@@ -717,7 +786,7 @@ public:
 
   //! \}
 
-  //! \name Allocators
+  //! \name Memory Allocators
   //! \{
 
   //! Returns the allocator that the `CodeHolder` uses.
@@ -725,6 +794,7 @@ public:
   //! \note This should be only used for AsmJit's purposes. Code holder uses arena allocator to allocate everything,
   //! so anything allocated through this allocator will be invalidated by \ref CodeHolder::reset() or by CodeHolder's
   //! destructor.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG ZoneAllocator* allocator() const noexcept { return const_cast<ZoneAllocator*>(&_allocator); }
 
   //! \}
@@ -733,28 +803,46 @@ public:
   //! \{
 
   //! Returns the target environment information.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const Environment& environment() const noexcept { return _environment; }
 
   //! Returns the target architecture.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Arch arch() const noexcept { return environment().arch(); }
+
   //! Returns the target sub-architecture.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG SubArch subArch() const noexcept { return environment().subArch(); }
 
   //! Returns the minimum CPU features of the target architecture.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const CpuFeatures& cpuFeatures() const noexcept { return _cpuFeatures; }
 
   //! Tests whether a static base-address is set.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasBaseAddress() const noexcept { return _baseAddress != Globals::kNoBaseAddress; }
+
   //! Returns a static base-address or \ref Globals::kNoBaseAddress, if not set.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t baseAddress() const noexcept { return _baseAddress; }
 
   //! \}
 
-  //! \name Emitters
+  //! \name Attached Emitters
   //! \{
 
   //! Returns a vector of attached emitters.
-  ASMJIT_INLINE_NODEBUG const ZoneVector<BaseEmitter*>& emitters() const noexcept { return _emitters; }
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG BaseEmitter* attachedFirst() noexcept { return _attachedFirst; }
+
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG BaseEmitter* attachedLast() noexcept { return _attachedLast; }
+
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const BaseEmitter* attachedFirst() const noexcept { return _attachedFirst; }
+
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const BaseEmitter* attachedLast() const noexcept { return _attachedLast; }
 
   //! \}
 
@@ -762,9 +850,12 @@ public:
   //! \{
 
   //! Returns the attached logger.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Logger* logger() const noexcept { return _logger; }
+
   //! Attaches a `logger` to CodeHolder and propagates it to all attached emitters.
   ASMJIT_API void setLogger(Logger* logger) noexcept;
+
   //! Resets the logger to none.
   ASMJIT_INLINE_NODEBUG void resetLogger() noexcept { setLogger(nullptr); }
 
@@ -772,11 +863,16 @@ public:
   //! \{
 
   //! Tests whether the CodeHolder has an attached error handler, see \ref ErrorHandler.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasErrorHandler() const noexcept { return _errorHandler != nullptr; }
+
   //! Returns the attached error handler.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG ErrorHandler* errorHandler() const noexcept { return _errorHandler; }
+
   //! Attach an error handler to this `CodeHolder`.
   ASMJIT_API void setErrorHandler(ErrorHandler* errorHandler) noexcept;
+
   //! Resets the error handler to none.
   ASMJIT_INLINE_NODEBUG void resetErrorHandler() noexcept { setErrorHandler(nullptr); }
 
@@ -801,13 +897,19 @@ public:
   //! \{
 
   //! Returns an array of `Section*` records.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const ZoneVector<Section*>& sections() const noexcept { return _sections; }
+
   //! Returns an array of `Section*` records sorted according to section order first, then section id.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const ZoneVector<Section*>& sectionsByOrder() const noexcept { return _sectionsByOrder; }
+
   //! Returns the number of sections.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t sectionCount() const noexcept { return _sections.size(); }
 
   //! Tests whether the given `sectionId` is valid.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isSectionValid(uint32_t sectionId) const noexcept { return sectionId < _sections.size(); }
 
   //! Creates a new section and return its pointer in `sectionOut`.
@@ -816,19 +918,23 @@ public:
   ASMJIT_API Error newSection(Section** sectionOut, const char* name, size_t nameSize = SIZE_MAX, SectionFlags flags = SectionFlags::kNone, uint32_t alignment = 1, int32_t order = 0) noexcept;
 
   //! Returns a section entry of the given index.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Section* sectionById(uint32_t sectionId) const noexcept { return _sections[sectionId]; }
 
   //! Returns section-id that matches the given `name`.
   //!
   //! If there is no such section `Section::kInvalidId` is returned.
+  [[nodiscard]]
   ASMJIT_API Section* sectionByName(const char* name, size_t nameSize = SIZE_MAX) const noexcept;
 
   //! Returns '.text' section (section that commonly represents code).
   //!
   //! \note Text section is always the first section in \ref CodeHolder::sections() array.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Section* textSection() const noexcept { return _sections[0]; }
 
   //! Tests whether '.addrtab' section exists.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasAddressTable() const noexcept { return _addressTableSection != nullptr; }
 
   //! Returns '.addrtab' section.
@@ -837,10 +943,12 @@ public:
   //! addresses that cannot be encoded in instructions like 'jmp' or 'call'.
   //!
   //! \note This section is created on demand, the returned pointer can be null.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Section* addressTableSection() const noexcept { return _addressTableSection; }
 
   //! Ensures that '.addrtab' section exists (creates it if it doesn't) and
   //! returns it. Can return `nullptr` on out of memory condition.
+  [[nodiscard]]
   ASMJIT_API Section* ensureAddressTableSection() noexcept;
 
   //! Used to add an address to an address table.
@@ -850,7 +958,7 @@ public:
   //! use the same slot.
   //!
   //! This function should be considered internal as it's used by assemblers to insert an absolute address into the
-  //! address table. Inserting address into address table without creating a particula relocation entry makes no sense.
+  //! address table. Inserting address into address table without creating a particular relocation entry makes no sense.
   ASMJIT_API Error addAddressToAddressTable(uint64_t address) noexcept;
 
   //! \}
@@ -858,77 +966,118 @@ public:
   //! \name Labels & Symbols
   //! \{
 
-  //! Returns array of `LabelEntry*` records.
-  ASMJIT_INLINE_NODEBUG const ZoneVector<LabelEntry*>& labelEntries() const noexcept { return _labelEntries; }
+  //! Returns array of `LabelEntry` records.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const ZoneVector<LabelEntry>& labelEntries() const noexcept { return _labelEntries; }
 
   //! Returns number of labels created.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t labelCount() const noexcept { return _labelEntries.size(); }
 
-  //! Tests whether the label having `id` is valid (i.e. created by `newLabelEntry()`).
+  //! Tests whether the label having `labelId` is valid (i.e. created by `newLabelId()`).
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isLabelValid(uint32_t labelId) const noexcept {
     return labelId < _labelEntries.size();
   }
 
-  //! Tests whether the `label` is valid (i.e. created by `newLabelEntry()`).
+  //! Tests whether the `label` is valid (i.e. created by `newLabelId()`).
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isLabelValid(const Label& label) const noexcept {
-    return label.id() < _labelEntries.size();
+    return isLabelValid(label.id());
   }
 
-  //! \overload
+  //! Tests whether a label having `labelId` is already bound.
+  //!
+  //! Returns `false` if the `labelId` is not valid.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isLabelBound(uint32_t labelId) const noexcept {
-    return isLabelValid(labelId) && _labelEntries[labelId]->isBound();
+    return isLabelValid(labelId) && _labelEntries[labelId].isBound();
   }
 
   //! Tests whether the `label` is already bound.
   //!
   //! Returns `false` if the `label` is not valid.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool isLabelBound(const Label& label) const noexcept {
     return isLabelBound(label.id());
   }
 
-  //! Returns LabelEntry of the given label `id`.
-  ASMJIT_INLINE_NODEBUG LabelEntry* labelEntry(uint32_t labelId) const noexcept {
-    return isLabelValid(labelId) ? _labelEntries[labelId] : static_cast<LabelEntry*>(nullptr);
+  //! Returns LabelEntry of the given label identifier `labelId` (or `label` if you are using overloads).
+  //!
+  //! \attention The passed `labelId` must be valid as it's used as an index to `_labelEntries[]` array. In debug
+  //! builds the array access uses an assertion, but such assertion is not present in release builds. To get whether
+  //! a label is valid, check out \ref CodeHolder::isLabelValid() function.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG LabelEntry& labelEntry(uint32_t labelId) noexcept {
+    return _labelEntries[labelId];
   }
 
-  //! Returns LabelEntry of the given `label`.
-  ASMJIT_INLINE_NODEBUG LabelEntry* labelEntry(const Label& label) const noexcept {
+  //! \overload
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const LabelEntry& labelEntry(uint32_t labelId) const noexcept {
+    return _labelEntries[labelId];
+  }
+
+  //! \overload
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG LabelEntry& labelEntry(const Label& label) noexcept {
+    return labelEntry(label.id());
+  }
+
+  //! \overload
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG const LabelEntry& labelEntry(const Label& label) const noexcept {
     return labelEntry(label.id());
   }
 
   //! Returns offset of a `Label` by its `labelId`.
   //!
-  //! The offset returned is relative to the start of the section. Zero offset is returned for unbound labels,
-  //! which is their initial offset value.
+  //! The offset returned is relative to the start of the section where the label is bound. Zero offset is returned
+  //! for unbound labels, which is their initial offset value.
+  //!
+  //! \attention The passed `labelId` must be valid as it's used as an index to `_labelEntries[]` array. In debug
+  //! builds the array access uses an assertion, but such assertion is not present in release builds. To get whether
+  //! a label is valid, check out \ref CodeHolder::isLabelValid() function.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t labelOffset(uint32_t labelId) const noexcept {
     ASMJIT_ASSERT(isLabelValid(labelId));
-    return _labelEntries[labelId]->offset();
+    return _labelEntries[labelId].offset();
   }
 
   //! \overload
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint64_t labelOffset(const Label& label) const noexcept {
     return labelOffset(label.id());
   }
 
   //! Returns offset of a label by it's `labelId` relative to the base offset.
   //!
-  //! \remarks The offset of the section where the label is bound must be valid in order to use this function,
-  //! otherwise the value returned will not be reliable.
+  //! \attention The passed `labelId` must be valid as it's used as an index to `_labelEntries[]` array. In debug
+  //! builds the array access uses an assertion, but such assertion is not present in release builds. To get whether
+  //! a label is valid, check out \ref CodeHolder::isLabelValid() function.
+  //!
+  //! \note The offset of the section where the label is bound must be valid in order to use this function, otherwise
+  //! the value returned will not be reliable. Typically, sections have offsets when they are flattened, see \ref
+  //! CodeHolder::flatten() function for more details.
+  [[nodiscard]]
   inline uint64_t labelOffsetFromBase(uint32_t labelId) const noexcept {
     ASMJIT_ASSERT(isLabelValid(labelId));
-    const LabelEntry* le = _labelEntries[labelId];
-    return (le->isBound() ? le->section()->offset() : uint64_t(0)) + le->offset();
+
+    const LabelEntry& le = _labelEntries[labelId];
+    return (le.isBound() ? _sections[le.sectionId()]->offset() : uint64_t(0)) + le.offset();
   }
 
   //! \overload
+  [[nodiscard]]
   inline uint64_t labelOffsetFromBase(const Label& label) const noexcept {
     return labelOffsetFromBase(label.id());
   }
 
-  //! Creates a new anonymous label and return its id in `idOut`.
+  //! Creates a new anonymous label and return its id in `labelIdOut`.
   //!
   //! Returns `Error`, does not report error to `ErrorHandler`.
-  ASMJIT_API Error newLabelEntry(LabelEntry** entryOut) noexcept;
+  [[nodiscard]]
+  ASMJIT_API Error newLabelId(uint32_t* labelIdOut) noexcept;
 
   //! Creates a new named \ref LabelEntry of the given label `type`.
   //!
@@ -945,12 +1094,14 @@ public:
   //! addition, AsmJit supports named anonymous labels, which are useful only for debugging purposes as the
   //! anonymous name will have a name, which will be formatted, but the label itself cannot be queried by such
   //! name.
-  ASMJIT_API Error newNamedLabelEntry(LabelEntry** entryOut, const char* name, size_t nameSize, LabelType type, uint32_t parentId = Globals::kInvalidId) noexcept;
+  [[nodiscard]]
+  ASMJIT_API Error newNamedLabelId(uint32_t* labelIdOut, const char* name, size_t nameSize, LabelType type, uint32_t parentId = Globals::kInvalidId) noexcept;
 
   //! Returns a label by name.
   //!
   //! If the named label doesn't a default constructed \ref Label is returned,
   //! which has its id set to \ref Globals::kInvalidId.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG Label labelByName(const char* name, size_t nameSize = SIZE_MAX, uint32_t parentId = Globals::kInvalidId) noexcept {
     return Label(labelIdByName(name, nameSize, parentId));
   }
@@ -958,22 +1109,27 @@ public:
   //! Returns a label id by name.
   //!
   //! If the named label doesn't exist \ref Globals::kInvalidId is returned.
+  [[nodiscard]]
   ASMJIT_API uint32_t labelIdByName(const char* name, size_t nameSize = SIZE_MAX, uint32_t parentId = Globals::kInvalidId) noexcept;
 
-  //! Tests whether there are any unresolved label links.
-  ASMJIT_INLINE_NODEBUG bool hasUnresolvedLinks() const noexcept { return _unresolvedLinkCount != 0; }
-  //! Returns the number of label links, which are unresolved.
-  ASMJIT_INLINE_NODEBUG size_t unresolvedLinkCount() const noexcept { return _unresolvedLinkCount; }
+  //! Tests whether there are any unresolved fixups related to unbound labels.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG bool hasUnresolvedFixups() const noexcept { return _unresolvedFixupCount != 0u; }
+
+  //! Returns the number of unresolved fixups.
+  [[nodiscard]]
+  ASMJIT_INLINE_NODEBUG size_t unresolvedFixupCount() const noexcept { return _unresolvedFixupCount; }
 
   //! Creates a new label-link used to store information about yet unbound labels.
   //!
   //! Returns `null` if the allocation failed.
-  ASMJIT_API LabelLink* newLabelLink(LabelEntry* le, uint32_t sectionId, size_t offset, intptr_t rel, const OffsetFormat& format) noexcept;
+  [[nodiscard]]
+  ASMJIT_API Fixup* newFixup(LabelEntry& le, uint32_t sectionId, size_t offset, intptr_t rel, const OffsetFormat& format) noexcept;
 
-  //! Resolves cross-section links (`LabelLink`) associated with each label that was used as a destination in code
-  //! of a different section. It's only useful to people that use multiple sections as it will do nothing if the code
-  //! only contains a single section in which cross-section links are not possible.
-  ASMJIT_API Error resolveUnresolvedLinks() noexcept;
+  //! Resolves cross-section fixups associated with each label that was used as a destination in code of a different
+  //! section. It's only useful to people that use multiple sections as it will do nothing if the code only contains
+  //! a single section in which cross-section fixups are not possible.
+  ASMJIT_API Error resolveCrossSectionFixups() noexcept;
 
   //! Binds a label to a given `sectionId` and `offset` (relative to start of the section).
   //!
@@ -986,16 +1142,21 @@ public:
   //! \{
 
   //! Tests whether the code contains relocation entries.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasRelocEntries() const noexcept { return !_relocations.empty(); }
+
   //! Returns array of `RelocEntry*` records.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG const ZoneVector<RelocEntry*>& relocEntries() const noexcept { return _relocations; }
 
   //! Returns a RelocEntry of the given `id`.
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG RelocEntry* relocEntry(uint32_t id) const noexcept { return _relocations[id]; }
 
   //! Creates a new relocation entry of type `relocType`.
   //!
   //! Additional fields can be set after the relocation entry was created.
+  [[nodiscard]]
   ASMJIT_API Error newRelocEntry(RelocEntry** dst, RelocType relocType) noexcept;
 
   //! \}
@@ -1013,15 +1174,17 @@ public:
   //! \note All sections will be iterated over and the code size returned would represent the minimum code size of
   //! all combined sections after applying minimum alignment. Code size may decrease after calling `flatten()` and
   //! `relocateToBase()`.
+  [[nodiscard]]
   ASMJIT_API size_t codeSize() const noexcept;
 
   //! Relocates the code to the given `baseAddress`.
   //!
   //! \param baseAddress Absolute base address where the code will be relocated to. Please note that nothing is
-  //! copied to such base address, it's just an absolute value used by the relocator to resolve all stored relocations.
+  //! copied to such base address, it's just an absolute value used by the relocation code to resolve all stored
+  //! relocations.
   //!
   //! \note This should never be called more than once.
-  ASMJIT_API Error relocateToBase(uint64_t baseAddress) noexcept;
+  ASMJIT_API Error relocateToBase(uint64_t baseAddress, RelocationSummary* summaryOut = nullptr) noexcept;
 
   //! Copies a single section into `dst`.
   ASMJIT_API Error copySectionData(void* dst, size_t dstSize, uint32_t sectionId, CopySectionFlags copyFlags = CopySectionFlags::kNone) noexcept;

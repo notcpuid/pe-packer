@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_A64INSTDB_H_INCLUDED
@@ -29,7 +29,7 @@ enum InstFlags : uint32_t {
   //! SIMD element access of half-words can only be used with v0..15.
   kInstFlagVH0_15 = 0x00000010u,
 
-  //! Instruction may consecutive registers if the number of operands is greater than 2.
+  //! Instruction uses consecutive registers if the number of operands is greater than 2.
   kInstFlagConsecutive = 0x00000080u
 };
 
@@ -47,9 +47,13 @@ struct InstInfo {
   //! \name Accessors
   //! \{
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t rwInfoIndex() const noexcept { return _rwInfoIndex; }
+
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG uint32_t flags() const noexcept { return _flags; }
 
+  [[nodiscard]]
   ASMJIT_INLINE_NODEBUG bool hasFlag(uint32_t flag) const { return (_flags & flag) != 0; }
 
   //! \}
@@ -57,6 +61,7 @@ struct InstInfo {
 
 ASMJIT_VARAPI const InstInfo _instInfoTable[];
 
+[[nodiscard]]
 static inline const InstInfo& infoById(InstId instId) noexcept {
   instId &= uint32_t(InstIdParts::kRealId);
   ASMJIT_ASSERT(Inst::isDefinedId(instId));

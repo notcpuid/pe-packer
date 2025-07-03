@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_X86_X86OPCODE_P_H_INCLUDED
@@ -173,8 +173,6 @@ struct Opcode {
     kCDTT_FVM      = kCDTT_ByLL,
     kCDTT_T1S      = kCDTT_None,
     kCDTT_T1F      = kCDTT_None,
-    kCDTT_T1_4X    = kCDTT_None,
-    kCDTT_T4X      = kCDTT_None,           // Alias to have only 3 letters.
     kCDTT_T2       = kCDTT_None,
     kCDTT_T4       = kCDTT_None,
     kCDTT_T8       = kCDTT_None,

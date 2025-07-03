@@ -1,32 +1,14 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
-
-// ----------------------------------------------------------------------------
-// IMPORTANT: AsmJit now uses an external instruction database to populate
-// static tables within this file. Perform the following steps to regenerate
-// all tables enclosed by ${...}:
-//
-//   1. Install node.js environment <https://nodejs.org>
-//   2. Go to asmjit/tools directory
-//   3. Get the latest asmdb from <https://github.com/asmjit/asmdb> and
-//      copy/link the `asmdb` directory to `asmjit/tools/asmdb`.
-//   4. Execute `node tablegen-x86.js`
-//
-// Instruction encoding and opcodes were added to the `x86inst.cpp` database
-// manually in the past and they are not updated by the script as it became
-// tricky. However, everything else is updated including instruction operands
-// and tables required to validate them, instruction read/write information
-// (including registers and flags), and all indexes to all tables.
-// ----------------------------------------------------------------------------
 
 #include "../core/api-build_p.h"
 #if !defined(ASMJIT_NO_X86)
 
 #include "../core/cpuinfo.h"
+#include "../core/instdb_p.h"
 #include "../core/misc_p.h"
-#include "../core/support_p.h"
 #include "../x86/x86instapi_p.h"
 #include "../x86/x86instdb_p.h"
 #include "../x86/x86opcode_p.h"
@@ -34,63 +16,43 @@
 
 ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 
+namespace InstInternal {
+
 // x86::InstInternal - Text
 // ========================
 
 #ifndef ASMJIT_NO_TEXT
-Error InstInternal::instIdToString(Arch arch, InstId instId, String& output) noexcept {
-  DebugUtils::unused(arch);
-
+Error instIdToString(InstId instId, InstStringifyOptions options, String& output) noexcept {
   if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId)))
     return DebugUtils::errored(kErrorInvalidInstruction);
 
-  char nameData[32];
-  size_t nameSize = Support::decodeInstName(nameData, InstDB::_instNameIndexTable[instId], InstDB::_instNameStringTable);
-
-  return output.append(nameData, nameSize);
+  return InstNameUtils::decode(InstDB::_instNameIndexTable[instId], options, InstDB::_instNameStringTable, output);
 }
 
-InstId InstInternal::stringToInstId(Arch arch, const char* s, size_t len) noexcept {
-  DebugUtils::unused(arch);
-
-  if (ASMJIT_UNLIKELY(!s))
-    return Inst::kIdNone;
-
-  if (len == SIZE_MAX)
-    len = strlen(s);
-
-  if (ASMJIT_UNLIKELY(len == 0 || len > InstDB::kMaxNameSize))
-    return Inst::kIdNone;
-
-  uint32_t prefix = uint32_t(s[0]) - 'a';
-  if (ASMJIT_UNLIKELY(prefix > 'z' - 'a'))
-    return Inst::kIdNone;
-
-  size_t base = InstDB::instNameIndex[prefix].start;
-  size_t end = InstDB::instNameIndex[prefix].end;
-
-  if (ASMJIT_UNLIKELY(!base))
-    return Inst::kIdNone;
-
-  char nameData[32];
-  for (size_t lim = end - base; lim != 0; lim >>= 1) {
-    size_t instId = base + (lim >> 1);
-    size_t nameSize = Support::decodeInstName(nameData, InstDB::_instNameIndexTable[instId], InstDB::_instNameStringTable);
-
-    int result = Support::compareStringViews(s, len, nameData, nameSize);
-    if (result < 0)
-      continue;
-
-    if (result > 0) {
-      base = instId + 1;
-      lim--;
-      continue;
-    }
-
-    return InstId(instId);
+InstId stringToInstId(const char* s, size_t len) noexcept {
+  if (ASMJIT_UNLIKELY(!s)) {
+    return BaseInst::kIdNone;
   }
 
-  return Inst::kIdNone;
+  if (len == SIZE_MAX) {
+    len = strlen(s);
+  }
+
+  if (len == 0u || len > InstDB::instNameIndex.maxNameLength) {
+    return BaseInst::kIdNone;
+  }
+
+  InstId instId = InstNameUtils::findInstruction(s, len, InstDB::_instNameIndexTable, InstDB::_instNameStringTable, InstDB::instNameIndex);
+  if (instId != BaseInst::kIdNone) {
+    return instId;
+  }
+
+  uint32_t aliasIndex = InstNameUtils::findAlias(s, len, InstDB::_aliasNameIndexTable, InstDB::_aliasNameStringTable, InstDB::kAliasTableSize);
+  if (aliasIndex != Globals::kInvalidId) {
+    return InstDB::_aliasIndexToInstId[aliasIndex];
+  }
+
+  return BaseInst::kIdNone;
 }
 #endif // !ASMJIT_NO_TEXT
 
@@ -101,81 +63,81 @@ InstId InstInternal::stringToInstId(Arch arch, const char* s, size_t len) noexce
 struct X86ValidationData {
   //! Allowed registers by \ref RegType.
   RegMask allowedRegMask[uint32_t(RegType::kMaxValue) + 1];
-  uint32_t allowedMemBaseRegs;
+  uint32_t allowedMemUniRegs;
   uint32_t allowedMemIndexRegs;
 };
 
 #define VALUE(x) \
-  (x == uint32_t(RegType::kX86_GpbLo)) ? InstDB::OpFlags::kRegGpbLo : \
-  (x == uint32_t(RegType::kX86_GpbHi)) ? InstDB::OpFlags::kRegGpbHi : \
-  (x == uint32_t(RegType::kX86_Gpw  )) ? InstDB::OpFlags::kRegGpw   : \
-  (x == uint32_t(RegType::kX86_Gpd  )) ? InstDB::OpFlags::kRegGpd   : \
-  (x == uint32_t(RegType::kX86_Gpq  )) ? InstDB::OpFlags::kRegGpq   : \
-  (x == uint32_t(RegType::kX86_Xmm  )) ? InstDB::OpFlags::kRegXmm   : \
-  (x == uint32_t(RegType::kX86_Ymm  )) ? InstDB::OpFlags::kRegYmm   : \
-  (x == uint32_t(RegType::kX86_Zmm  )) ? InstDB::OpFlags::kRegZmm   : \
+  (x == uint32_t(RegType::kPC       )) ? InstDB::OpFlags::kNone     : \
+  (x == uint32_t(RegType::kGp8Lo    )) ? InstDB::OpFlags::kRegGpbLo : \
+  (x == uint32_t(RegType::kGp8Hi    )) ? InstDB::OpFlags::kRegGpbHi : \
+  (x == uint32_t(RegType::kGp16     )) ? InstDB::OpFlags::kRegGpw   : \
+  (x == uint32_t(RegType::kGp32     )) ? InstDB::OpFlags::kRegGpd   : \
+  (x == uint32_t(RegType::kGp64     )) ? InstDB::OpFlags::kRegGpq   : \
+  (x == uint32_t(RegType::kVec128   )) ? InstDB::OpFlags::kRegXmm   : \
+  (x == uint32_t(RegType::kVec256   )) ? InstDB::OpFlags::kRegYmm   : \
+  (x == uint32_t(RegType::kVec512   )) ? InstDB::OpFlags::kRegZmm   : \
+  (x == uint32_t(RegType::kMask     )) ? InstDB::OpFlags::kRegKReg  : \
   (x == uint32_t(RegType::kX86_Mm   )) ? InstDB::OpFlags::kRegMm    : \
-  (x == uint32_t(RegType::kX86_KReg )) ? InstDB::OpFlags::kRegKReg  : \
-  (x == uint32_t(RegType::kX86_SReg )) ? InstDB::OpFlags::kRegSReg  : \
-  (x == uint32_t(RegType::kX86_CReg )) ? InstDB::OpFlags::kRegCReg  : \
-  (x == uint32_t(RegType::kX86_DReg )) ? InstDB::OpFlags::kRegDReg  : \
+  (x == uint32_t(RegType::kSegment  )) ? InstDB::OpFlags::kRegSReg  : \
+  (x == uint32_t(RegType::kControl  )) ? InstDB::OpFlags::kRegCReg  : \
+  (x == uint32_t(RegType::kDebug    )) ? InstDB::OpFlags::kRegDReg  : \
   (x == uint32_t(RegType::kX86_St   )) ? InstDB::OpFlags::kRegSt    : \
   (x == uint32_t(RegType::kX86_Bnd  )) ? InstDB::OpFlags::kRegBnd   : \
-  (x == uint32_t(RegType::kX86_Tmm  )) ? InstDB::OpFlags::kRegTmm   : \
-  (x == uint32_t(RegType::kX86_Rip  )) ? InstDB::OpFlags::kNone     : InstDB::OpFlags::kNone
+  (x == uint32_t(RegType::kTile     )) ? InstDB::OpFlags::kRegTmm   : InstDB::OpFlags::kNone
 static const InstDB::OpFlags _x86OpFlagFromRegType[uint32_t(RegType::kMaxValue) + 1] = { ASMJIT_LOOKUP_TABLE_32(VALUE, 0) };
 #undef VALUE
 
 #define REG_MASK_FROM_REG_TYPE_X86(x) \
-  (x == uint32_t(RegType::kX86_GpbLo)) ? 0x0000000Fu : \
-  (x == uint32_t(RegType::kX86_GpbHi)) ? 0x0000000Fu : \
-  (x == uint32_t(RegType::kX86_Gpw  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Gpd  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Gpq  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Xmm  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Ymm  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Zmm  )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kPC       )) ? 0x00000001u : \
+  (x == uint32_t(RegType::kGp8Lo    )) ? 0x0000000Fu : \
+  (x == uint32_t(RegType::kGp8Hi    )) ? 0x0000000Fu : \
+  (x == uint32_t(RegType::kGp16     )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kGp32     )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kGp64     )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kVec128   )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kVec256   )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kVec512   )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kMask     )) ? 0x000000FFu : \
   (x == uint32_t(RegType::kX86_Mm   )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_KReg )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_SReg )) ? 0x0000007Eu : \
-  (x == uint32_t(RegType::kX86_CReg )) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_DReg )) ? 0x000000FFu : \
+  (x == uint32_t(RegType::kSegment  )) ? 0x0000007Eu : \
+  (x == uint32_t(RegType::kControl  )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kDebug    )) ? 0x000000FFu : \
   (x == uint32_t(RegType::kX86_St   )) ? 0x000000FFu : \
   (x == uint32_t(RegType::kX86_Bnd  )) ? 0x0000000Fu : \
-  (x == uint32_t(RegType::kX86_Tmm  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Rip  )) ? 0x00000001u : 0u
+  (x == uint32_t(RegType::kTile     )) ? 0x000000FFu : 0u
 
 #define REG_MASK_FROM_REG_TYPE_X64(x) \
-  (x == uint32_t(RegType::kX86_GpbLo)) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_GpbHi)) ? 0x0000000Fu : \
-  (x == uint32_t(RegType::kX86_Gpw  )) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_Gpd  )) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_Gpq  )) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_Xmm  )) ? 0xFFFFFFFFu : \
-  (x == uint32_t(RegType::kX86_Ymm  )) ? 0xFFFFFFFFu : \
-  (x == uint32_t(RegType::kX86_Zmm  )) ? 0xFFFFFFFFu : \
+  (x == uint32_t(RegType::kPC       )) ? 0x00000001u : \
+  (x == uint32_t(RegType::kGp8Lo    )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kGp8Hi    )) ? 0x0000000Fu : \
+  (x == uint32_t(RegType::kGp16     )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kGp32     )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kGp64     )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kVec128   )) ? 0xFFFFFFFFu : \
+  (x == uint32_t(RegType::kVec256   )) ? 0xFFFFFFFFu : \
+  (x == uint32_t(RegType::kVec512   )) ? 0xFFFFFFFFu : \
+  (x == uint32_t(RegType::kMask     )) ? 0x000000FFu : \
   (x == uint32_t(RegType::kX86_Mm   )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_KReg )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_SReg )) ? 0x0000007Eu : \
-  (x == uint32_t(RegType::kX86_CReg )) ? 0x0000FFFFu : \
-  (x == uint32_t(RegType::kX86_DReg )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kSegment  )) ? 0x0000007Eu : \
+  (x == uint32_t(RegType::kControl  )) ? 0x0000FFFFu : \
+  (x == uint32_t(RegType::kDebug    )) ? 0x0000FFFFu : \
   (x == uint32_t(RegType::kX86_St   )) ? 0x000000FFu : \
   (x == uint32_t(RegType::kX86_Bnd  )) ? 0x0000000Fu : \
-  (x == uint32_t(RegType::kX86_Tmm  )) ? 0x000000FFu : \
-  (x == uint32_t(RegType::kX86_Rip  )) ? 0x00000001u : 0u
+  (x == uint32_t(RegType::kTile     )) ? 0x000000FFu : 0u
 
 #define B(RegType) (uint32_t(1) << uint32_t(RegType))
 
 static const X86ValidationData _x86ValidationData = {
   { ASMJIT_LOOKUP_TABLE_32(REG_MASK_FROM_REG_TYPE_X86, 0) },
-  B(RegType::kX86_Gpw) | B(RegType::kX86_Gpd) | B(RegType::kX86_Rip) | B(RegType::kLabelTag),
-  B(RegType::kX86_Gpw) | B(RegType::kX86_Gpd) | B(RegType::kX86_Xmm) | B(RegType::kX86_Ymm) | B(RegType::kX86_Zmm)
+  B(RegType::kGp16) | B(RegType::kGp32) | B(RegType::kPC)     | B(RegType::kLabelTag),
+  B(RegType::kGp16) | B(RegType::kGp32) | B(RegType::kVec128) | B(RegType::kVec256) | B(RegType::kVec512)
 };
 
 static const X86ValidationData _x64ValidationData = {
   { ASMJIT_LOOKUP_TABLE_32(REG_MASK_FROM_REG_TYPE_X64, 0) },
-  B(RegType::kX86_Gpd) | B(RegType::kX86_Gpq) | B(RegType::kX86_Rip) | B(RegType::kLabelTag),
-  B(RegType::kX86_Gpd) | B(RegType::kX86_Gpq) | B(RegType::kX86_Xmm) | B(RegType::kX86_Ymm) | B(RegType::kX86_Zmm)
+  B(RegType::kGp32) | B(RegType::kGp64) | B(RegType::kPC)     | B(RegType::kLabelTag),
+  B(RegType::kGp32) | B(RegType::kGp64) | B(RegType::kVec128) | B(RegType::kVec256) | B(RegType::kVec512)
 };
 
 #undef B
@@ -183,11 +145,11 @@ static const X86ValidationData _x64ValidationData = {
 #undef REG_MASK_FROM_REG_TYPE_X64
 #undef REG_MASK_FROM_REG_TYPE_X86
 
-static ASMJIT_FORCE_INLINE bool x86IsZmmOrM512(const Operand_& op) noexcept {
-  return Reg::isZmm(op) || (op.isMem() && op.x86RmSize() == 64);
+static ASMJIT_INLINE bool x86IsZmmOrM512(const Operand_& op) noexcept {
+  return op.isVec512() || (op.isMem() && op.as<Mem>().size() == 64);
 }
 
-static ASMJIT_FORCE_INLINE bool x86CheckOSig(const InstDB::OpSignature& op, const InstDB::OpSignature& ref, bool& immOutOfRange) noexcept {
+static ASMJIT_INLINE bool x86CheckOSig(const InstDB::OpSignature& op, const InstDB::OpSignature& ref, bool& immOutOfRange) noexcept {
   // Fail if operand types are incompatible.
   InstDB::OpFlags commonFlags = op.flags() & ref.flags();
 
@@ -203,38 +165,32 @@ static ASMJIT_FORCE_INLINE bool x86CheckOSig(const InstDB::OpSignature& op, cons
 
   // Fail if some memory specific flags do not match.
   if (Support::test(commonFlags, InstDB::OpFlags::kMemMask)) {
-    if (ref.hasFlag(InstDB::OpFlags::kFlagMemBase) && !op.hasFlag(InstDB::OpFlags::kFlagMemBase))
+    if (ref.hasFlag(InstDB::OpFlags::kFlagMemBase) && !op.hasFlag(InstDB::OpFlags::kFlagMemBase)) {
       return false;
+    }
   }
 
   // Fail if register indexes do not match.
   if (Support::test(commonFlags, InstDB::OpFlags::kRegMask)) {
-    if (ref.regMask() && !Support::test(op.regMask(), ref.regMask()))
+    if (ref.regMask() && !Support::test(op.regMask(), ref.regMask())) {
       return false;
+    }
   }
 
   return true;
 }
 
-ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, const Operand_* operands, size_t opCount, ValidationFlags validationFlags) noexcept {
-  // Only called when `arch` matches X86 family.
-  ASMJIT_ASSERT(Environment::isFamilyX86(arch));
-
-  const X86ValidationData* vd;
-  if (arch == Arch::kX86)
-    vd = &_x86ValidationData;
-  else
-    vd = &_x64ValidationData;
-
+static ASMJIT_FAVOR_SIZE Error validate(InstDB::Mode mode, const BaseInst& inst, const Operand_* operands, size_t opCount, ValidationFlags validationFlags) noexcept {
   uint32_t i;
-  InstDB::Mode mode = InstDB::modeFromArch(arch);
 
   // Get the instruction data.
+  const X86ValidationData* vd = (mode == InstDB::Mode::kX86) ? &_x86ValidationData : &_x64ValidationData;
   InstId instId = inst.id();
   InstOptions options = inst.options();
 
-  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId)))
+  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId))) {
     return DebugUtils::errored(kErrorInvalidInstruction);
+  }
 
   const InstDB::InstInfo& instInfo = InstDB::infoById(instId);
   const InstDB::CommonInfo& commonInfo = instInfo.commonInfo();
@@ -250,22 +206,27 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
 
   if (Support::test(options, InstOptions::kX86_Lock | kXAcqXRel)) {
     if (Support::test(options, InstOptions::kX86_Lock)) {
-      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kLock) && !Support::test(options, kXAcqXRel)))
+      if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kLock) && !Support::test(options, kXAcqXRel))) {
         return DebugUtils::errored(kErrorInvalidLockPrefix);
+      }
 
-      if (ASMJIT_UNLIKELY(opCount < 1 || !operands[0].isMem()))
+      if (ASMJIT_UNLIKELY(opCount < 1 || !operands[0].isMem())) {
         return DebugUtils::errored(kErrorInvalidLockPrefix);
+      }
     }
 
     if (Support::test(options, kXAcqXRel)) {
-      if (ASMJIT_UNLIKELY(!Support::test(options, InstOptions::kX86_Lock) || (options & kXAcqXRel) == kXAcqXRel))
+      if (ASMJIT_UNLIKELY(!Support::test(options, InstOptions::kX86_Lock) || (options & kXAcqXRel) == kXAcqXRel)) {
         return DebugUtils::errored(kErrorInvalidPrefixCombination);
+      }
 
-      if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XAcquire) && !Support::test(iFlags, InstDB::InstFlags::kXAcquire)))
+      if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XAcquire) && !Support::test(iFlags, InstDB::InstFlags::kXAcquire))) {
         return DebugUtils::errored(kErrorInvalidXAcquirePrefix);
+      }
 
-      if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XRelease) && !Support::test(iFlags, InstDB::InstFlags::kXRelease)))
+      if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_XRelease) && !Support::test(iFlags, InstDB::InstFlags::kXRelease))) {
         return DebugUtils::errored(kErrorInvalidXReleasePrefix);
+      }
     }
   }
 
@@ -273,11 +234,13 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
   // -------------------------------
 
   if (Support::test(options, kRepAny)) {
-    if (ASMJIT_UNLIKELY((options & kRepAny) == kRepAny))
+    if (ASMJIT_UNLIKELY((options & kRepAny) == kRepAny)) {
       return DebugUtils::errored(kErrorInvalidPrefixCombination);
+    }
 
-    if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kRep)))
+    if (ASMJIT_UNLIKELY(!Support::test(iFlags, InstDB::InstFlags::kRep))) {
       return DebugUtils::errored(kErrorInvalidRepPrefix);
+    }
   }
 
   // Translate Each Operand to the Corresponding OpSignature
@@ -290,37 +253,42 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
 
   for (i = 0; i < opCount; i++) {
     const Operand_& op = operands[i];
-    if (op.opType() == OperandType::kNone)
+    if (op.opType() == OperandType::kNone) {
       break;
+    }
 
     InstDB::OpFlags opFlags = InstDB::OpFlags::kNone;
     RegMask regMask = 0;
 
     switch (op.opType()) {
       case OperandType::kReg: {
-        RegType regType = op.as<BaseReg>().type();
+        RegType regType = op.as<Reg>().regType();
         opFlags = _x86OpFlagFromRegType[size_t(regType)];
 
-        if (ASMJIT_UNLIKELY(opFlags == InstDB::OpFlags::kNone))
+        if (ASMJIT_UNLIKELY(opFlags == InstDB::OpFlags::kNone)) {
           return DebugUtils::errored(kErrorInvalidRegType);
+        }
 
         // If `regId` is equal or greater than Operand::kVirtIdMin it means that the register is virtual and its
         // index will be assigned later by the register allocator. We must pass unless asked to disallow virtual
         // registers.
         uint32_t regId = op.id();
         if (regId < Operand::kVirtIdMin) {
-          if (ASMJIT_UNLIKELY(regId >= 32))
+          if (ASMJIT_UNLIKELY(regId >= 32)) {
             return DebugUtils::errored(kErrorInvalidPhysId);
+          }
 
-          if (ASMJIT_UNLIKELY(Support::bitTest(vd->allowedRegMask[size_t(regType)], regId) == 0))
+          if (ASMJIT_UNLIKELY(Support::bitTest(vd->allowedRegMask[size_t(regType)], regId) == 0)) {
             return DebugUtils::errored(kErrorInvalidPhysId);
+          }
 
           regMask = Support::bitMask(regId);
           combinedRegMask |= regMask;
         }
         else {
-          if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0)
+          if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0) {
             return DebugUtils::errored(kErrorIllegalVirtReg);
+          }
           regMask = 0xFFFFFFFFu;
         }
         break;
@@ -335,18 +303,21 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
         RegType baseType = m.baseType();
         RegType indexType = m.indexType();
 
-        if (m.segmentId() > 6)
+        if (m.segmentId() > 6) {
           return DebugUtils::errored(kErrorInvalidSegment);
+        }
 
         // Validate AVX-512 broadcast {1tox}.
         if (m.hasBroadcast()) {
           if (memSize != 0) {
             // If the size is specified it has to match the broadcast size.
-            if (ASMJIT_UNLIKELY(commonInfo.hasAvx512B32() && memSize != 4))
+            if (ASMJIT_UNLIKELY(commonInfo.hasAvx512B32() && memSize != 4)) {
               return DebugUtils::errored(kErrorInvalidBroadcast);
+            }
 
-            if (ASMJIT_UNLIKELY(commonInfo.hasAvx512B64() && memSize != 8))
+            if (ASMJIT_UNLIKELY(commonInfo.hasAvx512B64() && memSize != 8)) {
               return DebugUtils::errored(kErrorInvalidBroadcast);
+            }
           }
           else {
             // If there is no size we implicitly calculate it so we can validate N in {1toN} properly.
@@ -364,17 +335,17 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
             // Home address of a virtual register. In such case we don't want to validate the type of the
             // base register as it will always be patched to ESP|RSP.
           }
-          else {
-            if (ASMJIT_UNLIKELY(!Support::bitTest(vd->allowedMemBaseRegs, baseType)))
-              return DebugUtils::errored(kErrorInvalidAddress);
+          else if (ASMJIT_UNLIKELY(!Support::bitTest(vd->allowedMemUniRegs, baseType))) {
+            return DebugUtils::errored(kErrorInvalidAddress);
           }
 
           // Create information that will be validated only if this is an implicit memory operand. Basically
           // only usable for string instructions and other instructions where memory operand is implicit and
           // has 'seg:[reg]' form.
           if (baseId < Operand::kVirtIdMin) {
-            if (ASMJIT_UNLIKELY(baseId >= 32))
+            if (ASMJIT_UNLIKELY(baseId >= 32)) {
               return DebugUtils::errored(kErrorInvalidPhysId);
+            }
 
             // Physical base id.
             regMask = Support::bitMask(baseId);
@@ -383,13 +354,15 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
           else {
             // Virtual base id - fill the whole mask for implicit mem validation. The register is not assigned
             // yet, so we cannot predict the phys id.
-            if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0)
+            if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0) {
               return DebugUtils::errored(kErrorIllegalVirtReg);
+            }
             regMask = 0xFFFFFFFFu;
           }
 
-          if (indexType == RegType::kNone && !m.offsetLo32())
+          if (indexType == RegType::kNone && !m.offsetLo32()) {
             opFlags |= InstDB::OpFlags::kFlagMemBase;
+          }
         }
         else if (baseType == RegType::kLabelTag) {
           // [Label] - there is no need to validate the base as it's label.
@@ -400,18 +373,21 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
           if (!Support::isInt32(offset)) {
             if (mode == InstDB::Mode::kX86) {
               // 32-bit mode: Make sure that the address is either `int32_t` or `uint32_t`.
-              if (!Support::isUInt32(offset))
+              if (!Support::isUInt32(offset)) {
                 return DebugUtils::errored(kErrorInvalidAddress64Bit);
+              }
             }
             else {
               // 64-bit mode: Zero extension is allowed if the address has 32-bit index register or the address
               // has no index register (it's still encodable).
               if (indexType != RegType::kNone) {
-                if (!Support::isUInt32(offset))
+                if (!Support::isUInt32(offset)) {
                   return DebugUtils::errored(kErrorInvalidAddress64Bit);
+                }
 
-                if (indexType != RegType::kX86_Gpd)
+                if (indexType != RegType::kGp32) {
                   return DebugUtils::errored(kErrorInvalidAddress64BitZeroExtension);
+                }
               }
               else {
                 // We don't validate absolute 64-bit addresses without an index register as this also depends
@@ -422,16 +398,17 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
         }
 
         if (indexType != RegType::kNone) {
-          if (ASMJIT_UNLIKELY(!Support::bitTest(vd->allowedMemIndexRegs, indexType)))
+          if (ASMJIT_UNLIKELY(!Support::bitTest(vd->allowedMemIndexRegs, indexType))) {
             return DebugUtils::errored(kErrorInvalidAddress);
+          }
 
-          if (indexType == RegType::kX86_Xmm) {
+          if (indexType == RegType::kVec128) {
             opFlags |= InstDB::OpFlags::kVm32x | InstDB::OpFlags::kVm64x;
           }
-          else if (indexType == RegType::kX86_Ymm) {
+          else if (indexType == RegType::kVec256) {
             opFlags |= InstDB::OpFlags::kVm32y | InstDB::OpFlags::kVm64y;
           }
-          else if (indexType == RegType::kX86_Zmm) {
+          else if (indexType == RegType::kVec512) {
             opFlags |= InstDB::OpFlags::kVm32z | InstDB::OpFlags::kVm64z;
           }
           else {
@@ -440,19 +417,20 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
           }
 
           // [RIP + {XMM|YMM|ZMM}] is not allowed.
-          if (baseType == RegType::kX86_Rip && Support::test(opFlags, InstDB::OpFlags::kVmMask))
+          if (baseType == RegType::kPC && Support::test(opFlags, InstDB::OpFlags::kVmMask)) {
             return DebugUtils::errored(kErrorInvalidAddress);
+          }
 
           uint32_t indexId = m.indexId();
           if (indexId < Operand::kVirtIdMin) {
-            if (ASMJIT_UNLIKELY(indexId >= 32))
+            if (ASMJIT_UNLIKELY(indexId >= 32)) {
               return DebugUtils::errored(kErrorInvalidPhysId);
+            }
 
             combinedRegMask |= Support::bitMask(indexId);
           }
-          else {
-            if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0)
-              return DebugUtils::errored(kErrorIllegalVirtReg);
+          else if (uint32_t(validationFlags & ValidationFlags::kEnableVirtRegs) == 0) {
+            return DebugUtils::errored(kErrorIllegalVirtReg);
           }
 
           // Only used for implicit memory operands having 'seg:[reg]' form, so clear it.
@@ -482,47 +460,62 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
         uint64_t immValue = op.as<Imm>().valueAs<uint64_t>();
 
         if (int64_t(immValue) >= 0) {
-          if (immValue <= 0x7u)
+          if (immValue <= 0x7u) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmU16 | InstDB::OpFlags::kImmI8  | InstDB::OpFlags::kImmU8  |
                       InstDB::OpFlags::kImmI4  | InstDB::OpFlags::kImmU4  ;
-          else if (immValue <= 0xFu)
+          }
+          else if (immValue <= 0xFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmU16 | InstDB::OpFlags::kImmI8  | InstDB::OpFlags::kImmU8  |
                       InstDB::OpFlags::kImmU4  ;
-          else if (immValue <= 0x7Fu)
+          }
+          else if (immValue <= 0x7Fu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmU16 | InstDB::OpFlags::kImmI8  | InstDB::OpFlags::kImmU8  ;
-          else if (immValue <= 0xFFu)
+          }
+          else if (immValue <= 0xFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmU16 | InstDB::OpFlags::kImmU8  ;
-          else if (immValue <= 0x7FFFu)
+          }
+          else if (immValue <= 0x7FFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmU16 ;
-          else if (immValue <= 0xFFFFu)
+          }
+          else if (immValue <= 0xFFFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32 |
                       InstDB::OpFlags::kImmU16 ;
-          else if (immValue <= 0x7FFFFFFFu)
+          }
+          else if (immValue <= 0x7FFFFFFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmU32;
-          else if (immValue <= 0xFFFFFFFFu)
+          }
+          else if (immValue <= 0xFFFFFFFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64 | InstDB::OpFlags::kImmU32;
-          else if (immValue <= 0x7FFFFFFFFFFFFFFFu)
+          }
+          else if (immValue <= 0x7FFFFFFFFFFFFFFFu) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmU64;
-          else
+          }
+          else {
             opFlags = InstDB::OpFlags::kImmU64;
+          }
         }
         else {
           immValue = Support::neg(immValue);
-          if (immValue <= 0x8u)
+          if (immValue <= 0x8u) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmI8 | InstDB::OpFlags::kImmI4;
-          else if (immValue <= 0x80u)
+          }
+          else if (immValue <= 0x80u) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmI16 | InstDB::OpFlags::kImmI8;
-          else if (immValue <= 0x8000u)
+          }
+          else if (immValue <= 0x8000u) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmI32 | InstDB::OpFlags::kImmI16;
-          else if (immValue <= 0x80000000u)
+          }
+          else if (immValue <= 0x80000000u) {
             opFlags = InstDB::OpFlags::kImmI64 | InstDB::OpFlags::kImmI32;
-          else
+          }
+          else {
             opFlags = InstDB::OpFlags::kImmI64;
+          }
         }
         break;
       }
@@ -546,22 +539,26 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
   // more operands padded with none (which means that no operand is given at that index). However, validate that there
   // are no gaps (like [reg, none, reg] or [none, reg]).
   if (i < opCount) {
-    while (--opCount > i)
-      if (ASMJIT_UNLIKELY(!operands[opCount].isNone()))
+    while (--opCount > i) {
+      if (ASMJIT_UNLIKELY(!operands[opCount].isNone())) {
         return DebugUtils::errored(kErrorInvalidInstruction);
+      }
+    }
   }
 
   // Validate X86 and X64 specific cases.
   if (mode == InstDB::Mode::kX86) {
     // Illegal use of 64-bit register in 32-bit mode.
-    if (ASMJIT_UNLIKELY(Support::test(combinedOpFlags, InstDB::OpFlags::kRegGpq)))
+    if (ASMJIT_UNLIKELY(Support::test(combinedOpFlags, InstDB::OpFlags::kRegGpq))) {
       return DebugUtils::errored(kErrorInvalidUseOfGpq);
+    }
   }
   else {
     // Illegal use of a high 8-bit register with REX prefix.
     bool hasREX = inst.hasOption(InstOptions::kX86_Rex) || (combinedRegMask & 0xFFFFFF00u) != 0;
-    if (ASMJIT_UNLIKELY(hasREX && Support::test(combinedOpFlags, InstDB::OpFlags::kRegGpbHi)))
+    if (ASMJIT_UNLIKELY(hasREX && Support::test(combinedOpFlags, InstDB::OpFlags::kRegGpbHi))) {
       return DebugUtils::errored(kErrorInvalidUseOfGpbHi);
+    }
   }
 
   // Validate Instruction Signature by Comparing Against All `iSig` Rows
@@ -579,8 +576,9 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
 
     do {
       // Check if the architecture is compatible.
-      if (!iSig->supportsMode(mode))
+      if (!iSig->supportsMode(mode)) {
         continue;
+      }
 
       // Compare the operands table with reference operands.
       uint32_t j = 0;
@@ -588,9 +586,11 @@ ASMJIT_FAVOR_SIZE Error InstInternal::validate(Arch arch, const BaseInst& inst, 
       bool localImmOutOfRange = false;
 
       if (iSigCount == opCount) {
-        for (j = 0; j < opCount; j++)
-          if (!x86CheckOSig(oSigTranslated[j], iSig->opSignature(j), localImmOutOfRange))
+        for (j = 0; j < opCount; j++) {
+          if (!x86CheckOSig(oSigTranslated[j], iSig->opSignature(j), localImmOutOfRange)) {
             break;
+          }
+        }
       }
       else if (iSigCount - iSig->implicitOpCount() == opCount) {
         uint32_t r = 0;
@@ -601,14 +601,17 @@ Next:
           oRef = opSignatureTable + iSig->opSignatureIndex(r);
           // Skip implicit operands.
           if (oRef->isImplicit()) {
-            if (++r >= iSigCount)
+            if (++r >= iSigCount) {
               break;
-            else
+            }
+            else {
               goto Next;
+            }
           }
 
-          if (!x86CheckOSig(*oChk, *oRef, localImmOutOfRange))
+          if (!x86CheckOSig(*oChk, *oRef, localImmOutOfRange)) {
             break;
+          }
         }
       }
 
@@ -623,10 +626,12 @@ Next:
     } while (++iSig != iEnd);
 
     if (iSig == iEnd) {
-      if (globalImmOutOfRange)
+      if (globalImmOutOfRange) {
         return DebugUtils::errored(kErrorInvalidImmediate);
-      else
+      }
+      else {
         return DebugUtils::errored(kErrorInvalidInstruction);
+      }
     }
   }
 
@@ -639,25 +644,29 @@ Next:
     if (commonInfo.hasFlag(InstDB::InstFlags::kEvex)) {
       // Validate AVX-512 {z}.
       if (Support::test(options, InstOptions::kX86_ZMask)) {
-        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_ZMask) && !commonInfo.hasAvx512Z()))
+        if (ASMJIT_UNLIKELY(Support::test(options, InstOptions::kX86_ZMask) && !commonInfo.hasAvx512Z())) {
           return DebugUtils::errored(kErrorInvalidKZeroUse);
+        }
       }
 
       // Validate AVX-512 {sae} and {er}.
       if (Support::test(options, InstOptions::kX86_SAE | InstOptions::kX86_ER)) {
         // Rounding control is impossible if the instruction is not reg-to-reg.
-        if (ASMJIT_UNLIKELY(memOp))
+        if (ASMJIT_UNLIKELY(memOp)) {
           return DebugUtils::errored(kErrorInvalidEROrSAE);
+        }
 
         // Check if {sae} or {er} is supported by the instruction.
         if (Support::test(options, InstOptions::kX86_ER)) {
           // NOTE: if both {sae} and {er} are set, we don't care, as {sae} is implied.
-          if (ASMJIT_UNLIKELY(!commonInfo.hasAvx512ER()))
+          if (ASMJIT_UNLIKELY(!commonInfo.hasAvx512ER())) {
             return DebugUtils::errored(kErrorInvalidEROrSAE);
+          }
         }
         else {
-          if (ASMJIT_UNLIKELY(!commonInfo.hasAvx512SAE()))
+          if (ASMJIT_UNLIKELY(!commonInfo.hasAvx512SAE())) {
             return DebugUtils::errored(kErrorInvalidEROrSAE);
+          }
         }
 
         // {sae} and {er} are defined for either scalar ops or vector ops that require LL to be 10 (512-bit vector
@@ -670,15 +679,17 @@ Next:
 
           // There is no {er}/{sae}-enabled instruction with less than two operands.
           ASMJIT_ASSERT(opCount >= 2);
-          if (ASMJIT_UNLIKELY(!x86IsZmmOrM512(operands[0]) && !x86IsZmmOrM512(operands[1])))
+          if (ASMJIT_UNLIKELY(!x86IsZmmOrM512(operands[0]) && !x86IsZmmOrM512(operands[1]))) {
             return DebugUtils::errored(kErrorInvalidEROrSAE);
+          }
         }
       }
     }
     else {
       // Not an AVX512 instruction - maybe OpExtra is xCX register used by REP/REPNE prefix.
-      if (Support::test(options, kAvx512Options) || !Support::test(options, kRepAny))
+      if (Support::test(options, kAvx512Options) || !Support::test(options, kRepAny)) {
         return DebugUtils::errored(kErrorInvalidInstruction);
+      }
     }
   }
 
@@ -688,27 +699,32 @@ Next:
   if (extraReg.isReg()) {
     if (Support::test(options, kRepAny)) {
       // Validate REP|REPNE {cx|ecx|rcx}.
-      if (ASMJIT_UNLIKELY(Support::test(iFlags, InstDB::InstFlags::kRepIgnored)))
+      if (ASMJIT_UNLIKELY(Support::test(iFlags, InstDB::InstFlags::kRepIgnored))) {
         return DebugUtils::errored(kErrorInvalidExtraReg);
+      }
 
       if (extraReg.isPhysReg()) {
-        if (ASMJIT_UNLIKELY(extraReg.id() != Gp::kIdCx))
+        if (ASMJIT_UNLIKELY(extraReg.id() != Gp::kIdCx)) {
           return DebugUtils::errored(kErrorInvalidExtraReg);
+        }
       }
 
       // The type of the {...} register must match the type of the base register
       // of memory operand. So if the memory operand uses 32-bit register the
       // count register must also be 32-bit, etc...
-      if (ASMJIT_UNLIKELY(!memOp || extraReg.type() != memOp->baseType()))
+      if (ASMJIT_UNLIKELY(!memOp || extraReg.type() != memOp->baseType())) {
         return DebugUtils::errored(kErrorInvalidExtraReg);
+      }
     }
     else if (commonInfo.hasFlag(InstDB::InstFlags::kEvex)) {
       // Validate AVX-512 {k}.
-      if (ASMJIT_UNLIKELY(extraReg.type() != RegType::kX86_KReg))
+      if (ASMJIT_UNLIKELY(extraReg.type() != RegType::kMask)) {
         return DebugUtils::errored(kErrorInvalidExtraReg);
+      }
 
-      if (ASMJIT_UNLIKELY(extraReg.id() == 0 || !commonInfo.hasAvx512K()))
+      if (ASMJIT_UNLIKELY(extraReg.id() == 0 || !commonInfo.hasAvx512K())) {
         return DebugUtils::errored(kErrorInvalidKMaskUse);
+      }
     }
     else {
       return DebugUtils::errored(kErrorInvalidExtraReg);
@@ -717,6 +733,15 @@ Next:
 
   return kErrorOk;
 }
+
+Error validateX86(const BaseInst& inst, const Operand_* operands, size_t opCount, ValidationFlags validationFlags) noexcept {
+  return validate(InstDB::Mode::kX86, inst, operands, opCount, validationFlags);
+}
+
+Error validateX64(const BaseInst& inst, const Operand_* operands, size_t opCount, ValidationFlags validationFlags) noexcept {
+  return validate(InstDB::Mode::kX64, inst, operands, opCount, validationFlags);
+}
+
 #endif // !ASMJIT_NO_VALIDATION
 
 // x86::InstInternal - QueryRWInfo
@@ -736,15 +761,14 @@ static const Support::Array<uint64_t, uint32_t(RegGroup::kMaxValue) + 1> rwRegGr
   0x00000000000000FFu  // RIP.
 }};
 
-static ASMJIT_FORCE_INLINE void rwZeroExtendGp(OpRWInfo& opRwInfo, const Gp& reg, uint32_t nativeGpSize) noexcept {
-  ASMJIT_ASSERT(BaseReg::isGp(reg.as<Operand>()));
+static ASMJIT_INLINE void rwZeroExtendGp(OpRWInfo& opRwInfo, const Gp& reg, uint32_t nativeGpSize) noexcept {
   if (reg.size() + 4 == nativeGpSize) {
     opRwInfo.addOpFlags(OpRWFlags::kZExt);
     opRwInfo.setExtendByteMask(~opRwInfo.writeByteMask() & 0xFFu);
   }
 }
 
-static ASMJIT_FORCE_INLINE void rwZeroExtendAvxVec(OpRWInfo& opRwInfo, const Vec& reg) noexcept {
+static ASMJIT_INLINE void rwZeroExtendAvxVec(OpRWInfo& opRwInfo, const Vec& reg) noexcept {
   DebugUtils::unused(reg);
 
   uint64_t msk = ~Support::fillTrailingBits(opRwInfo.writeByteMask());
@@ -754,16 +778,16 @@ static ASMJIT_FORCE_INLINE void rwZeroExtendAvxVec(OpRWInfo& opRwInfo, const Vec
   }
 }
 
-static ASMJIT_FORCE_INLINE void rwZeroExtendNonVec(OpRWInfo& opRwInfo, const Reg& reg) noexcept {
-  uint64_t msk = ~Support::fillTrailingBits(opRwInfo.writeByteMask()) & rwRegGroupByteMask[reg.group()];
+static ASMJIT_INLINE void rwZeroExtendNonVec(OpRWInfo& opRwInfo, const Reg& reg) noexcept {
+  uint64_t msk = ~Support::fillTrailingBits(opRwInfo.writeByteMask()) & rwRegGroupByteMask[reg.regGroup()];
   if (msk) {
     opRwInfo.addOpFlags(OpRWFlags::kZExt);
     opRwInfo.setExtendByteMask(msk);
   }
 }
 
-static ASMJIT_FORCE_INLINE Error rwHandleAVX512(const BaseInst& inst, const InstDB::CommonInfo& commonInfo, InstRWInfo* out) noexcept {
-  if (inst.hasExtraReg() && inst.extraReg().type() == RegType::kX86_KReg && out->opCount() > 0) {
+static ASMJIT_INLINE Error rwHandleAVX512(const BaseInst& inst, const InstDB::CommonInfo& commonInfo, InstRWInfo* out) noexcept {
+  if (inst.hasExtraReg() && inst.extraReg().type() == RegType::kMask && out->opCount() > 0) {
     // AVX-512 instruction that uses a destination with {k} register (zeroing vs masking).
     out->_extraReg.addOpFlags(OpRWFlags::kRead);
     out->_extraReg.setReadByteMask(0xFF);
@@ -776,23 +800,26 @@ static ASMJIT_FORCE_INLINE Error rwHandleAVX512(const BaseInst& inst, const Inst
   return kErrorOk;
 }
 
-static ASMJIT_FORCE_INLINE bool hasSameRegType(const BaseReg* regs, size_t opCount) noexcept {
+static ASMJIT_INLINE bool hasSameRegType(const Reg* regs, size_t opCount) noexcept {
   ASMJIT_ASSERT(opCount > 0);
-  RegType regType = regs[0].type();
-  for (size_t i = 1; i < opCount; i++)
-    if (regs[i].type() != regType)
+  RegType regType = regs[0].regType();
+  for (size_t i = 1; i < opCount; i++) {
+    if (regs[i].regType() != regType) {
       return false;
+    }
+  }
   return true;
 }
 
-Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_* operands, size_t opCount, InstRWInfo* out) noexcept {
+Error queryRWInfo(Arch arch, const BaseInst& inst, const Operand_* operands, size_t opCount, InstRWInfo* out) noexcept {
   // Only called when `arch` matches X86 family.
   ASMJIT_ASSERT(Environment::isFamilyX86(arch));
 
   // Get the instruction data.
   InstId instId = inst.id();
-  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId)))
+  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId))) {
     return DebugUtils::errored(kErrorInvalidInstruction);
+  }
 
   // Read/Write flags.
   const InstDB::InstInfo& instInfo = InstDB::_instInfoTable[instId];
@@ -852,8 +879,13 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
       uint64_t rByteMask = rwOpData.rByteMask;
       uint64_t wByteMask = rwOpData.wByteMask;
 
-      if (op.isRead()  && !rByteMask) rByteMask = Support::lsbMask<uint64_t>(srcOp.x86RmSize());
-      if (op.isWrite() && !wByteMask) wByteMask = Support::lsbMask<uint64_t>(srcOp.x86RmSize());
+      if (op.isRead()  && !rByteMask) {
+        rByteMask = Support::lsbMask<uint64_t>(srcOp.x86RmSize());
+      }
+
+      if (op.isWrite() && !wByteMask) {
+        wByteMask = Support::lsbMask<uint64_t>(srcOp.x86RmSize());
+      }
 
       op._readByteMask = rByteMask;
       op._writeByteMask = wByteMask;
@@ -883,17 +915,20 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
         const x86::Mem& memOp = srcOp.as<x86::Mem>();
         // The RW flags of BASE+INDEX are either provided by the data, which means
         // that the instruction is border-case, or they are deduced from the operand.
-        if (memOp.hasBaseReg() && !op.hasOpFlag(OpRWFlags::kMemBaseRW))
+        if (memOp.hasBaseReg() && !op.hasOpFlag(OpRWFlags::kMemBaseRW)) {
           op.addOpFlags(OpRWFlags::kMemBaseRead);
-        if (memOp.hasIndexReg() && !op.hasOpFlag(OpRWFlags::kMemIndexRW))
+        }
+        if (memOp.hasIndexReg() && !op.hasOpFlag(OpRWFlags::kMemIndexRW)) {
           op.addOpFlags(OpRWFlags::kMemIndexRead);
+        }
       }
     }
 
     // Only keep kMovOp if the instruction is actually register to register move of the same kind.
     if (out->hasInstFlag(InstRWFlags::kMovOp)) {
-      if (!(opCount >= 2 && opTypeMask == Support::bitMask(OperandType::kReg) && hasSameRegType(reinterpret_cast<const BaseReg*>(operands), opCount)))
+      if (!(opCount >= 2 && opTypeMask == Support::bitMask(OperandType::kReg) && hasSameRegType(reinterpret_cast<const Reg*>(operands), opCount))) {
         out->_instFlags &= ~InstRWFlags::kMovOp;
+      }
     }
 
     // Special cases require more logic.
@@ -907,7 +942,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
         }
       }
       else if (instRmInfo.flags & InstDB::RWInfoRm::kFlagPextrw) {
-        if (opCount == 3 && Reg::isMm(operands[1])) {
+        if (opCount == 3 && operands[1].isMmReg()) {
           out->_rmFeature = 0;
           rmOpsMask = 0;
         }
@@ -955,8 +990,10 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
         case Inst::kIdVpternlogq: {
           if (opCount == 4 && operands[3].isImm()) {
             uint32_t predicate = operands[3].as<Imm>().valueAs<uint8_t>();
+
             if ((predicate >> 4) == (predicate & 0xF)) {
               out->_operands[0].clearOpFlags(OpRWFlags::kRead);
+              out->_operands[0].setReadByteMask(0);
             }
           }
           break;
@@ -993,21 +1030,21 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
             return kErrorOk;
           }
 
-          if (o0.isGp() && o1.isSReg()) {
+          if (o0.isGp() && o1.isSegmentReg()) {
             out->_operands[0].reset(W | RegM, nativeGpSize);
             out->_operands[0].setRmSize(2);
             out->_operands[1].reset(R, 2);
             return kErrorOk;
           }
 
-          if (o0.isSReg() && o1.isGp()) {
+          if (o0.isSegmentReg() && o1.isGp()) {
             out->_operands[0].reset(W, 2);
             out->_operands[1].reset(R | RegM, 2);
             out->_operands[1].setRmSize(2);
             return kErrorOk;
           }
 
-          if (o0.isGp() && (o1.isCReg() || o1.isDReg())) {
+          if (o0.isGp() && (o1.isControlReg() || o1.isDebugReg())) {
             out->_operands[0].reset(W, nativeGpSize);
             out->_operands[1].reset(R, nativeGpSize);
             out->_writeFlags = CpuRWFlags::kX86_OF |
@@ -1019,7 +1056,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
             return kErrorOk;
           }
 
-          if ((o0.isCReg() || o0.isDReg()) && o1.isGp()) {
+          if ((o0.isControlReg() || o0.isDebugReg()) && o1.isGp()) {
             out->_operands[0].reset(W, nativeGpSize);
             out->_operands[1].reset(R, nativeGpSize);
             out->_writeFlags = CpuRWFlags::kX86_OF |
@@ -1037,17 +1074,19 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           const Mem& o1 = operands[1].as<Mem>();
 
           if (o0.isGp()) {
-            if (!o1.isOffset64Bit())
+            if (!o1.isOffset64Bit()) {
               out->_operands[0].reset(W, o0.size());
-            else
+            }
+            else {
               out->_operands[0].reset(W | RegPhys, o0.size(), Gp::kIdAx);
+            }
 
             out->_operands[1].reset(R | MibRead, o0.size());
             rwZeroExtendGp(out->_operands[0], operands[0].as<Gp>(), nativeGpSize);
             return kErrorOk;
           }
 
-          if (o0.isSReg()) {
+          if (o0.isSegmentReg()) {
             out->_operands[0].reset(W, 2);
             out->_operands[1].reset(R, 2);
             return kErrorOk;
@@ -1060,21 +1099,23 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
           if (o1.isGp()) {
             out->_operands[0].reset(W | MibRead, o1.size());
-            if (!o0.isOffset64Bit())
+            if (!o0.isOffset64Bit()) {
               out->_operands[1].reset(R, o1.size());
-            else
+            }
+            else {
               out->_operands[1].reset(R | RegPhys, o1.size(), Gp::kIdAx);
+            }
             return kErrorOk;
           }
 
-          if (o1.isSReg()) {
+          if (o1.isSegmentReg()) {
             out->_operands[0].reset(W | MibRead, 2);
             out->_operands[1].reset(R, 2);
             return kErrorOk;
           }
         }
 
-        if (Reg::isGp(operands[0]) && operands[1].isImm()) {
+        if (operands[0].isGp() && operands[1].isImm()) {
           const Reg& o0 = operands[0].as<Reg>();
           out->_operands[0].reset(W | RegM, o0.size());
           out->_operands[1].reset();
@@ -1095,7 +1136,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
     case InstDB::RWInfo::kCategoryMovabs: {
       if (opCount == 2) {
-        if (Reg::isGp(operands[0]) && operands[1].isMem()) {
+        if (operands[0].isGp() && operands[1].isMem()) {
           const Reg& o0 = operands[0].as<Reg>();
           out->_operands[0].reset(W | RegPhys, o0.size(), Gp::kIdAx);
           out->_operands[1].reset(R | MibRead, o0.size());
@@ -1103,14 +1144,14 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           return kErrorOk;
         }
 
-        if (operands[0].isMem() && Reg::isGp(operands[1])) {
+        if (operands[0].isMem() && operands[1].isGp()) {
           const Reg& o1 = operands[1].as<Reg>();
           out->_operands[0].reset(W | MibRead, o1.size());
           out->_operands[1].reset(R | RegPhys, o1.size(), Gp::kIdAx);
           return kErrorOk;
         }
 
-        if (Reg::isGp(operands[0]) && operands[1].isImm()) {
+        if (operands[0].isGp() && operands[1].isImm()) {
           const Reg& o0 = operands[0].as<Reg>();
           out->_operands[0].reset(W, o0.size());
           out->_operands[1].reset();
@@ -1140,7 +1181,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           return kErrorOk;
         }
 
-        if (Reg::isGpw(operands[0]) && operands[1].x86RmSize() == 1) {
+        if (operands[0].isGp16() && operands[1].x86RmSize() == 1) {
           // imul ax, r8/m8 <- AX = AL * r8/m8
           out->_operands[0].reset(X | RegPhys, 2, Gp::kIdAx);
           out->_operands[0].setReadByteMask(Support::lsbMask<uint64_t>(1));
@@ -1153,8 +1194,9 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           rwZeroExtendGp(out->_operands[0], operands[0].as<Gp>(), nativeGpSize);
         }
 
-        if (operands[1].isMem())
+        if (operands[1].isMem()) {
           out->_operands[1].addOpFlags(MibRead);
+        }
         return kErrorOk;
       }
 
@@ -1165,8 +1207,9 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           out->_operands[2].reset();
 
           rwZeroExtendGp(out->_operands[0], operands[0].as<Gp>(), nativeGpSize);
-          if (operands[1].isMem())
+          if (operands[1].isMem()) {
             out->_operands[1].addOpFlags(MibRead);
+          }
           return kErrorOk;
         }
         else {
@@ -1176,8 +1219,9 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
           rwZeroExtendGp(out->_operands[0], operands[0].as<Gp>(), nativeGpSize);
           rwZeroExtendGp(out->_operands[1], operands[1].as<Gp>(), nativeGpSize);
-          if (operands[2].isMem())
+          if (operands[2].isMem()) {
             out->_operands[2].addOpFlags(MibRead);
+          }
           return kErrorOk;
         }
       }
@@ -1188,14 +1232,14 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
       // Special case for 'movhpd|movhps' instructions. Note that this is only required for legacy (non-AVX)
       // variants as AVX instructions use either 2 or 3 operands that are in `kCategoryGeneric` category.
       if (opCount == 2) {
-        if (BaseReg::isVec(operands[0]) && operands[1].isMem()) {
+        if (operands[0].isVec() && operands[1].isMem()) {
           out->_operands[0].reset(W, 8);
           out->_operands[0].setWriteByteMask(Support::lsbMask<uint64_t>(8) << 8);
           out->_operands[1].reset(R | MibRead, 8);
           return kErrorOk;
         }
 
-        if (operands[0].isMem() && BaseReg::isVec(operands[1])) {
+        if (operands[0].isMem() && operands[1].isVec()) {
           out->_operands[0].reset(W | MibRead, 8);
           out->_operands[1].reset(R, 8);
           out->_operands[1].setReadByteMask(Support::lsbMask<uint64_t>(8) << 8);
@@ -1208,14 +1252,14 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
     case InstDB::RWInfo::kCategoryPunpcklxx: {
       // Special case for 'punpcklbw|punpckldq|punpcklwd' instructions.
       if (opCount == 2) {
-        if (Reg::isXmm(operands[0])) {
+        if (operands[0].isVec128()) {
           out->_operands[0].reset(X, 16);
           out->_operands[0].setReadByteMask(0x0F0Fu);
           out->_operands[0].setWriteByteMask(0xFFFFu);
           out->_operands[1].reset(R, 16);
           out->_operands[1].setWriteByteMask(0x0F0Fu);
 
-          if (Reg::isXmm(operands[1])) {
+          if (operands[1].isVec128()) {
             return kErrorOk;
           }
 
@@ -1225,14 +1269,14 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           }
         }
 
-        if (Reg::isMm(operands[0])) {
+        if (operands[0].isMmReg()) {
           out->_operands[0].reset(X, 8);
           out->_operands[0].setReadByteMask(0x0Fu);
           out->_operands[0].setWriteByteMask(0xFFu);
           out->_operands[1].reset(R, 4);
           out->_operands[1].setReadByteMask(0x0Fu);
 
-          if (Reg::isMm(operands[1])) {
+          if (operands[1].isMmReg()) {
             return kErrorOk;
           }
 
@@ -1248,7 +1292,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
     case InstDB::RWInfo::kCategoryVmaskmov: {
       // Special case for 'vmaskmovpd|vmaskmovps|vpmaskmovd|vpmaskmovq' instructions.
       if (opCount == 3) {
-        if (BaseReg::isVec(operands[0]) && BaseReg::isVec(operands[1]) && operands[2].isMem()) {
+        if (operands[0].isVec() && operands[1].isVec() && operands[2].isMem()) {
           out->_operands[0].reset(W, operands[0].x86RmSize());
           out->_operands[1].reset(R, operands[1].x86RmSize());
           out->_operands[2].reset(R | MibRead, operands[1].x86RmSize());
@@ -1257,7 +1301,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           return kErrorOk;
         }
 
-        if (operands[0].isMem() && BaseReg::isVec(operands[1]) && BaseReg::isVec(operands[2])) {
+        if (operands[0].isMem() && operands[1].isVec() && operands[2].isVec()) {
           out->_operands[0].reset(X | MibRead, operands[1].x86RmSize());
           out->_operands[1].reset(R, operands[1].x86RmSize());
           out->_operands[2].reset(R, operands[2].x86RmSize());
@@ -1272,7 +1316,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
       // version only uses 64-bit memory operand (m64), however, 256/512-bit versions use 256/512-bit memory
       // operand, respectively.
       if (opCount == 2) {
-        if (BaseReg::isVec(operands[0]) && BaseReg::isVec(operands[1])) {
+        if (operands[0].isVec() && operands[1].isVec()) {
           uint32_t o0Size = operands[0].x86RmSize();
           uint32_t o1Size = o0Size == 16 ? 8 : o0Size;
 
@@ -1284,7 +1328,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           return rwHandleAVX512(inst, commonInfo, out);
         }
 
-        if (BaseReg::isVec(operands[0]) && operands[1].isMem()) {
+        if (operands[0].isVec() && operands[1].isMem()) {
           uint32_t o0Size = operands[0].x86RmSize();
           uint32_t o1Size = o0Size == 16 ? 8 : o0Size;
 
@@ -1302,7 +1346,7 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
     case InstDB::RWInfo::kCategoryVmovmskps: {
       // Special case for 'vmovmskpd|vmovmskps' instructions.
       if (opCount == 2) {
-        if (BaseReg::isGp(operands[0]) && BaseReg::isVec(operands[1])) {
+        if (operands[0].isGp() && operands[1].isVec()) {
           out->_operands[0].reset(W, 1);
           out->_operands[0].setExtendByteMask(Support::lsbMask<uint32_t>(nativeGpSize - 1) << 1);
           out->_operands[1].reset(R, operands[1].x86RmSize());
@@ -1337,8 +1381,9 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
       if (opCount >= 2) {
         if (opCount >= 3) {
-          if (opCount > 3)
+          if (opCount > 3) {
             return DebugUtils::errored(kErrorInvalidInstruction);
+          }
           out->_operands[2].reset();
         }
 
@@ -1360,11 +1405,13 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
           }
 
           // Handle 'pmovmskb|vpmovmskb'.
-          if (BaseReg::isGp(operands[0]))
+          if (operands[0].isGp()) {
             rwZeroExtendGp(out->_operands[0], operands[0].as<Gp>(), nativeGpSize);
+          }
 
-          if (BaseReg::isVec(operands[0]))
+          if (operands[0].isVec()) {
             rwZeroExtendAvxVec(out->_operands[0], operands[0].as<Vec>());
+          }
 
           return rwHandleAVX512(inst, commonInfo, out);
         }
@@ -1375,6 +1422,11 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
           out->_operands[0].reset(W, size0);
           out->_operands[1].reset(R | MibRead, size1);
+
+          if (operands[0].isVec()) {
+            rwZeroExtendAvxVec(out->_operands[0], operands[0].as<Vec>());
+          }
+
           return kErrorOk;
         }
 
@@ -1415,8 +1467,9 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
       if (opCount >= 2) {
         if (opCount >= 3) {
-          if (opCount > 3)
+          if (opCount > 3) {
             return DebugUtils::errored(kErrorInvalidInstruction);
+          }
           out->_operands[2].reset();
         }
 
@@ -1425,6 +1478,10 @@ Error InstInternal::queryRWInfo(Arch arch, const BaseInst& inst, const Operand_*
 
         out->_operands[0].reset(W, size0);
         out->_operands[1].reset(R, size1);
+
+        if (operands[0].isVec()) {
+          rwZeroExtendAvxVec(out->_operands[0], operands[0].as<Vec>());
+        }
 
         if (operands[0].isReg() && operands[1].isReg()) {
           if (instRmInfo.rmOpsMask & 0x1) {
@@ -1474,10 +1531,11 @@ static RegAnalysis InstInternal_regAnalysis(const Operand_* operands, size_t opC
   for (uint32_t i = 0; i < opCount; i++) {
     const Operand_& op = operands[i];
     if (op.isReg()) {
-      const BaseReg& reg = op.as<BaseReg>();
-      mask |= Support::bitMask(reg.type());
-      if (reg.isVec())
+      const Reg& reg = op.as<Reg>();
+      mask |= Support::bitMask(reg.regType());
+      if (reg.isVec()) {
         highVecUsed |= uint32_t(reg.id() >= 16 && reg.id() < 32);
+      }
     }
     else if (op.isMem()) {
       const BaseMem& mem = op.as<BaseMem>();
@@ -1494,14 +1552,14 @@ static RegAnalysis InstInternal_regAnalysis(const Operand_* operands, size_t opC
 
 static inline uint32_t InstInternal_usesAvx512(InstOptions instOptions, const RegOnly& extraReg, const RegAnalysis& regAnalysis) noexcept {
   uint32_t hasEvex = uint32_t(instOptions & (InstOptions::kX86_Evex | InstOptions::kX86_AVX512Mask));
-  uint32_t hasKMask = extraReg.type() == RegType::kX86_KReg;
-  uint32_t hasKOrZmm = regAnalysis.regTypeMask & Support::bitMask(RegType::kX86_Zmm, RegType::kX86_KReg);
+  uint32_t hasKMask = extraReg.type() == RegType::kMask;
+  uint32_t hasKOrZmm = regAnalysis.regTypeMask & Support::bitMask(RegType::kVec512, RegType::kMask);
 
   return hasEvex | hasKMask | hasKOrZmm;
 }
 
-Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand_* operands, size_t opCount, CpuFeatures* out) noexcept {
-  typedef CpuFeatures::X86 Ext;
+Error queryFeatures(Arch arch, const BaseInst& inst, const Operand_* operands, size_t opCount, CpuFeatures* out) noexcept {
+  using Ext = CpuFeatures::X86;
 
   // Only called when `arch` matches X86 family.
   DebugUtils::unused(arch);
@@ -1511,8 +1569,9 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
   InstId instId = inst.id();
   InstOptions options = inst.options();
 
-  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId)))
+  if (ASMJIT_UNLIKELY(!Inst::isDefinedId(instId))) {
     return DebugUtils::errored(kErrorInvalidInstruction);
+  }
 
   const InstDB::InstInfo& instInfo = InstDB::infoById(instId);
   const InstDB::AdditionalInfo& additionalInfo = InstDB::_additionalInfoTable[instInfo._additionalInfoIndex];
@@ -1524,8 +1583,9 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
   out->reset();
   do {
     uint32_t feature = fData[0];
-    if (!feature)
+    if (!feature) {
       break;
+    }
     out->add(feature);
   } while (++fData != fEnd);
 
@@ -1539,7 +1599,7 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
       // Only instructions defined by SSE and SSE2 overlap. Instructions introduced by newer instruction sets like
       // SSE3+ don't state MMX as they require SSE3+.
       if (out->has(Ext::kSSE) || out->has(Ext::kSSE2)) {
-        if (!regAnalysis.hasRegType(RegType::kX86_Xmm)) {
+        if (!regAnalysis.hasRegType(RegType::kVec128)) {
           // The instruction doesn't use XMM register(s), thus it's MMX/MMX2 only.
           out->remove(Ext::kSSE);
           out->remove(Ext::kSSE2);
@@ -1565,11 +1625,11 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
 
     // Handle PCLMULQDQ vs VPCLMULQDQ.
     if (out->has(Ext::kVPCLMULQDQ)) {
-      if (regAnalysis.hasRegType(RegType::kX86_Zmm) || Support::test(options, InstOptions::kX86_Evex)) {
+      if (regAnalysis.hasRegType(RegType::kVec512) || Support::test(options, InstOptions::kX86_Evex)) {
         // AVX512_F & VPCLMULQDQ.
         out->remove(Ext::kAVX, Ext::kPCLMULQDQ);
       }
-      else if (regAnalysis.hasRegType(RegType::kX86_Ymm)) {
+      else if (regAnalysis.hasRegType(RegType::kVec256)) {
         out->remove(Ext::kAVX512_F, Ext::kAVX512_VL);
       }
       else {
@@ -1584,21 +1644,19 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
       // Special case: VBROADCASTSS and VBROADCASTSD were introduced in AVX, but only version that uses memory as a
       // source operand. AVX2 then added support for register source operand.
       if (instId == Inst::kIdVbroadcastss || instId == Inst::kIdVbroadcastsd) {
-        if (opCount > 1 && operands[1].isMem())
+        if (opCount > 1 && operands[1].isMem()) {
           isAVX2 = false;
+        }
       }
       else {
         // AVX instruction set doesn't support integer operations on YMM registers as these were later introcuced by
         // AVX2. In our case we have to check if YMM register(s) are in use and if that is the case this is an AVX2
         // instruction.
-        if (!(regAnalysis.regTypeMask & Support::bitMask(RegType::kX86_Ymm, RegType::kX86_Zmm)))
+        if (!(regAnalysis.regTypeMask & Support::bitMask(RegType::kVec256, RegType::kVec512))) {
           isAVX2 = false;
+        }
       }
-
-      if (isAVX2)
-        out->remove(Ext::kAVX);
-      else
-        out->remove(Ext::kAVX2);
+      out->remove(isAVX2 ? Ext::kAVX : Ext::kAVX2);
     }
 
     // Handle AVX vs AVX512 overlap.
@@ -1611,15 +1669,13 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
                     Ext::kAVX_VNNI,
                     Ext::kAVX2,
                     Ext::kF16C,
-                    Ext::kFMA)
-        &&
+                    Ext::kFMA) &&
         out->hasAny(Ext::kAVX512_BF16,
                     Ext::kAVX512_BW,
                     Ext::kAVX512_DQ,
                     Ext::kAVX512_F,
                     Ext::kAVX512_IFMA,
                     Ext::kAVX512_VNNI)) {
-
       uint32_t useEvex = InstInternal_usesAvx512(options, inst.extraReg(), regAnalysis) | regAnalysis.highVecUsed;
       switch (instId) {
         // Special case: VPBROADCAST[B|D|Q|W] only supports r32/r64 with EVEX prefix.
@@ -1627,13 +1683,13 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
         case Inst::kIdVpbroadcastd:
         case Inst::kIdVpbroadcastq:
         case Inst::kIdVpbroadcastw:
-          useEvex |= uint32_t(opCount >= 2 && x86::Reg::isGp(operands[1]));
+          useEvex |= uint32_t(opCount >= 2 && operands[1].isGp());
           break;
 
         case Inst::kIdVcvtpd2dq:
         case Inst::kIdVcvtpd2ps:
         case Inst::kIdVcvttpd2dq:
-          useEvex |= uint32_t(opCount >= 2 && Reg::isYmm(operands[0]));
+          useEvex |= uint32_t(opCount >= 2 && operands[0].isVec256());
           break;
 
         case Inst::kIdVgatherdpd:
@@ -1699,47 +1755,45 @@ Error InstInternal::queryFeatures(Arch arch, const BaseInst& inst, const Operand
     }
 
     // Clear AVX512_VL if ZMM register is used.
-    if (regAnalysis.hasRegType(RegType::kX86_Zmm))
+    if (regAnalysis.hasRegType(RegType::kVec512)) {
       out->remove(Ext::kAVX512_VL);
+    }
   }
 
   return kErrorOk;
 }
 #endif // !ASMJIT_NO_INTROSPECTION
 
+} // {InstInternal}
+
 // x86::InstInternal - Tests
 // =========================
 
 #if defined(ASMJIT_TEST)
-template<typename... Args>
-static Error queryRWInfoInline(InstRWInfo* out, Arch arch, BaseInst inst, Args&&... args) {
-  Operand_ opArray[] = { std::forward<Args>(args)... };
-  return InstInternal::queryRWInfo(arch, inst, opArray, sizeof...(args), out);
-}
-
-template<typename... Args>
-static Error queryFeaturesInline(CpuFeatures* out, Arch arch, BaseInst inst, Args&&... args) {
-  Operand_ opArray[] = { std::forward<Args>(args)... };
-  return InstInternal::queryFeatures(arch, inst, opArray, sizeof...(args), out);
-}
-
 #ifndef ASMJIT_NO_TEXT
 UNIT(x86_inst_api_text) {
   // All known instructions should be matched.
   INFO("Matching all X86 instructions");
   for (uint32_t a = 1; a < Inst::_kIdCount; a++) {
     StringTmp<128> aName;
-    EXPECT_EQ(InstInternal::instIdToString(Arch::kX86, a, aName), kErrorOk)
+    EXPECT_EQ(InstInternal::instIdToString(a, InstStringifyOptions::kNone, aName), kErrorOk)
       .message("Failed to get the name of instruction #%u", a);
 
-    uint32_t b = InstInternal::stringToInstId(Arch::kX86, aName.data(), aName.size());
+    uint32_t b = InstInternal::stringToInstId(aName.data(), aName.size());
     StringTmp<128> bName;
-    InstInternal::instIdToString(Arch::kX86, b, bName);
+    InstInternal::instIdToString(b, InstStringifyOptions::kNone, bName);
     EXPECT_EQ(a, b)
       .message("Instructions do not match \"%s\" (#%u) != \"%s\" (#%u)", aName.data(), a, bName.data(), b);
   }
 }
 #endif // !ASMJIT_NO_TEXT
+
+#ifndef ASMJIT_NO_INTROSPECTION
+template<typename... Args>
+static Error queryFeaturesInline(CpuFeatures* out, Arch arch, BaseInst inst, Args&&... args) {
+  Operand_ opArray[] = { std::forward<Args>(args)... };
+  return InstInternal::queryFeatures(arch, inst, opArray, sizeof...(args), out);
+}
 
 UNIT(x86_inst_api_cpu_features) {
   INFO("Verifying whether SSE2+ features are reported correctly for legacy instructions");
@@ -1815,6 +1869,14 @@ UNIT(x86_inst_api_cpu_features) {
     EXPECT_TRUE(f.x86().hasAVX512_F());
   }
 }
+#endif // !ASMJIT_NO_INTROSPECTION
+
+#ifndef ASMJIT_NO_INTROSPECTION
+template<typename... Args>
+static Error queryRWInfoInline(InstRWInfo* out, Arch arch, BaseInst inst, Args&&... args) {
+  Operand_ opArray[] = { std::forward<Args>(args)... };
+  return InstInternal::queryRWInfo(arch, inst, opArray, sizeof...(args), out);
+}
 
 UNIT(x86_inst_api_rm_features) {
   INFO("Verifying whether RM/feature is reported correctly for PEXTRW instruction");
@@ -1869,7 +1931,9 @@ UNIT(x86_inst_api_rm_features) {
     EXPECT_EQ(rwi.rmFeature(), 0u);
   }
 }
-#endif
+#endif // !ASMJIT_NO_INTROSPECTION
+
+#endif // ASMJIT_TEST
 
 ASMJIT_END_SUB_NAMESPACE
 

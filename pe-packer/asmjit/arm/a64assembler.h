@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_ARM_A64ASSEMBLER_H_INCLUDED
@@ -21,24 +21,13 @@ class ASMJIT_VIRTAPI Assembler
     public EmitterExplicitT<Assembler> {
 
 public:
-  typedef BaseAssembler Base;
+  using Base = BaseAssembler;
 
-  //! \name Construction / Destruction
+  //! \name Construction & Destruction
   //! \{
 
   ASMJIT_API Assembler(CodeHolder* code = nullptr) noexcept;
   ASMJIT_API ~Assembler() noexcept override;
-
-  //! \}
-
-  //! \name Accessors
-  //! \{
-
-  //! Gets whether the current ARM mode is THUMB (alternative to 32-bit ARM encoding).
-  ASMJIT_INLINE_NODEBUG bool isInThumbMode() const noexcept { return _environment.isArchThumb(); }
-
-  //! Gets the current code alignment of the current mode (ARM vs THUMB).
-  ASMJIT_INLINE_NODEBUG uint32_t codeAlignment() const noexcept { return isInThumbMode() ? 2 : 4; }
 
   //! \}
 
@@ -59,8 +48,8 @@ public:
   //! \name Events
   //! \{
 
-  ASMJIT_API Error onAttach(CodeHolder* code) noexcept override;
-  ASMJIT_API Error onDetach(CodeHolder* code) noexcept override;
+  ASMJIT_API Error onAttach(CodeHolder& code) noexcept override;
+  ASMJIT_API Error onDetach(CodeHolder& code) noexcept override;
 
   //! \}
 };

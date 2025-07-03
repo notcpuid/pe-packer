@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_ERRORHANDLER_H_INCLUDED
@@ -215,7 +215,7 @@ public:
   //!    calling `handleError()`  so `longjmp()` can be used without any issues to cancel the code generation if an
   //!    error occurred. There is no difference between exceptions and `longjmp()` from AsmJit's perspective, however,
   //!    never jump outside of `CodeHolder` and `BaseEmitter` scope as you would leak memory.
-  ASMJIT_API virtual void handleError(Error err, const char* message, BaseEmitter* origin) = 0;
+  ASMJIT_API virtual void handleError(Error err, const char* message, BaseEmitter* origin);
 
   //! \}
 };

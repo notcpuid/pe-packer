@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_X86_X86BUILDER_H_INCLUDED
@@ -31,8 +31,6 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //! using namespace asmjit;
 //!
-//! typedef void (*SumIntsFunc)(int* dst, const int* a, const int* b);
-//!
 //! // Small helper function to print the current content of `cb`.
 //! static void dumpCode(BaseBuilder& builder, const char* phase) {
 //!   String sb;
@@ -43,6 +41,8 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //! }
 //!
 //! int main() {
+//!   using SumIntsFunc = void (*)(int* dst, const int* a, const int* b);
+//!
 //!   JitRuntime rt;                    // Create JIT Runtime.
 //!   CodeHolder code;                  // Create a CodeHolder.
 //!
@@ -56,12 +56,12 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!   x86::Gp srcA = cb.zcx();
 //!   x86::Gp srcB = cb.zdx();
 //!
-//!   X86::Xmm vec0 = x86::xmm0;
-//!   X86::Xmm vec1 = x86::xmm1;
+//!   X86::Vec vec0 = x86::xmm0;
+//!   X86::Vec vec1 = x86::xmm1;
 //!
 //!   // Create and initialize `FuncDetail`.
 //!   FuncDetail func;
-//!   func.init(FuncSignatureT<void, int*, const int*, const int*>(CallConvId::kHost));
+//!   func.init(FuncSignature::build<void, int*, const int*, const int*>());
 //!
 //!   // Remember prolog insertion point.
 //!   BaseNode* prologInsertionPoint = cb.cursor();
@@ -109,7 +109,9 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!
 //!   SumIntsFunc fn;
 //!   Error err = rt.add(&fn, &code);   // Add the generated code to the runtime.
-//!   if (err) return 1;                // Handle a possible error case.
+//!   if (err) {
+//!     return 1;                       // Handle a possible error case.
+//!   }
 //!
 //!   // Execute the generated function.
 //!   int inA[4] = { 4, 3, 2, 1 };
@@ -178,8 +180,9 @@ ASMJIT_BEGIN_SUB_NAMESPACE(x86)
 //!       }
 //!     }
 //!
-//!     if (node == last)
+//!     if (node == last) {
 //!       break;
+//!     }
 //!     node = node->next();
 //!   }
 //! }
@@ -320,7 +323,7 @@ class ASMJIT_VIRTAPI Builder
     public EmitterImplicitT<Builder> {
 public:
   ASMJIT_NONCOPYABLE(Builder)
-  typedef BaseBuilder Base;
+  using Base = BaseBuilder;
 
   //! \name Construction & Destruction
   //! \{
@@ -333,8 +336,8 @@ public:
   //! \name Events
   //! \{
 
-  ASMJIT_API Error onAttach(CodeHolder* code) noexcept override;
-  ASMJIT_API Error onDetach(CodeHolder* code) noexcept override;
+  ASMJIT_API Error onAttach(CodeHolder& code) noexcept override;
+  ASMJIT_API Error onDetach(CodeHolder& code) noexcept override;
 
   //! \}
 

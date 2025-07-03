@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -13,7 +13,7 @@ ASMJIT_BEGIN_SUB_NAMESPACE(a64)
 
 namespace FuncInternal {
 
-static inline bool shouldThreatAsCDecl(CallConvId ccId) noexcept {
+static inline bool shouldTreatAsCDecl(CallConvId ccId) noexcept {
   return ccId == CallConvId::kCDecl ||
          ccId == CallConvId::kStdCall ||
          ccId == CallConvId::kFastCall ||
@@ -25,34 +25,41 @@ static inline bool shouldThreatAsCDecl(CallConvId ccId) noexcept {
 }
 
 static RegType regTypeFromFpOrVecTypeId(TypeId typeId) noexcept {
-  if (typeId == TypeId::kFloat32)
-    return RegType::kARM_VecS;
-  else if (typeId == TypeId::kFloat64)
-    return RegType::kARM_VecD;
-  else if (TypeUtils::isVec32(typeId))
-    return RegType::kARM_VecS;
-  else if (TypeUtils::isVec64(typeId))
-    return RegType::kARM_VecD;
-  else if (TypeUtils::isVec128(typeId))
-    return RegType::kARM_VecV;
-  else
+  if (typeId == TypeId::kFloat32) {
+    return RegType::kVec32;
+  }
+  else if (typeId == TypeId::kFloat64) {
+    return RegType::kVec64;
+  }
+  else if (TypeUtils::isVec32(typeId)) {
+    return RegType::kVec32;
+  }
+  else if (TypeUtils::isVec64(typeId)) {
+    return RegType::kVec64;
+  }
+  else if (TypeUtils::isVec128(typeId)) {
+    return RegType::kVec128;
+  }
+  else {
     return RegType::kNone;
+  }
 }
 
 ASMJIT_FAVOR_SIZE Error initCallConv(CallConv& cc, CallConvId ccId, const Environment& environment) noexcept {
   cc.setArch(environment.arch());
+  cc.setStrategy(environment.isDarwin() ? CallConvStrategy::kAArch64Apple : CallConvStrategy::kDefault);
 
   cc.setSaveRestoreRegSize(RegGroup::kGp, 8);
   cc.setSaveRestoreRegSize(RegGroup::kVec, 8);
   cc.setSaveRestoreAlignment(RegGroup::kGp, 16);
   cc.setSaveRestoreAlignment(RegGroup::kVec, 16);
-  cc.setSaveRestoreAlignment(RegGroup::kExtraVirt2, 1);
+  cc.setSaveRestoreAlignment(RegGroup::kMask, 1);
   cc.setSaveRestoreAlignment(RegGroup::kExtraVirt3, 1);
   cc.setPassedOrder(RegGroup::kGp, 0, 1, 2, 3, 4, 5, 6, 7);
   cc.setPassedOrder(RegGroup::kVec, 0, 1, 2, 3, 4, 5, 6, 7);
   cc.setNaturalStackAlignment(16);
 
-  if (shouldThreatAsCDecl(ccId)) {
+  if (shouldTreatAsCDecl(ccId)) {
     // ARM doesn't have that many calling conventions as we can find in X86 world, treat most conventions as __cdecl.
     cc.setId(CallConvId::kCDecl);
     cc.setPreservedRegs(RegGroup::kGp, Support::bitMask(Gp::kIdOs, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30));
@@ -68,7 +75,7 @@ ASMJIT_FAVOR_SIZE Error initCallConv(CallConv& cc, CallConvId ccId, const Enviro
   return kErrorOk;
 }
 
-ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& signature, uint32_t registerSize) noexcept {
+ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& signature) noexcept {
   DebugUtils::unused(signature);
 
   const CallConv& cc = func.callConv();
@@ -76,6 +83,13 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
 
   uint32_t i;
   uint32_t argCount = func.argCount();
+
+  // Minimum stack size of a single argument passed via stack. The standard AArch64 calling convention
+  // specifies 8 bytes, so each function argument would occupy at least 8 bytes even if it needs less.
+  // However, Apple has decided to not follow this rule and function argument can occupy less, for
+  // example two consecutive 32-bit arguments would occupy 8 bytes total, instead of 16 as specified
+  // by ARM.
+  uint32_t minStackArgSize = cc.strategy() == CallConvStrategy::kAArch64Apple ? 4u : 8u;
 
   if (func.hasRet()) {
     for (uint32_t valueIndex = 0; valueIndex < Globals::kMaxValuePack; valueIndex++) {
@@ -89,27 +103,28 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
         case TypeId::kInt8:
         case TypeId::kInt16:
         case TypeId::kInt32: {
-          func._rets[valueIndex].initReg(RegType::kARM_GpW, valueIndex, TypeId::kInt32);
+          func._rets[valueIndex].initReg(RegType::kGp32, valueIndex, TypeId::kInt32);
           break;
         }
 
         case TypeId::kUInt8:
         case TypeId::kUInt16:
         case TypeId::kUInt32: {
-          func._rets[valueIndex].initReg(RegType::kARM_GpW, valueIndex, TypeId::kUInt32);
+          func._rets[valueIndex].initReg(RegType::kGp32, valueIndex, TypeId::kUInt32);
           break;
         }
 
         case TypeId::kInt64:
         case TypeId::kUInt64: {
-          func._rets[valueIndex].initReg(RegType::kARM_GpX, valueIndex, typeId);
+          func._rets[valueIndex].initReg(RegType::kGp64, valueIndex, typeId);
           break;
         }
 
         default: {
           RegType regType = regTypeFromFpOrVecTypeId(typeId);
-          if (regType == RegType::kNone)
+          if (regType == RegType::kNone) {
             return DebugUtils::errored(kErrorInvalidRegType);
+          }
 
           func._rets[valueIndex].initReg(regType, valueIndex, typeId);
           break;
@@ -119,7 +134,8 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
   }
 
   switch (cc.strategy()) {
-    case CallConvStrategy::kDefault: {
+    case CallConvStrategy::kDefault:
+    case CallConvStrategy::kAArch64Apple: {
       uint32_t gpzPos = 0;
       uint32_t vecPos = 0;
 
@@ -128,19 +144,23 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
         TypeId typeId = arg.typeId();
 
         if (TypeUtils::isInt(typeId)) {
-          uint32_t regId = BaseReg::kIdBad;
+          uint32_t regId = Reg::kIdBad;
 
-          if (gpzPos < CallConv::kMaxRegArgsPerGroup)
+          if (gpzPos < CallConv::kMaxRegArgsPerGroup) {
             regId = cc._passedOrder[RegGroup::kGp].id[gpzPos];
+          }
 
-          if (regId != BaseReg::kIdBad) {
-            RegType regType = typeId <= TypeId::kUInt32 ? RegType::kARM_GpW : RegType::kARM_GpX;
+          if (regId != Reg::kIdBad) {
+            RegType regType = typeId <= TypeId::kUInt32 ? RegType::kGp32 : RegType::kGp64;
             arg.assignRegData(regType, regId);
             func.addUsedRegs(RegGroup::kGp, Support::bitMask(regId));
             gpzPos++;
           }
           else {
-            uint32_t size = Support::max<uint32_t>(TypeUtils::sizeOf(typeId), registerSize);
+            uint32_t size = Support::max<uint32_t>(TypeUtils::sizeOf(typeId), minStackArgSize);
+            if (size >= 8) {
+              stackOffset = Support::alignUp(stackOffset, 8);
+            }
             arg.assignStackOffset(int32_t(stackOffset));
             stackOffset += size;
           }
@@ -148,15 +168,17 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
         }
 
         if (TypeUtils::isFloat(typeId) || TypeUtils::isVec(typeId)) {
-          uint32_t regId = BaseReg::kIdBad;
+          uint32_t regId = Reg::kIdBad;
 
-          if (vecPos < CallConv::kMaxRegArgsPerGroup)
+          if (vecPos < CallConv::kMaxRegArgsPerGroup) {
             regId = cc._passedOrder[RegGroup::kVec].id[vecPos];
+          }
 
-          if (regId != BaseReg::kIdBad) {
+          if (regId != Reg::kIdBad) {
             RegType regType = regTypeFromFpOrVecTypeId(typeId);
-            if (regType == RegType::kNone)
+            if (regType == RegType::kNone) {
               return DebugUtils::errored(kErrorInvalidRegType);
+            }
 
             arg.initTypeId(typeId);
             arg.assignRegData(regType, regId);
@@ -164,7 +186,10 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
             vecPos++;
           }
           else {
-            uint32_t size = TypeUtils::sizeOf(typeId);
+            uint32_t size = Support::max<uint32_t>(TypeUtils::sizeOf(typeId), minStackArgSize);
+            if (size >= 8) {
+              stackOffset = Support::alignUp(stackOffset, 8);
+            }
             arg.assignStackOffset(int32_t(stackOffset));
             stackOffset += size;
           }
@@ -178,7 +203,7 @@ ASMJIT_FAVOR_SIZE Error initFuncDetail(FuncDetail& func, const FuncSignature& si
       return DebugUtils::errored(kErrorInvalidState);
   }
 
-  func._argStackSize = stackOffset;
+  func._argStackSize = Support::alignUp(stackOffset, 8u);
   return kErrorOk;
 }
 

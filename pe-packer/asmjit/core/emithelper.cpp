@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -23,22 +23,27 @@ static void dumpFuncValue(String& sb, Arch arch, const FuncValue& value) noexcep
   Formatter::formatTypeId(sb, value.typeId());
   sb.append('@');
 
-  if (value.isIndirect())
+  if (value.isIndirect()) {
     sb.append('[');
+  }
 
-  if (value.isReg())
+  if (value.isReg()) {
     Formatter::formatRegister(sb, 0, nullptr, arch, value.regType(), value.regId());
-  else if (value.isStack())
+  }
+  else if (value.isStack()) {
     sb.appendFormat("[%d]", value.stackOffset());
-  else
+  }
+  else {
     sb.append("<none>");
+  }
 
-  if (value.isIndirect())
+  if (value.isIndirect()) {
     sb.append(']');
+  }
 }
 
 static void dumpAssignment(String& sb, const FuncArgsContext& ctx) noexcept {
-  typedef FuncArgsContext::Var Var;
+  using Var = FuncArgsContext::Var;
 
   Arch arch = ctx.arch();
   uint32_t varCount = ctx.varCount();
@@ -53,8 +58,9 @@ static void dumpAssignment(String& sb, const FuncArgsContext& ctx) noexcept {
     sb.append(" <- ");
     dumpFuncValue(sb, arch, cur);
 
-    if (var.isDone())
+    if (var.isDone()) {
       sb.append(" {Done}");
+    }
 
     sb.append('\n');
   }
@@ -69,12 +75,12 @@ Error BaseEmitHelper::emitRegMove(const Operand_& dst_, const Operand_& src_, Ty
   return DebugUtils::errored(kErrorInvalidState);
 }
 
-Error BaseEmitHelper::emitRegSwap(const BaseReg& a, const BaseReg& b, const char* comment) {
+Error BaseEmitHelper::emitRegSwap(const Reg& a, const Reg& b, const char* comment) {
   DebugUtils::unused(a, b, comment);
   return DebugUtils::errored(kErrorInvalidState);
 }
 
-Error BaseEmitHelper::emitArgMove(const BaseReg& dst_, TypeId dstTypeId, const Operand_& src_, TypeId srcTypeId, const char* comment) {
+Error BaseEmitHelper::emitArgMove(const Reg& dst_, TypeId dstTypeId, const Operand_& src_, TypeId srcTypeId, const char* comment) {
   DebugUtils::unused(dst_, dstTypeId, src_, srcTypeId, comment);
   return DebugUtils::errored(kErrorInvalidState);
 }
@@ -83,8 +89,8 @@ Error BaseEmitHelper::emitArgMove(const BaseReg& dst_, TypeId dstTypeId, const O
 // ===================================
 
 ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& frame, const FuncArgsAssignment& args) {
-  typedef FuncArgsContext::Var Var;
-  typedef FuncArgsContext::WorkData WorkData;
+  using Var = FuncArgsContext::Var;
+  using WorkData = FuncArgsContext::WorkData;
 
   enum WorkFlags : uint32_t {
     kWorkNone      = 0x00,
@@ -114,14 +120,16 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
   uint32_t varCount = ctx._varCount;
   uint32_t saVarId = ctx._saVarId;
 
-  BaseReg sp = BaseReg(_emitter->_gpSignature, archTraits.spRegId());
-  BaseReg sa = sp;
+  Reg sp = Reg(_emitter->_gpSignature, archTraits.spRegId());
+  Reg sa = sp;
 
   if (frame.hasDynamicAlignment()) {
-    if (frame.hasPreservedFP())
+    if (frame.hasPreservedFP()) {
       sa.setId(archTraits.fpRegId());
-    else
+    }
+    else {
       sa.setId(saVarId < varCount ? ctx._vars[saVarId].cur.regId() : frame.saRegId());
+    }
   }
 
   // Register to stack and stack to stack moves must be first as now we have
@@ -135,14 +143,15 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
     for (uint32_t varId = 0; varId < varCount; varId++) {
       Var& var = ctx._vars[varId];
 
-      if (!var.out.isStack())
+      if (!var.out.isStack()) {
         continue;
+      }
 
       FuncValue& cur = var.cur;
       FuncValue& out = var.out;
 
       ASMJIT_ASSERT(cur.isReg() || cur.isStack());
-      BaseReg reg;
+      Reg reg;
 
       BaseMem dstStackPtr = baseStackPtr.cloneAdjusted(out.stackOffset());
       BaseMem srcStackPtr = baseArgPtr.cloneAdjusted(cur.stackOffset());
@@ -158,10 +167,10 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
       }
 
       if (cur.isReg() && !cur.isIndirect()) {
-        WorkData& wd = workData[archTraits.regTypeToGroup(cur.regType())];
+        WorkData& wd = workData[RegUtils::groupOf(cur.regType())];
         uint32_t regId = cur.regId();
 
-        reg.setSignatureAndId(archTraits.regTypeToSignature(cur.regType()), regId);
+        reg.setSignatureAndId(RegUtils::signatureOf(cur.regType()), regId);
         wd.unassign(varId, regId);
       }
       else {
@@ -169,13 +178,15 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
         // we follow the rule that IntToInt moves will use GP regs with possibility to signature or zero extend,
         // and all other moves will either use GP or VEC regs depending on the size of the move.
         OperandSignature signature = getSuitableRegForMemToMemMove(arch, out.typeId(), cur.typeId());
-        if (ASMJIT_UNLIKELY(!signature.isValid()))
+        if (ASMJIT_UNLIKELY(!signature.isValid())) {
           return DebugUtils::errored(kErrorInvalidState);
+        }
 
         WorkData& wd = workData[signature.regGroup()];
         RegMask availableRegs = wd.availableRegs();
-        if (ASMJIT_UNLIKELY(!availableRegs))
+        if (ASMJIT_UNLIKELY(!availableRegs)) {
           return DebugUtils::errored(kErrorInvalidState);
+        }
 
         uint32_t availableId = Support::ctz(availableRegs);
         reg.setSignatureAndId(signature, availableId);
@@ -183,8 +194,9 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
         ASMJIT_PROPAGATE(emitArgMove(reg, out.typeId(), srcStackPtr, cur.typeId()));
       }
 
-      if (cur.isIndirect() && cur.isReg())
+      if (cur.isIndirect() && cur.isReg()) {
         workData[RegGroup::kGp].unassign(varId, cur.regId());
+      }
 
       // Register to stack move.
       ASMJIT_PROPAGATE(emitRegMove(dstStackPtr, reg, cur.typeId()));
@@ -198,14 +210,15 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
   for (;;) {
     for (uint32_t varId = 0; varId < varCount; varId++) {
       Var& var = ctx._vars[varId];
-      if (var.isDone() || !var.cur.isReg())
+      if (var.isDone() || !var.cur.isReg()) {
         continue;
+      }
 
       FuncValue& cur = var.cur;
       FuncValue& out = var.out;
 
-      RegGroup curGroup = archTraits.regTypeToGroup(cur.regType());
-      RegGroup outGroup = archTraits.regTypeToGroup(out.regType());
+      RegGroup curGroup = RegUtils::groupOf(cur.regType());
+      RegGroup outGroup = RegUtils::groupOf(out.regType());
 
       uint32_t curId = cur.regId();
       uint32_t outId = out.regId();
@@ -216,18 +229,23 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
       }
       else {
         WorkData& wd = workData[outGroup];
-        if (!wd.isAssigned(outId)) {
+        if (!wd.isAssigned(outId) || curId == outId) {
 EmitMove:
           ASMJIT_PROPAGATE(
             emitArgMove(
-              BaseReg(archTraits.regTypeToSignature(out.regType()), outId), out.typeId(),
-              BaseReg(archTraits.regTypeToSignature(cur.regType()), curId), cur.typeId()));
+              Reg(RegUtils::signatureOf(out.regType()), outId), out.typeId(),
+              Reg(RegUtils::signatureOf(cur.regType()), curId), cur.typeId()));
 
-          wd.reassign(varId, outId, curId);
+          // Only reassign if this is not a sign/zero extension that happens on the same in/out register.
+          if (curId != outId) {
+            wd.reassign(varId, outId, curId);
+          }
+
           cur.initReg(out.regType(), outId, out.typeId());
 
-          if (outId == out.regId())
+          if (outId == out.regId()) {
             var.markDone();
+          }
           workFlags |= kWorkDidSome | kWorkPending;
         }
         else {
@@ -238,20 +256,21 @@ EmitMove:
             // Only few architectures provide swap operations, and only for few register groups.
             if (archTraits.hasInstRegSwap(curGroup)) {
               RegType highestType = Support::max(cur.regType(), altVar.cur.regType());
-              if (Support::isBetween(highestType, RegType::kGp8Lo, RegType::kGp16))
+              if (Support::isBetween(highestType, RegType::kGp8Lo, RegType::kGp16)) {
                 highestType = RegType::kGp32;
+              }
 
-              OperandSignature signature = archTraits.regTypeToSignature(highestType);
-              ASMJIT_PROPAGATE(
-                emitRegSwap(BaseReg(signature, outId), BaseReg(signature, curId)));
+              OperandSignature signature = RegUtils::signatureOf(highestType);
+              ASMJIT_PROPAGATE(emitRegSwap(Reg(signature, outId), Reg(signature, curId)));
 
               wd.swap(varId, curId, altId, outId);
               cur.setRegId(outId);
               var.markDone();
               altVar.cur.setRegId(curId);
 
-              if (altVar.out.isInitialized())
+              if (altVar.out.isInitialized()) {
                 altVar.markDone();
+              }
               workFlags |= kWorkDidSome;
             }
             else {
@@ -259,8 +278,9 @@ EmitMove:
               RegMask availableRegs = wd.availableRegs();
               if (availableRegs) {
                 RegMask inOutRegs = wd.dstRegs();
-                if (availableRegs & ~inOutRegs)
+                if (availableRegs & ~inOutRegs) {
                   availableRegs &= ~inOutRegs;
+                }
                 outId = Support::ctz(availableRegs);
                 goto EmitMove;
               }
@@ -276,12 +296,14 @@ EmitMove:
       }
     }
 
-    if (!(workFlags & kWorkPending))
+    if (!(workFlags & kWorkPending)) {
       break;
+    }
 
     // If we did nothing twice it means that something is really broken.
-    if ((workFlags & (kWorkDidSome | kWorkPostponed)) == kWorkPostponed)
+    if ((workFlags & (kWorkDidSome | kWorkPostponed)) == kWorkPostponed) {
       return DebugUtils::errored(kErrorInvalidState);
+    }
 
     workFlags = (workFlags & kWorkDidSome) ? kWorkNone : kWorkPostponed;
   }
@@ -291,8 +313,9 @@ EmitMove:
 
   if (ctx._hasStackSrc) {
     uint32_t iterCount = 1;
-    if (frame.hasDynamicAlignment() && !frame.hasPreservedFP())
+    if (frame.hasDynamicAlignment() && !frame.hasPreservedFP()) {
       sa.setId(saVarId < varCount ? ctx._vars[saVarId].cur.regId() : frame.saRegId());
+    }
 
     // Base address of all arguments passed by stack.
     BaseMem baseArgPtr(sa, int32_t(frame.saOffset(sa.id())));
@@ -300,8 +323,9 @@ EmitMove:
     for (uint32_t iter = 0; iter < iterCount; iter++) {
       for (uint32_t varId = 0; varId < varCount; varId++) {
         Var& var = ctx._vars[varId];
-        if (var.isDone())
+        if (var.isDone()) {
           continue;
+        }
 
         if (var.cur.isStack()) {
           ASMJIT_ASSERT(var.out.isReg());
@@ -309,7 +333,7 @@ EmitMove:
           uint32_t outId = var.out.regId();
           RegType outType = var.out.regType();
 
-          RegGroup group = archTraits.regTypeToGroup(outType);
+          RegGroup group = RegUtils::groupOf(outType);
           WorkData& wd = workData[group];
 
           if (outId == sa.id() && group == RegGroup::kGp) {
@@ -321,7 +345,7 @@ EmitMove:
             wd.unassign(wd._physToVarId[outId], outId);
           }
 
-          BaseReg dstReg = BaseReg(archTraits.regTypeToSignature(outType), outId);
+          Reg dstReg = Reg(RegUtils::signatureOf(outType), outId);
           BaseMem srcMem = baseArgPtr.cloneAdjusted(var.cur.stackOffset());
 
           ASMJIT_PROPAGATE(emitArgMove(

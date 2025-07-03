@@ -76,9 +76,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="core\adasm.cpp" />
-    <ClCompile Include="core\mba.cpp" />
-    <ClCompile Include="utils\arguments.cpp" />
     <ClCompile Include="asmjit\arm\a64assembler.cpp" />
     <ClCompile Include="asmjit\arm\a64builder.cpp" />
     <ClCompile Include="asmjit\arm\a64compiler.cpp" />
@@ -108,6 +105,7 @@
     <ClCompile Include="asmjit\core\funcargscontext.cpp" />
     <ClCompile Include="asmjit\core\globals.cpp" />
     <ClCompile Include="asmjit\core\inst.cpp" />
+    <ClCompile Include="asmjit\core\instdb.cpp" />
     <ClCompile Include="asmjit\core\jitallocator.cpp" />
     <ClCompile Include="asmjit\core\jitruntime.cpp" />
     <ClCompile Include="asmjit\core\logger.cpp" />
@@ -137,6 +135,9 @@
     <ClCompile Include="asmjit\x86\x86instdb.cpp" />
     <ClCompile Include="asmjit\x86\x86operand.cpp" />
     <ClCompile Include="asmjit\x86\x86rapass.cpp" />
+    <ClCompile Include="core\adasm.cpp" />
+    <ClCompile Include="core\mba.cpp" />
+    <ClCompile Include="utils\arguments.cpp" />
     <ClCompile Include="core\core.cpp" />
     <ClCompile Include="pe_lib\entropy.cpp" />
     <ClCompile Include="pe_lib\file_version_info.cpp" />
@@ -178,8 +179,6 @@
     <ClCompile Include="pe-packer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="core\adasm.hpp" />
-    <ClInclude Include="arguments.hpp" />
     <ClInclude Include="asmjit\a64.h" />
     <ClInclude Include="asmjit\arm.h" />
     <ClInclude Include="asmjit\arm\a64archtraits_p.h" />
@@ -198,7 +197,6 @@
     <ClInclude Include="asmjit\arm\a64rapass_p.h" />
     <ClInclude Include="asmjit\arm\armformatter_p.h" />
     <ClInclude Include="asmjit\arm\armglobals.h" />
-    <ClInclude Include="asmjit\arm\armoperand.h" />
     <ClInclude Include="asmjit\arm\armutils.h" />
     <ClInclude Include="asmjit\asmjit-scope-begin.h" />
     <ClInclude Include="asmjit\asmjit-scope-end.h" />
@@ -223,12 +221,14 @@
     <ClInclude Include="asmjit\core\emitterutils_p.h" />
     <ClInclude Include="asmjit\core\environment.h" />
     <ClInclude Include="asmjit\core\errorhandler.h" />
+    <ClInclude Include="asmjit\core\fixup.h" />
     <ClInclude Include="asmjit\core\formatter.h" />
     <ClInclude Include="asmjit\core\formatter_p.h" />
     <ClInclude Include="asmjit\core\func.h" />
     <ClInclude Include="asmjit\core\funcargscontext_p.h" />
     <ClInclude Include="asmjit\core\globals.h" />
     <ClInclude Include="asmjit\core\inst.h" />
+    <ClInclude Include="asmjit\core\instdb_p.h" />
     <ClInclude Include="asmjit\core\jitallocator.h" />
     <ClInclude Include="asmjit\core\jitruntime.h" />
     <ClInclude Include="asmjit\core\logger.h" />
@@ -255,6 +255,7 @@
     <ClInclude Include="asmjit\core\zonestring.h" />
     <ClInclude Include="asmjit\core\zonetree.h" />
     <ClInclude Include="asmjit\core\zonevector.h" />
+    <ClInclude Include="asmjit\host.h" />
     <ClInclude Include="asmjit\x86.h" />
     <ClInclude Include="asmjit\x86\x86archtraits_p.h" />
     <ClInclude Include="asmjit\x86\x86assembler.h" />
@@ -271,6 +272,8 @@
     <ClInclude Include="asmjit\x86\x86opcode_p.h" />
     <ClInclude Include="asmjit\x86\x86operand.h" />
     <ClInclude Include="asmjit\x86\x86rapass_p.h" />
+    <ClInclude Include="core\adasm.hpp" />
+    <ClInclude Include="arguments.hpp" />
     <ClInclude Include="core\core.hpp" />
     <ClInclude Include="core\mba.hpp" />
     <ClInclude Include="handler\handler.hpp" />
