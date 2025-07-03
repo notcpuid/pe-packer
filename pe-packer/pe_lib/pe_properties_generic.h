@@ -30,7 +30,7 @@ template<typename PEClassType>
 class pe_properties_generic : public pe_properties
 {
 public: //Constructor
-	virtual std::auto_ptr<pe_properties> duplicate() const;
+	virtual std::unique_ptr<pe_properties> duplicate() const;
 
 	//Fills properly PE structures
 	virtual void create_pe(uint32_t section_alignment, uint16_t subsystem);

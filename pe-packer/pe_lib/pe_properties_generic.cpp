@@ -9,9 +9,9 @@ using namespace pe_win;
 	
 //Constructor
 template<typename PEClassType>
-std::auto_ptr<pe_properties> pe_properties_generic<PEClassType>::duplicate() const
+std::unique_ptr<pe_properties> pe_properties_generic<PEClassType>::duplicate() const
 {
-	return std::auto_ptr<pe_properties>(new pe_properties_generic<PEClassType>(*this));
+	return std::unique_ptr<pe_properties>(new pe_properties_generic<PEClassType>(*this));
 }
 
 //Fills properly PE structures

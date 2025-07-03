@@ -7,7 +7,7 @@ namespace pe_bliss
 class pe_properties
 {
 public: //Constructors
-	virtual std::auto_ptr<pe_properties> duplicate() const = 0;
+	virtual std::unique_ptr<pe_properties> duplicate() const = 0;
 	
 	//Fills properly PE structures
 	virtual void create_pe(uint32_t section_alignment, uint16_t subsystem) = 0;
