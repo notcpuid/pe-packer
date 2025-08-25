@@ -215,7 +215,7 @@ void c_core::xor_sections(std::string sec_to_xor)
 void c_core::process()
 {
 	uint32_t ep_addr = m_assembler->offset();
-	uint32_t idx_oep = random_value(128, 1024);
+	uint32_t idx_oep = random_value(0x1000, 0xFFFFFFFF);
 	uint32_t image_base = m_peImage->get_image_base_32();
 
 	pe_bliss::section new_section;
@@ -348,7 +348,7 @@ void c_core::process()
 		".reloc"
 	};
 
-	for (int i = 0; i < section_to_xor.size(); i++)
+	for (unsigned int i = 0; i < section_to_xor.size(); i++)
 	{
 		xor_sections(section_to_xor[i]);
 	}
