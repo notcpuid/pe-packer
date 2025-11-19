@@ -1,3 +1,6 @@
 [submodule "pe-packer/asmjit"]
 	path = pe-packer/asmjit
 	url = https://github.com/asmjit/asmjit.git
+[submodule "vendor/imgui"]
+	path = vendor/imgui
+	url = https://github.com/ocornut/imgui.git
