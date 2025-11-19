@@ -113,6 +113,30 @@
     <ClCompile Include="pe_lib\version_info_viewer.cpp">
       <Filter>pe_lib</Filter>
     </ClCompile>
+    <ClCompile Include="gui\gui_app.cpp">
+      <Filter>gui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\imgui.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\imgui_demo.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\imgui_draw.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\imgui_tables.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\imgui_widgets.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vendor\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
     <ClCompile Include="core\core.cpp">
       <Filter>core</Filter>
     </ClCompile>
@@ -328,6 +352,15 @@
     <Filter Include="asmjit\arm">
       <UniqueIdentifier>{58f80216-0243-4830-9429-a333fcb1247e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="gui">
+      <UniqueIdentifier>{3b5dfb57-1686-46aa-9cad-b97cc1519e92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external">
+      <UniqueIdentifier>{fabae0e3-f392-43a5-8dbd-071d377b2f3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\imgui">
+      <UniqueIdentifier>{b8271a30-af6b-4fa7-9dcd-8d67076fa493}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pe_lib\entropy.h">
@@ -467,6 +500,30 @@
     </ClInclude>
     <ClInclude Include="utils\utils.hpp">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="gui\gui_app.hpp">
+      <Filter>gui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\imgui.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\imgui_internal.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\imstb_rectpack.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\imstb_textedit.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\imstb_truetype.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\backends\imgui_impl_dx11.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vendor\imgui\backends\imgui_impl_win32.h">
+      <Filter>external\imgui</Filter>
     </ClInclude>
     <ClInclude Include="core\mba.hpp">
       <Filter>core</Filter>

@@ -49,10 +49,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;ASMJIT_STATIC;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vendor\imgui;$(ProjectDir)..\vendor\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -66,13 +68,15 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vendor\imgui;$(ProjectDir)..\vendor\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -177,6 +181,14 @@
     <ClCompile Include="pe_lib\version_info_editor.cpp" />
     <ClCompile Include="pe_lib\version_info_viewer.cpp" />
     <ClCompile Include="pe-packer.cpp" />
+    <ClCompile Include="gui\gui_app.cpp" />
+    <ClCompile Include="..\vendor\imgui\imgui.cpp" />
+    <ClCompile Include="..\vendor\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\vendor\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\vendor\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\vendor\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\vendor\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="..\vendor\imgui\backends\imgui_impl_win32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asmjit\src\asmjit\a64.h" />
@@ -321,6 +333,14 @@
     <ClInclude Include="pe_lib\version_info_types.h" />
     <ClInclude Include="pe_lib\version_info_viewer.h" />
     <ClInclude Include="utils\utils.hpp" />
+    <ClInclude Include="gui\gui_app.hpp" />
+    <ClInclude Include="..\vendor\imgui\imgui.h" />
+    <ClInclude Include="..\vendor\imgui\imgui_internal.h" />
+    <ClInclude Include="..\vendor\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\vendor\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\vendor\imgui\imstb_truetype.h" />
+    <ClInclude Include="..\vendor\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="..\vendor\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
