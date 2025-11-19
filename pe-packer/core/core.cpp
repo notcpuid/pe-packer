@@ -28,8 +28,12 @@ c_core::c_core(std::string input_file, std::string output_file, std::uint32_t mu
 	}
 
 	JitRuntime jitRt;
+	Environment targetEnv = jitRt.environment();
+	targetEnv.setArch(Arch::kX86);
+	targetEnv.setSubArch(SubArch::kUnknown);
+
 	m_codeHolder = std::make_unique<CodeHolder>();
-	Error init_asmjit = m_codeHolder->init(jitRt.environment(), jitRt.cpuFeatures());
+	Error init_asmjit = m_codeHolder->init(targetEnv, jitRt.cpuFeatures());
 
 	if (init_asmjit != kErrorOk) {
 		print_error("Failed initialization\n");
