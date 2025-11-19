@@ -19,7 +19,10 @@ Packer by default works off a command line. Listed below are the arguments requr
 | `-finstr`   | Generates invalid instructions that will adversely affect analyzers/decompilers.      |                 |
 | `-noaslr`   | Allows you to disable ASLR                                                            |                 |
 
-## Obfuscator in action
+## GUI Interface
+<img width="800" height="602" alt="image" src="https://github.com/user-attachments/assets/646352aa-d4d3-4a4c-8d74-ad1d9e6852a7" />
+
+## Packer CLI in action
 ![Pasted image 20250701214130](https://github.com/user-attachments/assets/c7589479-4a57-4cde-8d11-98b88a8b573b)
 
 ## Input
@@ -30,7 +33,9 @@ Packer by default works off a command line. Listed below are the arguments requr
 
 ## Usage example
 ```commandline
-Usage: pe-packer <input> <output> mutations_count -mba ... -noaslr -fpack 0x00401040 0x00401072
+pe-packer.exe <input.exe> <output.exe> <mutations> [flags...]
+
+pe-packer.exe file.exe file_packed.exe 5 -mba -senc -fpack 0x401040 0x401072
 ```
 
 > [!NOTE]
@@ -46,3 +51,4 @@ I am going to periodically update the functionality, add new tricks that I find,
 
 * [AsmJit](https://github.com/asmjit/asmjit)
 * [PeBliss](https://github.com/BackupGGCode/portable-executable-library)
+* [Dear ImGui](https://github.com/ocornut/imgui)
